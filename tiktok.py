@@ -28,7 +28,11 @@ class TikTokManager:
     def login(self, show=False):
         try:
             self.is_stop_upload = False
-            self.driver = get_driver(show=show)
+            if self.facebook_config['use_profile_tiktok']:
+                self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
+                sleep(5)
+            else:
+                self.driver = get_driver(show=show)
             if not self.driver:
                 return False
             self.load_session()
@@ -72,11 +76,12 @@ class TikTokManager:
             return False
 
     def get_upload_button(self):
-        xpath = get_xpath('a', 'e14l9ebt5 css-12zznuq-StyledLink-StyledTmpLink er1vbsz0', 'data-e2e', 'nav-upload')
-        upload_link = get_element_by_xpath(self.driver, xpath)
+        # xpath = get_xpath('a', 'e14l9ebt5 css-12zznuq-StyledLink-StyledTmpLink er1vbsz0', 'data-e2e', 'nav-upload')
+        # upload_link = get_element_by_xpath(self.driver, xpath)
+        upload_link = get_element_by_text(self.driver, 'Upload')
         if not upload_link:
             sleep(2)
-            xpath = get_xpath('a', 'e18d3d942 css-2gvzau-ALink-StyledLink er1vbsz1', 'aria-label', 'Upload a video')
+            xpath = get_xpath_by_multi_attribute('a', ['aria-label="Upload a video"'])
             upload_link = get_element_by_xpath(self.driver, xpath)
         return upload_link
 
@@ -84,7 +89,7 @@ class TikTokManager:
         self.driver.get(url)
         sleep(1.5)
         try:
-            cookies_info = get_pickle_data(tiktok_cookies_path)
+            cookies_info = get_json_data(tiktok_cookies_path)
             if not cookies_info:
                 cookies_info = {}
             if self.account in cookies_info:
@@ -100,9 +105,9 @@ class TikTokManager:
         
     def save_session(self):
         try:
-            cookies_info = get_pickle_data(tiktok_cookies_path) or {}
+            cookies_info = get_json_data(tiktok_cookies_path) or {}
             cookies_info[self.account] = self.driver.get_cookies() or []
-            save_to_pickle_file(cookies_info, tiktok_cookies_path)
+            save_to_json_file(cookies_info, tiktok_cookies_path)
         except:
             getlog()
 
@@ -629,10 +634,12 @@ class TikTokManager:
             self.close()
 
     def save_tiktok_config(self):
-        save_to_pickle_file(self.tiktok_config, tiktok_config_path)
+        save_to_json_file(self.tiktok_config, tiktok_config_path)
 
     def get_tiktok_config(self):
         self.tiktok_config = get_json_data(tiktok_config_path)
+        if 'use_profile_facebook' not in self.tiktok_config:
+            self.tiktok_config['use_profile_facebook'] = False
 
 #---------------------------------Giao diện download------------------------------------------
     def open_download_video_window(self):
@@ -833,21 +840,26 @@ class TikTokManager:
             self.root.title(f"Tiktok: {self.account}")
             self.width = 400
             self.height_window = 170
+            if height_element == 30:
+                self.height_window = 185
             self.is_start_tiktok = False
         elif self.is_upload_video_window:
             self.root.title(f"Upload video Tiktok: {self.account}")
             self.width = 800
             self.height_window = 795
+            if height_element == 30:
+                self.height_window = 785
             self.is_upload_video_window = False
         elif self.is_download_window:
             self.root.title("Download videos Tiktok")
             self.width = 700
             self.height_window = 365
             self.is_download_window = False
+        self.height_window = int(self.height_window * default_percent)
         self.setting_screen_position()
 
     def save_tiktok_config(self):
-        save_to_pickle_file(self.tiktok_config, tiktok_config_path)
+        save_to_json_file(self.tiktok_config, tiktok_config_path)
 
     def exit_app(self):
         self.reset()

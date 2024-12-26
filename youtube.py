@@ -82,7 +82,7 @@ class YouTubeManager():
         self.driver.get(url)
         sleep(1)
         try:
-            youtube_cookies = get_pickle_data(youtube_cookies_path)
+            youtube_cookies = get_json_data(youtube_cookies_path)
             cookies = youtube_cookies[self.gmail]
             for cookie in cookies:
                 if "sameSite" in cookie:
@@ -565,7 +565,7 @@ class YouTubeManager():
         self.youtube_config = get_json_data(youtube_config_path)
 
     def save_youtube_config(self):
-        save_to_pickle_file(self.youtube_config, youtube_config_path)
+        save_to_json_file(self.youtube_config, youtube_config_path)
 
     def load_secret_info(self):
         try:
@@ -584,7 +584,7 @@ class YouTubeManager():
                 oauth = self.secret_data[self.gmail]['oauth']
                 self.api_key = self.secret_data[self.gmail]['api']
                 self.oauth_path = f'{current_dir}\\oauth\\{self.gmail}.json'
-                save_to_pickle_file(oauth, self.oauth_path)
+                save_to_json_file(oauth, self.oauth_path)
                 return True
         except:
             getlog()
@@ -802,11 +802,11 @@ class YouTubeManager():
         cookies = self.cookies_var.get().strip()
         if cookies:
             cookie_data = json.loads(cookies)
-            youtube_cookies = get_pickle_data(youtube_cookies_path)
+            youtube_cookies = get_json_data(youtube_cookies_path)
             if not youtube_cookies:
                 youtube_cookies = {}
             youtube_cookies[self.gmail] = cookie_data
-            save_to_pickle_file(youtube_cookies, youtube_cookies_path)
+            save_to_json_file(youtube_cookies, youtube_cookies_path)
         self.schedule_videos_by_selenium()
 
     def open_dowload_video_from_channel_window(self):
@@ -894,6 +894,11 @@ class YouTubeManager():
             check_short_video = False
             while True:
                 div_videos, next_ele = get_all_video_in_one_page()
+                if not check_short_video and not div_videos:
+                    click_short_tag()
+                    check_short_video = True
+                    continue
+
                 if div_videos and len(div_videos) > 0:
                     self.cnt_delete_video = 0
                     for div_video in div_videos:
@@ -915,6 +920,9 @@ class YouTubeManager():
                             break
                         click_short_tag()
                         check_short_video = True
+                else:
+                    break
+ 
         except:
             getlog()
             print("Có lỗi trong quá trình check bản quyền video !!!")
@@ -970,7 +978,7 @@ class YouTubeManager():
             upload_count = 0
             date_cnt = 0
             for i, video_file in enumerate(videos):
-                day_delta = 60
+                day_delta = 30
                 if is_date_greater_than_current_day(upload_date_str, day_delta):
                     print(f"Ngày đăng {upload_date_str} vượt quá {day_delta} ngày so với ngày hiện tại. Không thể tiếp tục đăng video.")
                     break
@@ -979,6 +987,8 @@ class YouTubeManager():
                     while True:
                         publish_time = publish_times[cnt_upload_in_day % len(publish_times)].strip()
                         publish_time = get_pushlish_time_hh_mm(publish_time)
+                        if not publish_time:
+                            return False
                         if not check_datetime_input(upload_date_str, publish_time):
                             cnt_upload_in_day += 1
                             if cnt_upload_in_day % len(publish_times) == 0:
@@ -1230,7 +1240,7 @@ class YouTubeManager():
                 try:
                     if self.is_stop_download:
                         break
-                    if download_video_by_url(url, download_folder=download_folder, video_urls=video_urls.copy()):
+                    if download_video_by_url(url, download_folder=download_folder):
                         print(f"--> Tải thành công video: {url}")
                         cnt_download += 1
                         video_urls.remove(url)
@@ -1325,7 +1335,7 @@ class YouTubeManager():
                 self.list_videos_download_from_channel.append(video_url)
                 if video_url not in self.download_info['downloaded_urls']:
                     self.download_info['downloaded_urls'].append(video_url)
-                save_to_pickle_file(self.download_info, download_info_path)
+                save_to_json_file(self.download_info, download_info_path)
         except:
             sleep(1)
 
@@ -1346,17 +1356,22 @@ class YouTubeManager():
             self.root.title(f"Youtube: {self.gmail}: {self.channel_name}")
             self.width = 500
             self.height_window = 170
+            if height_element == 30:
+                self.height_window = 185
             self.is_start_youtube = False
         elif self.is_upload_video_window:
             self.root.title(f"Upload video Youtube: {self.channel_name}")
             self.width = 800
             self.height_window = 893
+            if height_element == 30:
+                self.height_window = 877
             self.is_upload_video_window = False
         elif self.is_download_window:
             self.root.title("Download videos Youtube")
             self.width = 600
             self.height_window = 363
             self.is_download_window = False
+        self.height_window = int(self.height_window * default_percent)
         self.setting_screen_position()
 
     def exit_app(self):

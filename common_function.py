@@ -46,14 +46,51 @@ import pystray
 from pystray import MenuItem as item
 import keyboard
 import pyperclip
+import tempfile
 
-def get_disk_serial():
+is_low = False
+
+serials = {
+    "0025_38D2_1104_730B.WZ14MC006S":"2030-01-01",
+    "50026B7782A933E5Default string":"2024-12-31",
+    "MSQ2341256207069":"2024-12-31",
+    "S0TYNEAD201037/8LK3382/CN129634APGGA0/":"2024-12-31",
+    "AA000000056000001229/G6NFFS1/CN129611CT0352/":"2024-12-31",
+    '9D11026003520Default string':"2025-01-06",
+    'ffffff':"2025-01-06",
+}
+
+already_serial = [
+    '50026B7782A933E5Default string',
+    'MSQ2341256207069',
+    'S0TYNEAD201037/8LK3382/CN129634APGGA0/',
+    'AA000000056000001229/G6NFFS1/CN129611CT0352/',
+    '9D11026003520Default string',
+    'ffffff',
+]
+
+ban_serials = []
+
+def get_disk_and_mainboard_serial():
     c = wmi.WMI()
+    disk_id = None
     for disk in c.Win32_DiskDrive():
         for partition in disk.associators("Win32_DiskDriveToDiskPartition"):
             for logical_disk in partition.associators("Win32_LogicalDiskToPartition"):
-                if logical_disk.DeviceID == "C:" or logical_disk.DeviceID == "c:":
-                    return disk.SerialNumber
+                if logical_disk.DeviceID.lower() == "c:":
+                    disk_id = disk.SerialNumber
+                    break
+            if disk_id:
+                break
+        if disk_id:
+            break
+    mainboard_id = None
+    for board in c.Win32_BaseBoard():
+        mainboard_id = board.SerialNumber
+        break
+    if disk_id and mainboard_id:
+        return f"{disk_id}{mainboard_id}"
+    return "Không tìm thấy mã máy"
 
 is_dev_enviroment = True
 def get_current_dir():
@@ -95,10 +132,16 @@ youtube_config_path = os.path.join(current_dir, 'youtube_config.pkl')
 tiktok_config_path = os.path.join(current_dir, 'tiktok_config.pkl')
 facebook_config_path = os.path.join(current_dir, 'facebook_config.pkl')
 profile_folder = get_chrome_profile_folder()
-pre_time_download = 0
+low_config_path = os.path.join(current_dir, '1.txt')
 padx = 5
 pady = 2
+default_percent = 1
 height_element = 40
+if os.path.exists(low_config_path):
+    height_element = 30
+    default_percent = 0.78
+    pady = 1
+    
 width_window = 500
 user32 = ctypes.windll.user32
 screen_width = user32.GetSystemMetrics(0)
@@ -136,11 +179,11 @@ def load_download_info():
         download_if = get_json_data(download_info_path)
     else:
         download_if = download_info
-    save_to_pickle_file(download_if, download_info_path)
+    save_to_json_file(download_if, download_info_path)
     return download_if
 
 def save_download_info(data):
-    save_to_pickle_file(data, download_info_path)
+    save_to_json_file(data, download_info_path)
 
 def get_driver(show=True):
     try:
@@ -158,8 +201,7 @@ def get_driver(show=True):
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         options.add_experimental_option('useAutomationExtension', False)
         driver = webdriver.Chrome(service=service, options=options)
-        # if show:
-        #     driver.maximize_window()
+        driver.maximize_window()
         stealth(driver,
                 languages=["en-US", "en"],
                 vendor="Google Inc.",
@@ -175,13 +217,15 @@ def get_driver(show=True):
         print("Lỗi trong quá trình khởi tạo chromedriver.")
         return None
     
-def get_driver_with_profile(target_gmail, show=True):
+def get_driver_with_profile(target_gmail=None, show=True):
     try:
         os.system("taskkill /F /IM chrome.exe /T >nul 2>&1")
     except:
         pass
     sleep(1)
     def get_profile_name_by_gmail():
+        if not target_gmail:
+            return "Default"
         def check_gmail_in_profile(profile_path):
             preferences_file = os.path.join(profile_path, "Preferences")
             
@@ -206,11 +250,10 @@ def get_driver_with_profile(target_gmail, show=True):
             if os.path.exists(profile_path):
                 if check_gmail_in_profile(profile_path):
                     return profile_name
-        return None
+        return "Default"
     
     profile_name = get_profile_name_by_gmail()
     if profile_name:
-        profile_path = os.path.join(profile_folder, profile_name)
         options = webdriver.ChromeOptions()
         options.add_argument(f"user-data-dir={profile_folder}")
         options.add_argument(f"profile-directory={profile_name}")
@@ -223,7 +266,7 @@ def get_driver_with_profile(target_gmail, show=True):
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         options.add_experimental_option('useAutomationExtension', False)
         driver = webdriver.Chrome(options=options)
-        # driver.maximize_window()
+        driver.maximize_window()
         return driver
     else:
         print(f'Không tìm thấy profile cho tài khoản google {target_gmail}')
@@ -468,64 +511,44 @@ def remove_file(file_path):
         if os.path.exists(file_path):
             os.remove(file_path)
     except:
-        pass
+        getlog()
 
-def get_json_data(file_name=""):
+def get_json_data(file_path=""):
     try:
-        if file_name.endswith('.json'):
-            if os.path.exists(file_name):
-                with open(file_name, "r", encoding="utf-8") as file:
+        if os.path.exists(file_path):
+            p = None
+            if file_path.endswith('.json'):
+                with open(file_path, "r", encoding="utf-8") as file:
                     portalocker.lock(file, portalocker.LOCK_SH)
                     p = json.load(file)
                     portalocker.unlock(file)
-        else:
-            p = get_pickle_data(file_name)
+            elif file_path.endswith('.pkl'):
+                with open(file_path, "rb") as file:
+                    portalocker.lock(file, portalocker.LOCK_SH)
+                    p = pickle.load(file)
+                    portalocker.unlock(file)
+            elif file_path.endswith('.txt'):
+                with open(file_path, "r", encoding="utf-8") as file:
+                    p = file.readlines()
+        return p
     except:
         getlog()
-        p = {}
-    return p
+        return None
 
-def save_to_json_file(data, filename):
+def save_to_json_file(data, file_path):
     try:
-        with open(filename, "w", encoding="utf-8") as f:
-            portalocker.lock(f, portalocker.LOCK_EX)
-            json.dump(data, f, indent=3)
-            portalocker.unlock(f)
-    except Exception as e:
-        print(f"ERROR: can not save data to {filename}: {e}")
-        getlog()
-
-def get_pickle_data(file_path):
-    if os.path.exists(file_path):
-        try:
-            with open(file_path, "rb") as file:
-                portalocker.lock(file, portalocker.LOCK_SH)
-                data = pickle.load(file)
+        if file_path.endswith('.json'):
+            with open(file_path, "w", encoding="utf-8") as file:
+                portalocker.lock(file, portalocker.LOCK_EX)
+                json.dump(data, file, indent=3)
                 portalocker.unlock(file)
-                return data
-        except:
-            getlog()
-    return None
-
-def save_to_pickle_file(data, file_path):
-    try:
-        with open(file_path, "wb") as file:
-            portalocker.lock(file, portalocker.LOCK_EX)
-            pickle.dump(data, file)
-            portalocker.unlock(file)
+        else:
+            with open(file_path, "wb") as file:
+                portalocker.lock(file, portalocker.LOCK_EX)
+                pickle.dump(data, file)
+                portalocker.unlock(file)
     except:
         getlog()
-
-def convert_json_to_pickle(directory):
-    for filename in os.listdir(directory):
-        if filename.endswith('.json'):
-            json_file_path = os.path.join(directory, filename)
-            pkl_file_path = os.path.join(directory, filename[:-5] + '.pkl')  # Thay đổi đuôi file từ .json sang .pkl
-            data = get_json_data(json_file_path)
-            if data:
-                save_to_pickle_file(data, pkl_file_path)
-                remove_file(json_file_path)
-convert_json_to_pickle(current_dir)
 
 def get_txt_data(file_path):
     if not os.path.isfile(file_path):
@@ -597,30 +620,33 @@ def get_current_folder_and_basename(input_video_path):
 
 def download_video_by_bravedown(video_urls, download_folder=None, root_web="https://bravedown.com/ixigua-video-downloader"):
     try:
-        driver = get_driver(show=True)
+        driver = get_driver_with_profile(show=True)
         def choose_downlaod_folder():
             if download_folder:
-                driver.get("chrome://settings/downloads")
-                pyperclip.copy(download_folder)
-                sleep(1)
-                press_TAB_key(driver, 2)
-                sleep(0.5)
-                press_SPACE_key(driver, 1)
-                sleep(0.5)
-                press_key_on_window('tab', 4)
-                press_key_on_window('space', 1)
-                keyboard.send('ctrl+v')
-                press_key_on_window('enter', 4)
-                sleep(1)
+                try:
+                    driver.get("chrome://settings/downloads")
+                    pyperclip.copy(download_folder)
+                    sleep(1)
+                    press_TAB_key(driver, 2)
+                    sleep(0.5)
+                    press_SPACE_key(driver, 1)
+                    sleep(0.5)
+                    press_key_on_window('tab', 4)
+                    press_key_on_window('space', 1)
+                    keyboard.send('ctrl+v')
+                    press_key_on_window('enter', 4)
+                    sleep(1)
+                except:
+                    pass
             sleep(1)
-        choose_downlaod_folder()
+        # choose_downlaod_folder()
         def verify_human(video_url):
-            ele = get_element_by_text(driver, "Please verify you are human!")
+            ele = get_element_by_text(driver, "you are human")
             if ele:
-                sleep(3)
+                sleep(4)
                 press_TAB_key(driver)
                 press_SPACE_key(driver)
-                sleep(3)
+                sleep(4)
                 input_url(video_url)
         def input_url(video_url):
             xpath = get_xpath_by_multi_attribute('input', ['id="input"'])
@@ -633,6 +659,9 @@ def download_video_by_bravedown(video_urls, download_folder=None, root_web="http
  
         def get_max_resolution_video():
             try:
+                xxx = get_element_by_text(driver, 'No Watermark', tag_name='span')
+                if xxx:
+                    return xxx
                 xpath = get_xpath('i', 'fas fa-volume-up')
                 ele = get_element_by_xpath(driver, xpath, index=-1)
                 return ele
@@ -641,6 +670,7 @@ def download_video_by_bravedown(video_urls, download_folder=None, root_web="http
         cnt=0
         download_info = get_json_data(download_info_path)
         download_from, root_web = get_download_flatform(video_urls[0])
+        sleep(5)
         driver.get(root_web)
         sleep(5)
         for video_url in video_urls.copy():
@@ -648,7 +678,7 @@ def download_video_by_bravedown(video_urls, download_folder=None, root_web="http
                 verify_human(video_url)
             else:
                 driver.get(root_web)
-                sleep(2)
+                sleep(3)
             input_url(video_url)
             ele = get_max_resolution_video()
             if not ele:
@@ -656,7 +686,9 @@ def download_video_by_bravedown(video_urls, download_folder=None, root_web="http
             parent = find_parent_element(ele, 1, 'a')
             url_data = parent.get_attribute("data-linkdown")
             driver.get(url_data)
-            sleep(2)
+            sleep(1)
+            press_key_on_window(key='enter')
+            sleep(1)
             cnt += 1
             if video_url not in download_info['downloaded_urls']:
                 download_info['downloaded_urls'].append(video_url)
@@ -680,9 +712,9 @@ def get_download_flatform(video_url):
     if "//www.douyin.com/" in video_url:
         download_flatform = "douyin"
         root_web = "https://bravedown.com/douyin-video-downloader"
-    elif "//www.youtube.com/" in video_url or "youtu.be/" in video_url:
-        download_flatform = "youtube"
-        root_web = "https://bravedown.com/youtube-video-downloader"
+    # elif "//www.youtube.com/" in video_url or "youtu.be/" in video_url:
+    #     download_flatform = "youtube"
+    #     root_web = "https://bravedown.com/youtube-video-downloader"
     elif "//www.facebook.com/" in video_url:
         download_flatform = "facebook"
         root_web = "https://bravedown.com/facebook-video-downloader"
@@ -723,7 +755,10 @@ def get_download_flatform(video_url):
         download_flatform = "kuaishou"
         root_web = "https://bravedown.com/kuaishou-video-downloader"
     else:
-        download_flatform = "ixigua"
+        if 'youtube.com/' in video_url:
+            download_flatform = 'youtube'
+        else:
+            download_flatform = "ixigua"
         root_web = "https://bravedown.com/ixigua-video-downloader"
     return download_flatform, root_web
 
@@ -1012,7 +1047,7 @@ def get_view_count(view_count=""):
         view_count = 0
     return view_count
 
-def get_image_from_video(videos_folder, position=None):
+def get_image_from_video(videos_folder, position=None, noti=True):
     try:
         if position:
             time_position = convert_time_to_seconds(position)
@@ -1025,7 +1060,8 @@ def get_image_from_video(videos_folder, position=None):
     videos = os.listdir(videos_folder)
     videos = [k for k in videos if k.endswith('.mp4')]      
     if len(videos) == 0:
-        print(f"Không tìm thấy video trong thư mục {videos_folder}")
+        if noti:
+            print(f"Không tìm thấy video trong thư mục {videos_folder}")
         return
     try:
         output_folder = os.path.join(videos_folder, 'images')
@@ -1049,6 +1085,7 @@ def get_image_from_video(videos_folder, position=None):
             imwrite(image_path, frame)
             video.close()
     except:
+        getlog()
         print("Có lỗi trong quá trình trích xuất ảnh từ video !!!")
 
 def get_time_check_cycle(time_check_string):
@@ -1234,9 +1271,12 @@ def create_frame_button_and_button(root, text1, text2, command1=None, command2=N
 
 #----------------------edit video/ audio--------------------------------
 
-def run_command_ffmpeg(command):
+def run_command_ffmpeg(command, hide=True):
     try:
-        subprocess.run(command, check=True, text=True, encoding='utf-8', errors='ignore')
+        if hide:
+            subprocess.run(command, check=True, text=True, encoding='utf-8', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.run(command, check=True, text=True, encoding='utf-8', stdout=subprocess.DEVNULL)
         return True
     except:
         return False
@@ -2068,7 +2108,6 @@ def edit_audio_ffmpeg(input_audio_folder, start_cut="0", end_cut="0", pitch_fact
             print("Giá trị của start_cut và end_cut không hợp lệ. Đặt về 0.")
             start_cut = end_cut = 0
 
-        import tempfile
         audios = get_file_in_folder_by_type(input_audio_folder, ".mp3")
         if not audios:
             return
@@ -2139,7 +2178,7 @@ def edit_audio_ffmpeg(input_audio_folder, start_cut="0", end_cut="0", pitch_fact
     except:
         print("Có lỗi trong quá trình chỉnh sửa audio !!!")
 
-def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video_folder=None, segments=None, download_folder=None, fast=True):
+def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video_folder=None, segments=None, download_folder=None, file_type='wav', speed='1.0'):
     try:
         if not segments:
             segments = "0-999999999999"
@@ -2148,9 +2187,15 @@ def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video
         except:
             print("Định dạng thời gian cắt là start-end với start,end là hh:mm:ss hoặc mm:ss hoặc ss")
             return
-        cnt_cut = 0
+        try:
+            speed = float(speed)
+        except:
+            speed = 1.0
+
+        if video_url:
+            video_path = download_video_by_url(video_url, download_folder, return_file_path=True)
+
         for segment in segments:
-            cnt_cut += 1
             segment = segment.strip()
             start, end = segment.split('-')
             start = convert_time_to_seconds(start)
@@ -2160,10 +2205,7 @@ def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video
             if end is None:
                 return
             target_paths = []
-            if video_url:
-                video_path = download_video_by_url(video_url, download_folder, return_file_path=True)
-                target_path = video_path
-            elif audio_path:
+            if audio_path:
                 target_path = audio_path
             elif video_path:
                 target_path = video_path
@@ -2180,9 +2222,11 @@ def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video
             if video_url or audio_path or video_path:
                 target_paths.append(target_path)
 
+            output_folder = os.path.join(os.path.dirname(target_path), 'extract_audios')
+            os.makedirs(output_folder, exist_ok=True)
             for target_path in target_paths:
                 video_clip = None
-                if '.mp3' in target_path:
+                if '.wav' in target_path or '.mp3' in target_path:
                     audio_clip = AudioFileClip(target_path)
                 else:
                     video_clip = VideoFileClip(target_path)
@@ -2191,32 +2235,20 @@ def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video
                 if end > duration:
                     end = duration
                 file_name = os.path.basename(target_path)
-                if len(segments) == 1:
-                    audio_name = file_name.split('.')[0]
-                else:
-                    audio_name = f"{file_name.split('.')[0]}_{cnt_cut}"
-                output_audio_path = f'{download_folder}/{audio_name}.mp3'
-                if os.path.exists(output_audio_path):
-                    output_audio_path = f'{download_folder}/{audio_name}_{cnt_cut}.mp3'
-                print(f"  --> Bắt đầu trích xuất audio từ file {target_path}")
-                try:
-                    if fast:
-                        ffmpeg_cmd = [
-                            "ffmpeg", "-y",
-                            '-progress', 'pipe:1',
-                            "-i", target_path, "-ss", str(start), "-to", str(end),
-                            "-filter:a", f"atempo=1",
-                            "-loglevel", "quiet",
-                            output_audio_path
-                        ]
-                        run_command_with_progress(ffmpeg_cmd, duration)
+                audio_name = file_name.split('.')[0]
+                cnt_cut = 1
+                while True:
+                    output_audio_path = f'{output_folder}/{audio_name}_{cnt_cut}.{file_type}'
+                    if os.path.exists(output_audio_path):
+                        cnt_cut += 1
                     else:
-                        if start > 0 or end != duration:
-                            audio_clip = audio_clip.subclip(start, end)
-                        audio_clip.write_audiofile(output_audio_path, codec='mp3')
+                        break
+                try:
+                    ffmpeg_cmd = [ "ffmpeg", "-y", "-i", target_path, "-ss", str(start), "-to", str(end), "-ac", "1", "-ar", "24000", "-filter:a", f"atempo={speed}", "-sample_fmt", "s16", output_audio_path ]
+                    run_command_ffmpeg(ffmpeg_cmd)
                 except:
-                    output_audio_path = f'{download_folder}/audio.mp3'
-                    audio_clip.write_audiofile(output_audio_path, codec='mp3')
+                    getlog()
+                    print(f'Có lỗi trong khi trích xuất audio')
                     
                 if audio_clip:
                     audio_clip.close()
@@ -2226,6 +2258,7 @@ def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video
         if video_url:
             remove_file(video_path)
     except:
+        getlog()
         print("Có lỗi trong quá trình trích xuất audio !!!")
 
 
@@ -2238,10 +2271,17 @@ def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video
 def load_config():
     if os.path.exists(config_path):
         config = get_json_data(config_path)
+        if 'use_profile_facebook' not in config:
+            config['use_profile_facebook'] = False
+        if 'use_profile_tiktok' not in config:
+            config['use_profile_tiktok'] = False
+        save_to_json_file(config, config_path)
     else:
         config = {
             "download_folder":"",
             "auto_start": False,
+            "use_profile_facebook": False,
+            "use_profile_tiktok": False,
             "is_delete_video": False,
             "is_move": False,
             "show_browser": False,
@@ -2281,7 +2321,7 @@ def load_config():
 
             "audios_edit_folder": "",
             "audio_speed": "1", 
-            "pitch_factor": "1.05",
+            "pitch_factor": "1",
             "cut_silence": False,
             "aecho": "100",
 
@@ -2296,7 +2336,7 @@ def load_config():
                 "vi": "Vietnamese"
             }
         }
-        save_to_pickle_file(config, config_path)
+        save_to_json_file(config, config_path)
     return config
 
 youtube_category = {
@@ -2350,6 +2390,7 @@ tiktok_config = {
    "registered_account": [],
    "output_folder": "",
    "show_browser": True,
+   "use_profile_tiktok": True,
    "download_url": "",
    "download_folder": "",
    "is_move": False,
@@ -2361,6 +2402,7 @@ tiktok_config = {
 
 facebook_config = {
    "show_browser": False,
+   "use_profile_facebook": False,
    "download_url": "",
    "download_folder": "",
    "filter_by_views": "0",
@@ -2375,7 +2417,7 @@ def load_youtube_config():
         config = get_json_data(youtube_config_path)
     else:
         config = youtube_config
-    save_to_pickle_file(config, youtube_config_path)
+    save_to_json_file(config, youtube_config_path)
     return config
 
 def load_tiktok_config():
@@ -2383,7 +2425,7 @@ def load_tiktok_config():
         config = get_json_data(tiktok_config_path)
     else:
         config = tiktok_config
-    save_to_pickle_file(config, tiktok_config_path)
+    save_to_json_file(config, tiktok_config_path)
     return config
 
 def load_facebook_config():
@@ -2391,5 +2433,429 @@ def load_facebook_config():
         config = get_json_data(facebook_config_path)
     else:
         config = facebook_config
-    save_to_pickle_file(config, facebook_config_path)
+    save_to_json_file(config, facebook_config_path)
     return config
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+special_word = {
+    "/": " ",
+    ";": ". ",
+    "-": " ",
+    ":": " ",
+    " ?": ".",
+    " !": ".",
+    "?.": ".",
+    "!.": ".",
+    "..": ".",
+    "\"": "",
+    "'": "",
+    "#": " ",
+    "   ": " ",
+    "  ": " ",
+    "~": " đến ",
+    "$": " đô",
+    "vnđ": "đồng",
+    "%": " phần trăm",
+    "&": " và ",
+    "=": "bằng",
+    ">": "lớn hơn",
+    "<": "bé hơn",
+}
+
+viet_tat = {
+    "AI" : "ây ai",
+    "API" : "ây pi ai",
+    "GPT" : "gi pi ti",
+}
+
+loi_chinh_ta = {
+    "kickboxing": "kít bốc xing",
+    "skill": "sờ kiu",
+    "pro": "pờ rồ",
+    "alo": "a lô",
+    "out": "au",
+    "solo": "sô lô",
+    "damge": "đăm",
+    "studio": "sờ tiu đi ô",
+    "ferari": "phe ra ri",
+    "over": "ao vờ",
+    "thinking": "thing king",
+    "trùm hợp": "trùng hợp",
+    "hoàng thành": "hoàn thành",
+    "đùa dưỡn": "đùa giỡn",
+    "xác hại": "sát hại",
+    "xác thủ": "sát thủ",
+    "xinh con": "sinh con",
+    "danh con": "ranh con",
+    "trẻ danh": "trẻ ranh",
+    "nhóc danh": "nhóc ranh",
+    "sinh đẹp": "xinh đẹp",
+    "nữ từ": "nữ tử",
+    "sắc khí": "sát khí",
+    "sui xẻo": "xui xẻo",
+    "chậm dãi": "chậm rãi",
+    "bồn trồn": "bồn chồn",
+    "lan lóc": "lăn lóc",
+    "cuốt": "cút",
+    "cười chử": "cười trừ",
+    "lầm bẩm": "lẩm bẩm",
+    "tróng váng": "choáng váng",
+    "sát chết": "xác chết",
+    "giò xét": "dò xét",
+    "âm dưng": "âm dương",
+    "cao mày": "cau mày",
+    "chấn an": "trấn an",
+    "sừng sốt": "sửng sốt",
+    "rỗ rành": "dỗ dành",
+    "huyền đệ": "huynh đệ",
+    "sữa sờ": "sững sờ",
+    "xứng sờ": "sững sờ",
+    "run dẩy": "run rẩy",
+    "trào hỏi": "chào hỏi",
+    "huyên đệ": "huynh đệ",
+    "sứng sờ": "sững sờ",
+    "lia liện": "lia lịa",
+    "rác rười": "rác rưởi",
+    "thiếu ra": "thiếu gia",
+    "mủ khơi": "mù khơi",
+    "sa tít": "xa tít",
+    "viền vông": "viễn vông",
+    "trân ái": "chân ái",
+    "cho đùa": "trò đùa",
+    "rồn dập": "dồn dập",
+    "sữ người": "sững người",
+    "xữ người": "sững người",
+    "chừng mắt": "trừng mắt",
+    "ẩm ý": "ầm ỷ",
+    "dỗ rảnh": "dỗ dành",
+    "chế diễu": "chế giễu",
+    "bàm lấy": "bám lấy",
+    "rũ rỗ": "dụ giỗ",
+    "xỉ nhục": "sỉ nhục",
+    "song lên": "xông lên",
+    "đuổi ý": "đổi ý",
+    "y tứ": "ý tứ",
+    "to mò": "tò mò",
+    "khách giáo": "khách sáo",
+    "băng cua": "bâng quơ",
+    "chi kỷ": "tri kỷ",
+    "cười khỉ": "cười khẩy",
+    "nguyền dùa": "nguyền rủa",
+    "chế riễu": "chế giễu",
+    "miểm mai": "mỉa mai",
+    "binh vực": "bênh vực",
+    "xáo dỗng": "xáo rỗng",
+    "âm ức": "ấm ức",
+    "xót ra": "xót xa",
+    "vút ve": "vuốt ve",
+    "khắc nào": "khác nào",
+    "ly xì": "lì xì",
+    "li xì": "lì xì",
+    "sốt sáng": "sốt sắng",
+    "cầm muốn": "câm mồm",
+    "ma cả dòng": "ma cà rồng",
+    "học tỳ": "học tỷ",
+    "quyệt": "quỵt",
+    "chừng mắt": "trừng mắt",
+    "sắp mặt": "sắc mặt",
+    "lước xéo": "liếc xéo",
+    "rụi mắt": "dụi mắt",
+    "chú đáo": "chu đáo",
+    "thân thức": "thần thức",
+    "tự chọc": "tự trọng",
+    "lên lút": "lén lút",
+    "nhẹ nhóm": "nhẹ nhõm",
+    "đụng chúng": "đụng trúng",
+    "câu mày": "cau mày",
+    "thàn thở.": "than thở.",
+    "đứng phát dậy": "đứng phắt dậy",
+    "nóng gian": "nóng ran",
+    "may dám": "mày dám",
+    "ái trả": "ái chà",
+    "nghe thầy": "nghe thấy",
+    "dài nhân": "giai nhân",
+    "ngược lép": "ngực lép",
+    "trai dự": "chai rượu",
+    "nửa họ": "nợ họ",
+    "cựa đầu": "gật đầu",
+    "giờ khóc giờ cười": "giở khóc giở cười",
+    "gió sư": "giáo sư",
+    "thiện trí": "thiện chí",
+    "can tin": "căn tin",
+    "can tín": "căn tin",
+    "học để": "học đệ",
+    "nhực": "nhược",
+    "chút giận": "trút giận",
+    "thẳng nhiên": "thản nhiên",
+    "châm mắt": "trơ mắt",
+    "buồn mã": "buồn bã",
+    "senh": "xen",
+    "ngẹn": "nghẹn",
+    "lức anh": "liếc anh",
+    "nghiến rằng": "nghiến răng",
+    "dỗ rảnh": "dỗ dành",
+    "tọa nguyện": "toại nguyện",
+    "sang ngã": "sa ngã",
+    "mắng nhất": "mắng nhiếc",
+    "tiên đồn": "tin đồn",
+    "tụt rốc": "tụt dốc",
+    "ngừng mặt": "ngẩng mặt",
+    "quên biết": "quen biết",
+    "cân bản": "căn bản",
+    "nhớ mày": "nhíu mày",
+    "ấm ẩm": "ngấm ngầm",
+    "ngốc ngách": "ngốc nghếch",
+    "lé lên": "lóe lên",
+    "tót": "toát",
+    "cương chiều": "cưng chiều",
+    "ngần ra": "ngẩn ra",
+    "cao giáo": "cao ráo",
+    "ra tộc": "gia tộc",
+    "dở trò": "giở trò",
+    "yêu tú": "ưu tú",
+    "ra thế": "gia thế",
+    "thì gia thế": "thì ra thế",
+    "thành gia thế": "thành ra thế",
+    "hồn hền": "hổn hển",
+    "tái nhật": "tái nhợt",
+    "sót ra": "xót xa",
+    "giáng vẻ": "dáng vẻ",
+    "thanh chốt": "then chốt",
+    "kếp trước": "kiếp trước",
+    "thật thứ": "tha thứ",
+    "gây tẩm": "ghê tởm",
+    "chọng sinh": "trọng sinh",
+    "ái nái": "áy náy",
+    "ái náy": "áy náy",
+    "sưng mù": "sương mù",
+    "cười lệnh": "cười lạnh",
+    "đói là": "đói lã",
+    "liên gọi": "liền gọi",
+    "mô thuẫn": "mâu thuẫn",
+    "cười khỏi": "cười khẩy",
+    "ký túc giá": "ký túc xá",
+    "ký túc xa": "ký túc xá",
+    "vóng vẻ": "vắng vẻ",
+    "đáy ngộ": "đãi ngộ",
+    "hử lệnh": "hừ lạnh",
+    "ba lồ": "ba lô",
+    "dẫn dỗi": "giận dỗi",
+    "bị ốn": "bị ốm",
+    "ưu ám": "u ám",
+    "chầm tính": "trầm tính",
+    "ốt ức": "uất ức",
+    "học tì": "học tỷ",
+    "hừa lạnh": "hừ lạnh",
+    "nguy ngoai": "nguôi ngoai",
+    "phần nửa": "phân nửa",
+    "chiều trụng": "chiều chuộng",
+    "chàn da": "tràn ra",
+    "răng lên": "dâng lên",
+    "rời lại": "giờ lại",
+    "hán ta": "hắn ta",
+    "hàn ta": "hắn ta",
+    "hủng hồ": "huống hồ",
+    "rung nạp": "dung nạp",
+    "sua tay": "xua tay",
+    "chầm mặt": "trầm mặt",
+    "chân nhà": "trần nhà",
+    "mô giấc": "một giấc",
+    "hội trần": "hội chuẩn",
+    "trên ngành": "chuyên ngành",
+    "học mụy": "học muội",
+    "sen vào": "xen vào",
+    "dùng bỏ": "ruồng bỏ",
+    "giáng vẻ": "dáng vẻ",
+    "vu khổng": "vu khống",
+    "huy chưng": "huy chương",
+    "dạy rỗ": "dạy giỗ",
+    "chầm ngâm": "trầm ngâm",
+    "hứ lạnh": "hừ lạnh",
+    "cướng rắn": "cứng rắn",
+    "chàng pháo": "tràn pháo",
+    "bà lô": "ba lô",
+    "cần nhớ": "cần nhờ",
+    "tùn tìm": "tủm tỉm",
+    "bị đặt": "bịa đặt",
+    "độc điện": "độc địa",
+    "tránh ghét": "chán ghét",
+    "mắc cấp": "max cấp",
+    "cao rọng": "cao giọng",
+    "tin nghĩa": "tình nghĩa",
+    "luống cuốn": "luống cuống",
+    "mê mụi": "mê nuội",
+    "cố hiểu": "cố hữu",
+    "thầm rùa": "thầm rủa",
+    "bành bao": "bảnh bao",
+    "tủn tìm": "tủm tỉm",
+    "xài bước": "xải bước",
+    "cứ ngửi": "cứng người",
+    "được đối": "tuyệt đối",
+    "chầm chầm": "chằm chằm",
+    "đáy hổ": "đáy hồ",
+    "bộ dạo": "bộ dạng",
+    "nghe song": "nghe xong",
+    "lục ra": "lục gia",
+    "ăn phận": "an phận",
+    "trí tôn": "chí tôn",
+    "chiếc dương": "chiếc rương",
+    "cái dương": "cái rương",
+    "dọa đầu": "dạo đầu",
+    "chuyển cành": "chuyển cảnh",
+    "phần nộ": "phẫn nộ",
+    "đạp vang": "đạp văng",
+    "hắn tam": "hắn ta",
+    "gãý": "gãy",
+    "ổ ạt": "ồ ạt",
+    "xong lên": "xông lên",
+    "sợ ý": "sơ ý",
+    "sắt lạnh": "sắc lạnh",
+    "sáng lạm": "sáng lạn",
+    "chú tức": "chu tước",
+    "chư mộ": "chiêu mộ",
+    "tử thư": "tiểu thư",
+    "giới chứng": "dưới trướng",
+    "vụi vã": "vội vã",
+    "cố động": "cô đọng",
+    "song xuôi": "xong xuôi",
+    "song sau": "xong sau",
+    "song đi": "xong đi",
+    "trưởng lực": "chưởng lực",
+    "trưởng thẳng": "chưởng thẳng",
+    "trường mạnh": "chưởng mạnh",
+    "chứa thẳng": "chiếu thẳng",
+    "quá nhật": "quán nhật",
+    "trường thẳng": "chưởng thẳng",
+    "cúc máy": "cúp máy",
+    "nghiến giăng": "nghiến răng",
+    "trưng mắt": "trừng mắt",
+    "lầm bầm": "lẩm bẩm",
+    "tri tiêu": "chi tiêu",
+    "khoe miệng": "khóe miệng",
+    "bú phim": "bú phêm",
+    "chàn đầy": "tràn đầy",
+    "qua tặng": "quà tặng",
+    "ngạo nghĩa": "ngạo nghễ",
+    "thân hào": "thần hào",
+    "cao ốm": "cáo ốm",
+    "chút được": "trút được",
+    "tue tue": "toe toét",
+    "thị xát": "thị sát",
+    "đấu trưởng": "đấu trường",
+    "lạnh lung": "lạnh lùng",
+    "thiên thít": "thin thít",
+    "lác đầu": "lắc đầu",
+    "giấc lời": "dứt lời",
+    "sức khoát": "dứt khoát",
+    "nhò nhò": "nho nhỏ",
+    "xảy bước": "xải bước",
+    "nhà sửa": "nhà xưởng",
+    "lòng văn": "long vân",
+    "ra cố": "gia cố",
+    "chật nhớ": "chợt nhớ",
+    "xôi nổi": "sôi nổi",
+    "liều cỏ": "lều cỏ",
+    "tân qua": "tân quan",
+    "ráng vẻ": "dáng vẻ",
+    "giữa trừng": "giữa chừng",
+    "gián đốc": "giám đốc",
+    "trả hỏi": "chào hỏi",
+    "su nịnh": "xu nịnh",
+    "gượm": "gượng",
+    "nhớn mày": "nhướng mày",
+    "dâu tóc": "râu tóc",
+    "ngởng đầu": "ngẩng đầu",
+    "vụi vàng": "vội vàng",
+    "đáng bằng": "đóng băng",
+    "rứt lời": "dứt lời",
+    "chất lặng": "chết lặng",
+    "thâm nghĩ": "thầm nghĩ",
+    "xa thải": "sa thải",
+    "út ức": "uất ức",
+    "lan chuyển": "lan truyền",
+    "mời trào": "mời chào",
+    "lan sóng": "làn sóng",
+    "trân thành": "chân thành",
+    "ra nhập": "gia nhập",
+    "tập kỹ": "tạp kỹ",
+    "sẽ số": "dãy số",
+    "trật nghĩ": "chợt nghĩ",
+    "trần trừ": "chần chừ",
+    "dững lại": "sững lại",
+    "hàng giòng": "hàng rong",
+    "ngương ác": "ngơ ngác",
+    "đùi việc": "đuổi việc",
+    "trâm trâm": "chăm chăm",
+    "lão ra": "lão gia",
+    "lòng lực": "long lực",
+    "thủ lão": "thụ lão",
+    "truyền hóa": "chuyển hóa",
+    "nhạt nhạt": "nhàn nhạt",
+    "chuỗi lủi": "trụi lủi",
+    "bao trùng": "bao trùm",
+    "căn cỗi": "cằn cỗi",
+    "ung tùng": "um tùm",
+    "bất chật": "bất chợt",
+    "trợ tập": "triệu tập",
+    "cuộc sáng": "cột sáng",
+    "kỹ sĩ": "kỵ sĩ",
+    "mùi sạc": "mùi sặc",
+    "sặc thuốc dùng": "sặc thuốc súng",
+    "tôn tép": "tôm tép",
+    "lợi lục": "lợi lộc",
+    "chấp tay": "chắp tay",
+    "vừa rứt": "vừa dứt",
+    "lá trắng": "lá chắn",
+    "chiêu tức": "chiêu thức",
+    "trịt tiêu": "triệt tiêu",
+    "trột dạ": "chột dạ",
+    "lớn dọng": "lớn giọng",
+    "hùng hãn": "hung hãn",
+    "lòng khí": "long khí",
+    "giành dỗi": "rảnh rỗi",
+    "kỳ sĩ": "kỵ sĩ",
+    "ffff": "ffff",
+    "ffff": "ffff",
+    "ffff": "ffff",
+    "ffff": "ffff",
+    "ffff": "ffff",
+    "ffff": "ffff",
+    "ffff": "ffff",
+    "ffff": "ffff",
+    "ffff": "ffff",
+    "ffff": "ffff",
+    "lòng thương": "long thương",
+    "của người": "của ngươi",
+    "trực dương": "triệu dương",
+    "tu tú": "tú tú",
+    "tiều cửu": "tiểu cửu",
+    "thế chủy lý": "thiết chủy lý",
+    "tiều tư tư": "tiểu từ từ",
+}
+
+def cleaner_text(text):
+    for word, replacement in viet_tat.items():
+        text = text.replace(word, replacement)
+    text = text.lower()
+    for word, replacement in special_word.items():
+        text = text.replace(word, replacement)
+    for wrong, correct in loi_chinh_ta.items():
+        text = text.replace(wrong, correct)
+    return text
+
