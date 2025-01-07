@@ -28,7 +28,7 @@ class TikTokManager:
     def login(self, show=False):
         try:
             self.is_stop_upload = False
-            if self.facebook_config['use_profile_tiktok']:
+            if self.tiktok_config['use_profile_tiktok']:
                 self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
                 sleep(5)
             else:
@@ -692,6 +692,9 @@ class TikTokManager:
             print("Hãy nhập link tải video !!!")
             return
         view_cnt = self.tiktok_config['filter_by_views'] or "0"
+        if 'quantity_download' not in self.tiktok_config:
+            self.tiktok_config['quantity_download'] = "2000"
+        quantity_download = int(self.tiktok_config['quantity_download'])
         t = time()
         cnt_download = 0
         cnt_search = 0
@@ -809,6 +812,8 @@ class TikTokManager:
                         save_download_info(self.download_info)
                     else:
                         print(f"!!! Tải không thành công video {url} !!!")
+                    if cnt_download > quantity_download:
+                        break
                 except:
                     getlog()
                     print(f"Tải không thành công {url}")

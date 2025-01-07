@@ -764,7 +764,6 @@ class YouTubeManager():
             self.youtube_config['template'][self.channel_name]["upload_folder"] = self.upload_folder_var.get()
             self.youtube_config['template'][self.channel_name]['gmail'] = self.gmail
             self.youtube_config['template'][self.channel_name]['is_delete_after_upload'] = self.is_delete_after_upload_var.get() == 'Yes'
-            self.save_youtube_config()
             validate_message = ""
             if len(self.youtube_config['template'][self.channel_name]["title"]) > 100:
                 validate_message += "Tiêu đề có tối đa 100 ký tự.\n"
@@ -776,6 +775,7 @@ class YouTubeManager():
                 notification(self.root, validate_message)
                 return False
             
+            self.save_youtube_config()
             self.is_upload_video_window = False
             return True
         except:
@@ -930,7 +930,7 @@ class YouTubeManager():
             self.close_driver()
 
 
-    def schedule_videos_by_selenium(self, folder=None):
+    def schedule_videos_by_selenium(self, folder=None, day_delta=30):
         try:
             thumbnail_folder = self.youtube_config['template'][self.channel_name]['thumbnail_folder']
             if folder:
@@ -939,8 +939,9 @@ class YouTubeManager():
                 videos_folder = self.youtube_config['template'][self.channel_name]['upload_folder']
             if not check_folder(videos_folder):
                 return False
-            videos = get_file_in_folder_by_type(videos_folder, ".mp4")   
-            if not videos:
+            videos = get_file_in_folder_by_type(videos_folder, ".mp4") or []
+            if not videos or len(videos) == 0:
+                print(f"Không tìm thấy video trong thư mục {videos_folder}")
                 return False
             if 'cnt_upload_in_day' not in self.youtube_config['template'][self.channel_name]:
                 self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] = 0
@@ -978,7 +979,6 @@ class YouTubeManager():
             upload_count = 0
             date_cnt = 0
             for i, video_file in enumerate(videos):
-                day_delta = 30
                 if is_date_greater_than_current_day(upload_date_str, day_delta):
                     print(f"Ngày đăng {upload_date_str} vượt quá {day_delta} ngày so với ngày hiện tại. Không thể tiếp tục đăng video.")
                     break
@@ -1204,7 +1204,9 @@ class YouTubeManager():
             self.driver = get_driver(show=False)
             channel_url = self.youtube_config['download_url']
             filter_by_views = self.youtube_config['filter_by_views']
-            
+            if 'quantity_download' not in self.youtube_config:
+                self.youtube_config['quantity_download'] = "2000"
+            quantity_download = int(self.youtube_config['quantity_download'])
             self.driver.get(channel_url)
             t=time()
             if channel_url.endswith('/videos'):
@@ -1247,6 +1249,8 @@ class YouTubeManager():
                         if url not in self.download_info['downloaded_urls']:
                             self.download_info['downloaded_urls'].append(url)
                         save_download_info(self.download_info)
+                        if cnt_download > quantity_download:
+                            break
                 except:
                     getlog()
                     print(f"Tải không thành công {url}")

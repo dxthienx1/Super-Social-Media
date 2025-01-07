@@ -217,6 +217,9 @@ class FacebookManager:
             except:
                 view_cnt = 0
             page_link = self.facebook_config['download_url']
+            if 'quantity_download' not in self.facebook_config:
+                self.facebook_config['quantity_download'] = "2000"
+            quantity_download = int(self.facebook_config['quantity_download'])
             if self.login(show=True):
                 self.driver.get(page_link)
                 press_esc_key(2, self.driver)
@@ -297,14 +300,17 @@ class FacebookManager:
                                 video_urls.remove(url)
                                 save_to_json_file(download_info, download_info_path)
                                 cnt += 1
-                if cnt > 0:
-                    print(f'Đã tải thành công {cnt} video')
+                                if cnt > quantity_download:
+                                    break
+                    if cnt > 0:
+                        print(f'Đã tải thành công {cnt} video')
+                    else:
+                        download_video_by_bravedown(video_urls, download_folder)
                 else:
-                    download_video_by_bravedown(video_urls, download_folder)
+                    print(f'Không tìm thấy video có số lượt xem lớn hơn {view_cnt}')
         except:
             getlog()
-        # if len(video_urls) > 0:
-        #     save_list_to_txt(video_urls, f"{os.path.join(download_folder, 'danh sach video chua tai.txt')}")
+
 #-----------------------------------Đăng Nhập FB--------------------------------------------
     def load_session(self, url="https://www.facebook.com"):
         self.driver.get(url)
@@ -477,13 +483,29 @@ class FacebookManager:
 
     def get_meta_business_suite(self):
         def click_page_name():
+            check_see_all_page = get_element_by_text(self.driver, 'Xem tất cả ', 'span')
+            if check_see_all_page:
+                check_see_all_page.click()
+                sleep(1)
             xpath = get_xpath('div', 'x1xqt7ti xsuwoey x63nzvj xbsr9hj xuxw1ft x6ikm8r x10wlt62 xlyipyv x1mzt3pk x1vvkbs x13faqbe x1fcty0u xeuugli')
             ele = get_element_by_xpath(self.driver, xpath, self.page_name)
+            
             if ele:
+                print(ele.text)
                 if ele.text == self.page_name:
                     ele.click()
+                    sleep(4)
                     return True
+            else:
+                ele = get_element_by_text(self.driver, self.page_name, tag_name='div')
+                if ele and ele.text == self.page_name:
+                    ele.click()
+                    sleep(4)
+                    return True
+            print(self.page_name)
+            print(ele)
             return False
+
     
         def check_meta_bussiness_name():
             xpath = get_xpath('div', 'xmi5d70 x1fvot60 xxio538 xbsr9hj xuxw1ft x6ikm8r x10wlt62 xlyipyv x1h4wwuj x1fcty0u')
@@ -498,10 +520,10 @@ class FacebookManager:
                         self.is_stop_upload = True
                         
         self.driver.get("https://business.facebook.com/latest/home?")
-        sleep(3)
+        sleep(4)
         check_meta_bussiness_name()
         self.driver.get("https://www.facebook.com/latest/content_calendar?")
-        sleep(3)
+        sleep(4)
 
     def click_option_menu(self):
         att1 = "class='x3nfvp2 x120ccyz x1heor9g x2lah0s x1c4vz4f x1gryazu'"
@@ -703,7 +725,6 @@ class FacebookManager:
             self.click_page_list()
             page_xpath = f"//div[span[text()='{self.page_name}']]"
             page_element = get_element_by_xpath(self.driver, page_xpath)
-            sleep(1)
             self.scroll_into_view(page_element)
             page_element.click()
             print(f'Đã chuyển sang trang {self.page_name}')
@@ -712,7 +733,11 @@ class FacebookManager:
             return True
         except:
             try:
+                if not page_element:
+                    print(f'Không tìm thấy trang {self.page_name}')
+                    return False
                 self.driver.execute_script("arguments[0].click();", page_element)
+                print(11111111)
                 return True
             except:
                 try:
@@ -822,9 +847,10 @@ class FacebookManager:
 
             if not self.login(self.facebook_config['show_browser']):
                 return
-            if not self.change_page():
-                print(f"Gặp lỗi khi chuyển trang {self.page_name}")
-                return
+            if not self.is_schedule:
+                if not self.change_page():
+                    print(f"Gặp lỗi khi chuyển trang {self.page_name}")
+                    return
             if self.facebook_config['template'][self.page_name]['waiting_verify']:
                 sleep(30)
             for i, video_file in enumerate(videos, start=0):

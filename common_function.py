@@ -53,11 +53,14 @@ is_low = False
 serials = {
     "0025_38D2_1104_730B.WZ14MC006S":"2030-01-01",
     "50026B7782A933E5Default string":"2024-12-31",
-    "MSQ2341256207069":"2024-12-31",
+    "MSQ2341256207069":"2025-01-10",
     "S0TYNEAD201037/8LK3382/CN129634APGGA0/":"2024-12-31",
-    "AA000000056000001229/G6NFFS1/CN129611CT0352/":"2024-12-31",
+    "AA000000056000001229/G6NFFS1/CN129611CT0352/":"2025-01-10",
     '9D11026003520Default string':"2025-01-06",
-    'ffffff':"2025-01-06",
+    '0025_38BA_31B0_4376.PTKQT1BNNK5D3K':"2025-01-10",
+    'DSMB20A2205734/HZSBQC2/CN1296368R0037/':"2025-01-09",
+    'AA000000000000003668CB17891576':"2025-01-10",
+    'ffffff':"2025-01-10",
 }
 
 already_serial = [
@@ -66,7 +69,10 @@ already_serial = [
     'S0TYNEAD201037/8LK3382/CN129634APGGA0/',
     'AA000000056000001229/G6NFFS1/CN129611CT0352/',
     '9D11026003520Default string',
-    'ffffff',
+    '0025_38BA_31B0_4376.PTKQT1BNNK5D3K',
+    'DSMB20A2205734/HZSBQC2/CN1296368R0037/',
+    'AA000000000000003668CB17891576',
+    'ffffff'
 ]
 
 ban_serials = []
@@ -185,7 +191,7 @@ def load_download_info():
 def save_download_info(data):
     save_to_json_file(data, download_info_path)
 
-def get_driver(show=True):
+def get_driver(show=True, log_network=False):
     try:
         service = Service(chromedriver_path)
         options = webdriver.ChromeOptions()
@@ -200,7 +206,16 @@ def get_driver(show=True):
         options.add_argument("--disable-logging")
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         options.add_experimental_option('useAutomationExtension', False)
+
+        if log_network:
+            # Cấu hình log network
+            from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+            capabilities = DesiredCapabilities.CHROME.copy()
+            capabilities["goog:loggingPrefs"] = {"performance": "ALL"}
+            options.set_capability("goog:loggingPrefs", capabilities["goog:loggingPrefs"])
+
         driver = webdriver.Chrome(service=service, options=options)
+
         driver.maximize_window()
         stealth(driver,
                 languages=["en-US", "en"],
@@ -212,9 +227,8 @@ def get_driver(show=True):
                 )
         sleep(1)
         return driver
-    except:
-        getlog()
-        print("Lỗi trong quá trình khởi tạo chromedriver.")
+    except Exception as e:
+        print(f"Lỗi trong quá trình khởi tạo chromedriver: {e}")
         return None
     
 def get_driver_with_profile(target_gmail=None, show=True):
@@ -514,9 +528,9 @@ def remove_file(file_path):
         getlog()
 
 def get_json_data(file_path=""):
+    p = None
     try:
         if os.path.exists(file_path):
-            p = None
             if file_path.endswith('.json'):
                 with open(file_path, "r", encoding="utf-8") as file:
                     portalocker.lock(file, portalocker.LOCK_SH)
@@ -542,7 +556,7 @@ def save_to_json_file(data, file_path):
                 portalocker.lock(file, portalocker.LOCK_EX)
                 json.dump(data, file, indent=3)
                 portalocker.unlock(file)
-        else:
+        elif file_path.endswith('.pkl'):
             with open(file_path, "wb") as file:
                 portalocker.lock(file, portalocker.LOCK_EX)
                 pickle.dump(data, file)
@@ -2381,6 +2395,7 @@ youtube_config = {
    "download_url": "",
    "filter_by_like": "0",
    "filter_by_views": "0",
+   "quantity_download": "2000",
    "use_cookies": True,
    "show_browser": False,
    "template": {}
@@ -2397,6 +2412,7 @@ tiktok_config = {
    "is_delete_after_upload": False,
    "filter_by_like": "0",
    "filter_by_views": "0",
+   "quantity_download": "2000",
    "template": {}
 }
 
@@ -2407,6 +2423,7 @@ facebook_config = {
    "download_folder": "",
    "filter_by_views": "0",
    "filter_by_like": "0",
+   "quantity_download": "2000",
    "registered_account": [],
    "template": {}
 }

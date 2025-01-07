@@ -31,8 +31,9 @@ class MainApp:
                 self.serial.delete(0, ctk.END)
                 self.serial.insert(0, serial)
                 return
-            if not is_date_greater_than_current_day(serials[serial], 3):
-                print(f'Gói đăng ký sắp đến ngày hết hạn: {serials[serial]}')
+            print(f'Ngày hết hạn sử dụng: {serials[serial]}')
+            # if not is_date_greater_than_current_day(serials[serial], 3):
+            #     print(f'Gói đăng ký sắp đến ngày hết hạn')
 
             if not os.path.exists(ico_path):
                 if os.path.exists(icon_path):
@@ -280,6 +281,9 @@ class MainApp:
             self.setting_window_size()
         else:
             self.show_window()
+        self.get_youtube_config()
+        self.get_tiktok_config()
+        self.get_facebook_config()
         create_button(frame=self.root, text="Quản lý Youtube", command=self.open_youtube_window)
         create_button(frame=self.root, text="Quản lý Tiktok", command=self.open_tiktok_window)
         create_button(frame=self.root, text="Quản lý Facebook", command=self.open_facebook_window)
@@ -302,6 +306,7 @@ class MainApp:
 
         self.download_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục lưu video", command=self.choose_folder_to_save, width=self.width, left=0.3, right=0.7)
         self.download_video_from_url_var = create_frame_label_and_input(self.root, label_text="Link tải hàng loạt video", width=self.width, left=0.3, right=0.7)
+        self.quantity_download_var = self.create_settings_input("Số video muốn tải", values=["20", "50", "100"], left=0.3, right=0.7)
         self.filter_by_views_var = self.create_settings_input("Lọc theo số lượt xem", values=["100000", "200000", "300000", "500000", "1000000"], left=0.3, right=0.7)
         self.edit_video_var = self.create_settings_input("Chỉnh sửa video", values=['Yes', 'No'], left=0.3, right=0.7)
         self.index_file_name_var, self.file_name_var = create_frame_label_input_input(self.root, label_text="Đổi tên video - Số thứ tự", place_holder2="Nhập tên có chứa chuỗi \"<index>\" là vị trí số thứ tự", place_holder1="Số TT", width=self.width, left=0.3, mid=0.1, right=0.6)
@@ -337,6 +342,9 @@ class MainApp:
                     print(f"Chưa hỗ trợ nền tảng {download_from} !!!")
                     return
                 filter_by_views = self.filter_by_views_var.get().strip() or "0"
+                quantity_download = self.quantity_download_var.get().strip() or "2000"
+                if not quantity_download:
+                    quantity_download = "2000"
                 is_edit_video = self.edit_video_var.get().strip() == "Yes"
                 self.new_name = self.file_name_var.get().strip()
                 try:
@@ -347,6 +355,7 @@ class MainApp:
                     self.youtube_config['download_folder'] = download_folder
                     self.youtube_config['download_url'] = download_url
                     self.youtube_config['filter_by_views'] = filter_by_views
+                    self.youtube_config['quantity_download'] = quantity_download
                     self.youtube_config['show_browser'] = False
                     self.save_youtube_config()
                     gmail_download = self.config['current_youtube_account']
@@ -357,6 +366,7 @@ class MainApp:
                     self.tiktok_config['download_folder'] = download_folder
                     self.tiktok_config['download_url'] = download_url
                     self.tiktok_config['filter_by_views'] = filter_by_views
+                    self.tiktok_config['quantity_download'] = quantity_download
                     self.tiktok_config['show_browser'] = True
                     self.save_tiktok_config()
                     account_download = self.config['current_tiktok_account']
@@ -368,6 +378,7 @@ class MainApp:
                     self.facebook_config['download_folder'] = download_folder
                     self.facebook_config['download_url'] = download_url
                     self.facebook_config['filter_by_views'] = filter_by_views
+                    self.facebook_config['quantity_download'] = quantity_download
                     self.facebook_config['show_browser'] = True
                     self.save_facebook_config()
                     page_name = self.config['current_page']
@@ -400,6 +411,8 @@ class MainApp:
                     self.config['is_move'] = True
                     self.config['is_delete_video'] = False
                 cnt_err_edit = 0
+                err_video_folder = os.path.join(download_folder, 'error_videos')
+                os.makedirs(err_video_folder, exist_ok=True)
                 while True:
                     try:
                         edit_videos = get_file_in_folder_by_type(download_folder, noti=False) or []
@@ -409,7 +422,11 @@ class MainApp:
                             for video in edit_videos:
                                 video_path = os.path.join(download_folder, video)
                                 if not self.fast_edit_video(video_path, upload_folder=upload_folder):
-                                    remove_file(video_path)
+                                    err_video_path = os.path.join(err_video_folder, video)
+                                    try:
+                                        shutil.move(video_path, err_video_path)
+                                    except:
+                                        print(f'Không thể chuyển video {video_path} vào thư mục {err_video_folder}')
                                 if thumbnail:
                                     self.extract_image_from_video(extract_folder)
                                     
@@ -452,35 +469,41 @@ class MainApp:
                     try:
                         is_ok = True
                         if youtube_channel:
-                            print(f"Đang kiểm tra và đăng video cho kênh youtube: {youtube_channel}...")
-                            gmail = self.youtube_config['template'][youtube_channel]['gmail']
-                            youtube = YouTubeManager(gmail, youtube_channel, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
-                            if not youtube.schedule_videos_by_selenium(youtube_folder):
-                                is_ok = False
-                                cnt += 1
-                        if tiktok_channel and not is_stop:
-                            print(f"Đang kiểm tra và đăng video cho kênh tiktok: {tiktok_channel}...")
-                            tiktok_password = self.tiktok_config['template'][tiktok_channel]['password']
-                            auto_tiktok= TikTokManager(tiktok_channel, tiktok_password, self.download_thread, self.upload_thread, is_auto_upload=True)
-                            status, is_stop = auto_tiktok.upload_video(tiktok_folder)
-                            if not status:
-                                if is_stop:
-                                    move_file_from_folder_to_folder(face_folder, tiktok_folder)
-                                    face_folder = tiktok_folder
-                                    upload_folder = os.path.join(face_folder, 'facebook_upload_finished')
-                                    tiktok_folder = None
-                                    is_delete_after_upload = False
-                                else:
+                            youtube_videos = get_file_in_folder_by_type(youtube_folder, ".mp4") or []
+                            if len(youtube_videos) > 0:
+                                print(f"Đang kiểm tra và đăng video cho kênh youtube: {youtube_channel}...")
+                                gmail = self.youtube_config['template'][youtube_channel]['gmail']
+                                youtube = YouTubeManager(gmail, youtube_channel, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
+                                if not youtube.schedule_videos_by_selenium(youtube_folder):
                                     is_ok = False
                                     cnt += 1
+                        if tiktok_channel and not is_stop:
+                            tiktok_videos = get_file_in_folder_by_type(tiktok_folder, ".mp4") or []
+                            if len(tiktok_videos) > 0:
+                                print(f"Đang kiểm tra và đăng video cho kênh tiktok: {tiktok_channel}...")
+                                tiktok_password = self.tiktok_config['template'][tiktok_channel]['password']
+                                auto_tiktok= TikTokManager(tiktok_channel, tiktok_password, self.download_thread, self.upload_thread, is_auto_upload=True)
+                                status, is_stop = auto_tiktok.upload_video(tiktok_folder)
+                                if not status:
+                                    if is_stop:
+                                        move_file_from_folder_to_folder(face_folder, tiktok_folder)
+                                        face_folder = tiktok_folder
+                                        upload_folder = os.path.join(face_folder, 'facebook_upload_finished')
+                                        tiktok_folder = None
+                                        is_delete_after_upload = False
+                                    else:
+                                        is_ok = False
+                                        cnt += 1
                         if facebook_page:
-                            print(f"Đang kiểm tra và đăng video cho trang facebook: {facebook_page}...")
-                            account = self.facebook_config['template'][facebook_page]['account']
-                            password = self.facebook_config['template'][facebook_page]['password']
-                            auto_facebook= FacebookManager(account, password, facebook_page, self.download_thread, self.upload_thread, is_auto_upload=True)
-                            if not auto_facebook.upload_video(face_folder):
-                                is_ok = False
-                                cnt += 1
+                            face_videos = get_file_in_folder_by_type(face_folder, ".mp4") or []
+                            if len(face_videos) > 0:
+                                print(f"Đang kiểm tra và đăng video cho trang facebook: {facebook_page}...")
+                                account = self.facebook_config['template'][facebook_page]['account']
+                                password = self.facebook_config['template'][facebook_page]['password']
+                                auto_facebook= FacebookManager(account, password, facebook_page, self.download_thread, self.upload_thread, is_auto_upload=True)
+                                if not auto_facebook.upload_video(face_folder):
+                                    is_ok = False
+                                    cnt += 1
                         if is_delete_after_upload and is_ok:
                             dele_videos = get_file_in_folder_by_type(upload_folder, noti=False)
                             for dele_video in dele_videos:
@@ -2368,9 +2391,9 @@ class MainApp:
             elif self.is_open_auto_process_window:
                 self.root.title("Automatic Setup")
                 self.width = 600
-                self.height_window = 700
+                self.height_window = 747
                 if height_element == 30:
-                    self.height_window = 670
+                    self.height_window = 712
                 self.is_open_auto_process_window = False
 
         self.height_window = int(self.height_window * default_percent )
