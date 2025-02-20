@@ -267,26 +267,34 @@ class YouTubeManager():
                 self.is_stop_upload = True
 
     def click_show_more(self):
-        if self.en_language:
-            xpath = get_xpath('button', 'ytcp-button-shape-impl ytcp-button-shape-impl--tonal ytcp-button-shape-impl--mono ytcp-button-shape-impl--size-m', 'aria-label', 'Show more')
-        else:
-            xpath = get_xpath('button', 'ytcp-button-shape-impl ytcp-button-shape-impl--tonal ytcp-button-shape-impl--mono ytcp-button-shape-impl--size-m', 'aria-label', 'Hiện thêm')
-        ele = get_element_by_xpath(self.driver, xpath)
-        if ele:
-            self.scroll_into_view(ele)
-            ele.click()
-            sleep(1)
+        try:
+            if self.en_language:
+                xpath = get_xpath_by_multi_attribute('button', ['aria-label="Show advanced settings"'])
+            else:
+                xpath = get_xpath_by_multi_attribute('button', ['aria-label="Hiện chế độ cài đặt nâng cao"'])
+            ele = get_element_by_xpath(self.driver, xpath)
+            if ele:
+                self.scroll_into_view(ele)
+                ele.click()
+                sleep(1)
+                return True
+        except:
+            getlog()
+            return False
 
     def click_altered_content(self, no_altered=True):
-        if no_altered:
-            xpath = get_xpath_by_multi_attribute('tp-yt-paper-radio-button', ['name="VIDEO_HAS_ALTERED_CONTENT_YES"'])
-        else:
-            xpath = get_xpath_by_multi_attribute('tp-yt-paper-radio-button', ['name="VIDEO_HAS_ALTERED_CONTENT_NO"'])
-        ele = get_element_by_xpath(self.driver, xpath)
-        if ele:
-            self.scroll_into_view(ele)
-            ele.click()
-            sleep(0.5)
+        try:
+            if no_altered:
+                xpath = get_xpath_by_multi_attribute('tp-yt-paper-radio-button', ['name="VIDEO_HAS_ALTERED_CONTENT_YES"'])
+            else:
+                xpath = get_xpath_by_multi_attribute('tp-yt-paper-radio-button', ['name="VIDEO_HAS_ALTERED_CONTENT_NO"'])
+            ele = get_element_by_xpath(self.driver, xpath)
+            if ele:
+                self.scroll_into_view(ele)
+                ele.click()
+                sleep(0.5)
+        except:
+            getlog()
 
     def click_next_button(self):
         def add_an_end_screen():
@@ -1027,14 +1035,18 @@ class YouTubeManager():
                 thumnail_path = os.path.join(thumbnail_folder, f'{video_name}.png')
                 if os.path.exists(thumnail_path):
                     self.input_thumbnail(thumbnail_path=thumnail_path)
+                else:
+                    thumnail_path = os.path.join(thumbnail_folder, f'{video_name}.jpg')
+                    if os.path.exists(thumnail_path):
+                        self.input_thumbnail(thumbnail_path=thumnail_path)
                 if self.youtube_config['template'][self.channel_name]['curent_playlist']:
                     self.choose_playlist(self.youtube_config['template'][self.channel_name]['curent_playlist'])
                     
                 self.click_not_make_for_kid()
                 if self.is_stop_upload:
                     break
-                self.click_show_more()
-                self.click_altered_content(self.youtube_config['template'][self.channel_name]['altered_content'])
+                if self.click_show_more():
+                    self.click_altered_content(self.youtube_config['template'][self.channel_name]['altered_content'])
                 self.click_next_button()
                 if self.is_schedule:
                     self.click_schedule_option()

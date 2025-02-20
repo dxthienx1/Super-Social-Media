@@ -22,12 +22,15 @@ class TikTokManager:
         self.is_upload_video_window = False
         self.is_stop_upload = False
         self.is_stop_download = False
+        self.check_copyright = True
 
 #-----------------------------Thao tác trên tiktok--------------------------------------------------------------
 
     def login(self, show=False):
         try:
             self.is_stop_upload = False
+            if 'use_profile_tiktok' not in self.tiktok_config:
+                self.tiktok_config['use_profile_tiktok'] = False
             if self.tiktok_config['use_profile_tiktok']:
                 self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
                 sleep(5)
@@ -72,13 +75,13 @@ class TikTokManager:
                 return False
         except:
             getlog()
-            print("Lỗi trong quá trình đăng nhập tiktok. Hãy đảm bảo đường truyền ổn định!")
+            print("Lỗi trong quá trình đăng nhập tiktok. Hãy đảm bảo đường truyền ổn định và thử lại!")
             return False
 
     def get_upload_button(self):
         # xpath = get_xpath('a', 'e14l9ebt5 css-12zznuq-StyledLink-StyledTmpLink er1vbsz0', 'data-e2e', 'nav-upload')
         # upload_link = get_element_by_xpath(self.driver, xpath)
-        upload_link = get_element_by_text(self.driver, 'Upload')
+        upload_link = get_element_by_text(self.driver, 'Upload ', tag_name='div')
         if not upload_link:
             sleep(2)
             xpath = get_xpath_by_multi_attribute('a', ['aria-label="Upload a video"'])
@@ -148,7 +151,7 @@ class TikTokManager:
             return True
         year, month, day = date_string.strip().split("-")
         xpath1 = get_xpath('input', "TUXTextInputCore-input", "type", "text")
-        xpath2 = get_xpath('span', "jsx-2986588792 day valid", contain=True)
+        xpath2 = get_xpath('span', "day valid", contain=True)
         kq=[]
         date_time_ele = get_element_by_xpath(self.driver, xpath1, multiple_ele=True)
         if len(date_time_ele) > 1:
@@ -165,7 +168,7 @@ class TikTokManager:
         if date_ele:
             date_ele.click()
             sleep(1)
-            date_elements = get_element_by_xpath(self.driver, xpath2, multiple_ele=True)
+            date_elements = get_element_by_xpath(self.driver, xpath2, multiple_ele=True) or []
             if len(date_elements) == 0:
                 self.is_stop_upload = True
                 return False
@@ -218,7 +221,8 @@ class TikTokManager:
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
             ele.send_keys(description)
-            sleep(2)
+            sleep(0.5)
+            press_esc_key(1, self.driver)
 
     def input_thumbnail(self, thumbnail_path):
         try:
@@ -250,36 +254,67 @@ class TikTokManager:
 
 
     def input_location(self, location):
-        xpath = get_xpath_by_multi_attribute('input', ['id="poi"'])
-        ele = get_element_by_xpath(self.driver, xpath)
-        if ele:
-            ele.send_keys(location)
-            sleep(3)
-            choose_xpath = get_xpath('div', 'jsx-3605006656 poi-search-item-address')
-            choose_ele = get_element_by_xpath(self.driver, choose_xpath)
+        try:
+            xpath = get_xpath_by_multi_attribute('input', ['placeholder="Search locations"'])
+            ele = get_element_by_xpath(self.driver, xpath)
+            if ele:
+                ele.send_keys(location)
+                ele.clear()
+                ele.send_keys(location)
+                sleep(2)
+                choose_xpath = get_xpath('div', 'Select__itemInner', contain=True)
+                choose_ele = get_element_by_xpath(self.driver, choose_xpath, index=0)
+                if choose_ele:
+                    choose_ele.click()
+                    sleep(1)
+                else:
+                    choose_xpath = get_xpath('div', 'SearchableSelect-OptionBox', contain=True)
+                    choose_ele = get_element_by_xpath(self.driver, choose_xpath, index=0, timeout=4)
+                    if choose_ele:
+                        choose_ele.click()
+                        sleep(1)
+        except:
+            choose_xpath = get_xpath('div', 'SearchableSelect-OptionBox', contain=True)
+            choose_ele = get_element_by_xpath(self.driver, choose_xpath, index=0, timeout=4)
             if choose_ele:
                 choose_ele.click()
-                sleep(1.5)
+                sleep(1)
+            
 
     def click_schedule_button(self):
-        xpath = get_xpath_by_multi_attribute('input', ['name="postSchedule"', 'value="schedule"'])
-        ele = get_element_by_xpath(self.driver, xpath)
+        # xpath = get_xpath_by_multi_attribute('input', ['name="postSchedule"', 'value="schedule"'])
+        # ele = get_element_by_xpath(self.driver, xpath)
+        ele = get_element_by_text(self.driver, text='Schedule', tag_name='label')
         if ele:
             ele.click()
         else:
-            print("khong thay nút lên lịch đăng video")
+            print("không tìm thấy nút lên lịch đăng video")
 
     def click_copyright_check(self):
         try:
-            xpath = get_xpath("input", "TUXSwitch-input", attribute="type", attribute_value="checkbox")
-            ele = get_element_by_xpath(self.driver, xpath)
+            xpath = get_xpath_by_multi_attribute('input', ['type="checkbox"'])
+            ele = get_element_by_xpath(self.driver, xpath, index=-1)
             if ele:
+                self.scroll_into_view(ele)
                 ele.click()
+            else:
+                self.check_copyright = False
         except:
-            pass
-
+            xpath = get_xpath("div", "Switch__root", contain=True)
+            ele = get_element_by_xpath(self.driver, xpath, index=-1)
+            if ele:
+                try:
+                    self.scroll_into_view(ele)
+                    ele.click()
+                except:
+                    self.check_copyright = False
+            else:
+                self.check_copyright = False
     def check_status_copyright_check(self):
+        if not self.check_copyright:
+            return True
         print("Bắt đầu kiểm tra bản quyền video ...")
+        cnt = 0
         while True:
             try:
                 xpath = "//span[contains(text(), 'Run a copyright check')]"
@@ -296,13 +331,19 @@ class TikTokManager:
                         return True
                     else:
                         return False
-                sleep(1)
+                cnt += 1
+                if cnt > 30:
+                    return False
+                sleep(2)
             except:
                 return True
 
     def click_post_button(self):
         try:
-            ele = get_element_by_text(self.driver, "Post", tag_name="div")
+            xpath = get_xpath_by_multi_attribute('button', ['data-e2e="post_video_button"'])
+            ele = get_element_by_xpath(self.driver, xpath)
+            # ele = get_element_by_text(self.driver, "Post", tag_name="button")
+            # self.scroll_into_view(ele)
             ele.click()
             sleep(4)
         except:
@@ -319,26 +360,38 @@ class TikTokManager:
         while True:
             if self.is_stop_upload:
                 return False
-            xpath = get_xpath("div", "info-progress-num", contain=True)
-            # xpath = get_xpath("div", "jsx-305849304 info-progress-num")
-            ele = get_element_by_xpath(self.driver, xpath)
+            ele = get_element_by_text(self.driver, text='Uploaded', tag_name='span')
             if ele:
-                ff = ele.text
-                sys.stdout.write(f'\rĐã tải lên được {ff} ...')
-                sys.stdout.flush()
-                if ff == '100%':
-                    return True
-                sleep(3)
+                return True
             else:
-                sleep(1)
+                sleep(5)
                 cnt += 1
-            if cnt > 3:
+            if cnt > 10:
                 return False
+    # def check_progress_upload(self):
+    #     cnt = 0
+    #     while True:
+    #         if self.is_stop_upload:
+    #             return False
+    #         # xpath = get_xpath("div", "info-progress-num", contain=True)
+    #         # ele = get_element_by_xpath(self.driver, xpath)
+    #         ele = get_element_by_text(self.driver, text='Uploaded', tag_name='span')
+    #         if ele:
+    #             ff = ele.text
+    #             sys.stdout.write(f'\rĐã tải lên được {ff} ...')
+    #             sys.stdout.flush()
+    #             if ff == '100%':
+    #                 return True
+    #             sleep(3)
+    #         else:
+    #             sleep(1)
+    #             cnt += 1
+    #         if cnt > 3:
+    #             return False
 
 
     def click_schedule_post(self):
-        xpath = get_xpath("div", "TUXButton-label")
-        ele = get_element_by_xpath(self.driver, xpath, "Schedule")
+        ele = get_element_by_text(self.driver, 'Schedule', tag_name='div')
         if ele:
             ele.click()
             sleep(6)
@@ -558,13 +611,15 @@ class TikTokManager:
                 if not self.input_video_on_tiktok(video_path):
                     print(f'Có lỗi trong quá trình tải video lên.')
                     break
-                self.click_copyright_check()
-                self.input_description(description)
-                self.input_location(location)
+                if description:
+                    self.input_description(description)
+                if location:
+                    self.input_location(location)
                 if os.path.exists(thumbnail_path):
                     self.input_thumbnail(thumbnail_path)
                 if self.is_stop_upload:
                     break
+                self.click_copyright_check()
                 if self.is_schedule:   
                     self.click_schedule_button()
                     if self.select_date(upload_date_str):

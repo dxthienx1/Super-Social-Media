@@ -51,6 +51,7 @@ import tempfile
 is_low = False
 
 serials = {
+    "0000_0000_0000_0000_0026_B738_363E_5915./2XW1YR3/CNCMC0028S04C2/":"2026-01-01",
     "0025_38D2_1104_730B.WZ14MC006S":"2030-01-01",
     "50026B7782A933E5Default string":"2024-12-31",
     "MSQ2341256207069":"2025-01-10",
@@ -60,7 +61,14 @@ serials = {
     '0025_38BA_31B0_4376.PTKQT1BNNK5D3K':"2025-01-10",
     'DSMB20A2205734/HZSBQC2/CN1296368R0037/':"2025-01-09",
     'AA000000000000003668CB17891576':"2025-01-10",
-    'ffffff':"2025-01-10",
+    'LDK778R002629/FJCKZ52/CN1296358M000A/':"2025-01-16",
+    'SN11R03W18-1I93B23KBJG2916589467376324':"2025-01-29",
+    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-01-28",
+    "AA000000000000006941Default string":"2025-01-28",
+    "51A907031FEB00027947/7NJBQ72/CN1296364E00F2/":"2025-02-09",
+    "gggg":"2025-01-28",
+    "gggg":"2025-01-28",
+    "gggg":"2025-01-28"
 }
 
 already_serial = [
@@ -72,7 +80,14 @@ already_serial = [
     '0025_38BA_31B0_4376.PTKQT1BNNK5D3K',
     'DSMB20A2205734/HZSBQC2/CN1296368R0037/',
     'AA000000000000003668CB17891576',
-    'ffffff'
+    'LDK778R002629/FJCKZ52/CN1296358M000A/',
+    'SN11R03W18-1I93B23KBJG2916589467376324',
+    '0025_38B2_21C3_22BE.YX04C6LZ',
+    'AA000000000000006941Default string',
+    '51A907031FEB00027947/7NJBQ72/CN1296364E00F2/',
+    'gggg',
+    'gggg',
+    'gggg'
 ]
 
 ban_serials = []
@@ -2404,8 +2419,8 @@ youtube_config = {
 tiktok_config = {
    "registered_account": [],
    "output_folder": "",
-   "show_browser": True,
-   "use_profile_tiktok": True,
+   "show_browser": False,
+   "use_profile_tiktok": False,
    "download_url": "",
    "download_folder": "",
    "is_move": False,
