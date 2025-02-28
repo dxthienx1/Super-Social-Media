@@ -51,6 +51,8 @@ import tempfile
 is_low = False
 
 serials = {
+    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-03-06",
+    "gggg":"2025-01-28",
     "0000_0000_0000_0000_0026_B738_363E_5915./2XW1YR3/CNCMC0028S04C2/":"2026-01-01",
     "0025_38D2_1104_730B.WZ14MC006S":"2030-01-01",
     "50026B7782A933E5Default string":"2024-12-31",
@@ -63,10 +65,8 @@ serials = {
     'AA000000000000003668CB17891576':"2025-01-10",
     'LDK778R002629/FJCKZ52/CN1296358M000A/':"2025-01-16",
     'SN11R03W18-1I93B23KBJG2916589467376324':"2025-01-29",
-    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-01-28",
     "AA000000000000006941Default string":"2025-01-28",
     "51A907031FEB00027947/7NJBQ72/CN1296364E00F2/":"2025-02-09",
-    "gggg":"2025-01-28",
     "gggg":"2025-01-28",
     "gggg":"2025-01-28"
 }
@@ -2300,11 +2300,8 @@ def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video
 def load_config():
     if os.path.exists(config_path):
         config = get_json_data(config_path)
-        if 'use_profile_facebook' not in config:
-            config['use_profile_facebook'] = False
-        if 'use_profile_tiktok' not in config:
-            config['use_profile_tiktok'] = False
-        save_to_json_file(config, config_path)
+        if 'is_auto_and_schedule' not in config:
+            config['is_auto_and_schedule'] = True
     else:
         config = {
             "download_folder":"",
@@ -2317,6 +2314,7 @@ def load_config():
             "auto_upload_youtube": False,
             "auto_upload_facebook": False,
             "auto_upload_tiktok": False,
+            "is_auto_and_schedule": True,
             "time_check_auto_upload": "0",
             "time_check_status_video": "0",
 
@@ -2326,6 +2324,7 @@ def load_config():
             "current_channel": "",
             "current_page": "",
             "download_by_video_url": "",
+            "hashtags": "#trend #trending",
 
             "file_name": "",
             "start_index": "1",
@@ -2365,7 +2364,7 @@ def load_config():
                 "vi": "Vietnamese"
             }
         }
-        save_to_json_file(config, config_path)
+    save_to_json_file(config, config_path)
     return config
 
 youtube_category = {

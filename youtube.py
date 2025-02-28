@@ -280,6 +280,7 @@ class YouTubeManager():
                 return True
         except:
             getlog()
+            print("111111111111111111111111111111")
             return False
 
     def click_altered_content(self, no_altered=True):

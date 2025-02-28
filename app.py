@@ -249,12 +249,13 @@ class MainApp:
                 if (self.first_check_upload_video_tiktok and time_check_cycle > 0) or (time() - self.pre_time_check_auto_upload_tiktok >= time_check_cycle):
                     self.pre_time_check_auto_upload_tiktok = time()
                     auto_tiktok_acc = [acc for acc in self.tiktok_config['template'].keys()]
+                    is_auto_and_schedule = self.config['is_auto_and_schedule']
                     for account in auto_tiktok_acc:
                         try:
                             if self.is_stop_upload:
                                 return
                             self.get_tiktok_config()
-                            videos_folder = self.youtube_config['template'][account].get('upload_folder')
+                            videos_folder = self.tiktok_config['template'][account].get('upload_folder')
                             videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)   
                             if not videos:
                                 return
@@ -262,7 +263,7 @@ class MainApp:
                             tiktok_password = self.tiktok_config['template'][account].get('password')
                             if self.is_stop_upload:
                                 return
-                            auto_tiktok= TikTokManager(account, tiktok_password, self.download_thread, self.upload_thread, is_auto_upload=True)
+                            auto_tiktok= TikTokManager(account, tiktok_password, self.download_thread, self.upload_thread, is_auto_upload=True, is_auto_and_schedule=is_auto_and_schedule)
                             auto_tiktok.upload_video()
                         except:
                             getlog()
@@ -1997,6 +1998,7 @@ class MainApp:
             self.config["auto_upload_youtube"] = self.auto_upload_youtube_var.get() == "Yes"
             self.config["auto_upload_facebook"] = self.auto_upload_facebook_var.get() == "Yes"
             self.config["auto_upload_tiktok"] = self.auto_upload_tiktok_var.get() == "Yes"
+            self.config["is_auto_and_schedule"] = self.is_auto_and_schedule_var.get() == "Yes"
             self.config["time_check_auto_upload"] = self.time_check_auto_upload_var.get()
             self.config["time_check_status_video"] = self.time_check_status_video_var.get()
             self.config["is_delete_video"] = self.is_delete_video_var.get() == "Yes"
@@ -2018,10 +2020,11 @@ class MainApp:
         self.auto_upload_youtube_var = self.create_settings_input("Tự động đăng video youtube", "auto_upload_youtube", values=["Yes", "No"], left=0.4, right=0.6)
         self.auto_upload_facebook_var = self.create_settings_input("Tự động đăng video facebook", "auto_upload_facebook", values=["Yes", "No"], left=0.4, right=0.6)
         self.auto_upload_tiktok_var = self.create_settings_input("Tự động đăng video tiktok", "auto_upload_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
-        self.use_profile_facebook_var = self.create_settings_input("Sử dụng chrome profile cho facebook", "use_profile_facebook", values=["Yes", "No"], left=0.4, right=0.6)
-        self.use_profile_tiktok_var = self.create_settings_input("Sử dụng chrome profile cho tiktok", "use_profile_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
+        self.is_auto_and_schedule_var = self.create_settings_input("Đăng tự động và lên lịch", "is_auto_and_schedule", values=["Yes", "No"], left=0.4, right=0.6)
         self.time_check_auto_upload_var = self.create_settings_input("Khoảng thời gian kiểm tra và tự động đăng video (phút)", "time_check_auto_upload", values=["0", "60"], left=0.4, right=0.6)
         self.time_check_status_video_var = self.create_settings_input("Khoảng cách mỗi lần kiểm tra trạng thái video (phút)", "time_check_status_video", values=["0", "60"], left=0.4, right=0.6)
+        self.use_profile_facebook_var = self.create_settings_input("Sử dụng chrome profile cho facebook", "use_profile_facebook", values=["Yes", "No"], left=0.4, right=0.6)
+        self.use_profile_tiktok_var = self.create_settings_input("Sử dụng chrome profile cho tiktok", "use_profile_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
         self.is_delete_video_var = self.create_settings_input("Xóa video gốc sau chỉnh sửa", "is_delete_video", values=["Yes", "No"], left=0.4, right=0.6)
         self.is_move_video_var = self.create_settings_input("Di chuyển video gốc sau chỉnh sửa", "is_move", values=["Yes", "No"], left=0.4, right=0.6)
         create_button(self.root, text="Lưu cài đặt", command=save_common_config, width=self.width)
@@ -2255,9 +2258,9 @@ class MainApp:
             elif self.is_open_common_setting:
                 self.root.title("Common Setting")
                 self.width = 700
-                self.height_window = 645
+                self.height_window = 692
                 if height_element == 30:
-                    self.height_window = 625
+                    self.height_window = 670
                 self.is_open_common_setting = False
             elif self.is_edit_video_window:
                 self.root.title("Edit Videos")
