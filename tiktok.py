@@ -30,40 +30,43 @@ class TikTokManager:
     def login(self, show=False):
         try:
             self.is_stop_upload = False
-            if 'use_profile_tiktok' not in self.tiktok_config:
-                self.tiktok_config['use_profile_tiktok'] = False
             if self.tiktok_config['use_profile_tiktok']:
+                print(f'Đang tìm profile cho tài khoản {self.account}')
                 self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
-                sleep(5)
+                if not self.driver:
+                    return False
+                sleep(1)
+                self.driver.get("https://www.tiktok.com/")
+                sleep(3)
+                self.upload_link = self.get_upload_button()
             else:
                 self.driver = get_driver(show=show)
-            if not self.driver:
-                return False
-            self.load_session()
-            if not self.tiktok_config['template'][self.account]['first_login']:
-                sleep(8)
-                self.upload_link = self.get_upload_button()
-            else:
-                self.upload_link = None
-            if not self.upload_link:
-                print("Đang đăng nhập bằng email và password...")
-                email_xpath = '//input[@name="username"]'
-                email_input = get_element_by_xpath(self.driver, email_xpath)
-                if email_input:
-                    email_input.send_keys(self.account)
-                    sleep(0.5)
-                pass_xpath = get_xpath_by_multi_attribute("input", ["type='password'", "placeholder='Password'"])
-                password_input = get_element_by_xpath(self.driver, pass_xpath, "password")
-                if password_input:
-                    password_input.send_keys(self.password)
-                    sleep(1)
-                    password_input.send_keys(Keys.RETURN)
-                    sleep(5)
-                self.waiting_for_capcha_verify()
-                press_esc_key(2, self.driver)
-                self.upload_link = self.get_upload_button()
+                if not self.driver:
+                    return False
+                self.load_session()
+                if not self.tiktok_config['template'][self.account]['first_login']:
+                    sleep(8)
+                    self.upload_link = self.get_upload_button()
+                else:
+                    self.upload_link = None
+                if not self.upload_link:
+                    print("Đang đăng nhập bằng email và password...")
+                    email_xpath = '//input[@name="username"]'
+                    email_input = get_element_by_xpath(self.driver, email_xpath)
+                    if email_input:
+                        email_input.send_keys(self.account)
+                        sleep(0.5)
+                    pass_xpath = get_xpath_by_multi_attribute("input", ["type='password'", "placeholder='Password'"])
+                    password_input = get_element_by_xpath(self.driver, pass_xpath, "password")
+                    if password_input:
+                        password_input.send_keys(self.password)
+                        sleep(1)
+                        password_input.send_keys(Keys.RETURN)
+                        sleep(5)
+                    self.waiting_for_capcha_verify()
+                    press_esc_key(2, self.driver)
+                    self.upload_link = self.get_upload_button()
             if self.upload_link:
-                print(f'upload_link: {self.upload_link}')
                 try:
                     self.upload_link.click()
                 except:
@@ -73,6 +76,7 @@ class TikTokManager:
                 sleep(2)
                 if self.tiktok_config['template'][self.account]['waiting_verify']:
                     sleep(5)
+                if not self.tiktok_config['use_profile_tiktok']:
                     self.save_session()
                 self.tiktok_config['template'][self.account]['first_login'] = False
                 self.save_tiktok_config()
@@ -223,19 +227,27 @@ class TikTokManager:
    
     def input_description(self, description, hashtags=[]):
         try:
-            xpath = get_xpath_by_multi_attribute("div", ["class='notranslate public-DraftEditor-content'", "contenteditable='true'", "role='combobox'"])
+            xpath = get_xpath('div', 'notranslate public-DraftEditor-content')
             ele = get_element_by_xpath(self.driver, xpath)
+            if not ele:
+                xpath = get_xpath_by_multi_attribute("div", ["contenteditable='true'", "role='combobox'"])
+                ele = get_element_by_xpath(self.driver, xpath)
             if ele:
-                ele.send_keys(description)
-                sleep(0.5)
-                press_esc_key(1, self.driver)
+                if description.strip():
+                    ele.send_keys(description.strip())
+                    sleep(0.5)
+                    press_esc_key(1, self.driver)
                 ele.send_keys(Keys.RETURN)
-                sleep(1.5)
+                sleep(1)
+                print(f"Nhập hashtags ... {hashtags}")
                 for hash in hashtags:
                     ele.send_keys(hash)
-                    sleep(2)
+                    sleep(3)
                     ele.send_keys(Keys.RETURN)
                     sleep(1)
+            else:
+                print(f'Không tìm thấy chỗ nhập nội dung')
+                sleep(1000)
 
         except:
             print("Lỗi khi nhập nội dung")
@@ -626,8 +638,7 @@ class TikTokManager:
                 if not self.input_video_on_tiktok(video_path):
                     print(f'Có lỗi trong quá trình tải video lên.')
                     break
-                if description:
-                    self.input_description(description, hashtags)
+                self.input_description(description, hashtags)
 
                 if location:
                     self.input_location(location)

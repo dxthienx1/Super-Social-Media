@@ -65,6 +65,7 @@ class MainApp:
             self.engine = pyttsx3.init()
             remove_file("log.txt")
             self.thread_main = None
+            self.max_threads = 1
             self.icon = None
             self.convert_multiple_record = False
             self.load_download_info()
@@ -240,38 +241,104 @@ class MainApp:
         except:
             getlog()
 
-    def auto_upload_tiktok(self):
+    def auto_upload_tiktok(self):  
+        """Hàm upload video TikTok đa luồng với hàng đợi, giới hạn số luồng tối đa chạy cùng lúc"""
         try:
             time_check_cycle = get_time_check_cycle(self.config['time_check_auto_upload'])
             if time_check_cycle == 0:
                 return
+            
             if self.config['auto_upload_tiktok']:
                 if (self.first_check_upload_video_tiktok and time_check_cycle > 0) or (time() - self.pre_time_check_auto_upload_tiktok >= time_check_cycle):
                     self.pre_time_check_auto_upload_tiktok = time()
                     auto_tiktok_acc = [acc for acc in self.tiktok_config['template'].keys()]
                     is_auto_and_schedule = self.config['is_auto_and_schedule']
+
+                    # Giới hạn số luồng tối đa chạy cùng lúc
+                    try:
+                        max_threads = int(self.config['max_threads'])
+                    except:
+                        max_threads = 1
+                    
+                    semaphore = threading.Semaphore(max_threads)
+                    account_queue = queue.Queue()
+
+                    # Đẩy tất cả tài khoản vào hàng đợi
                     for account in auto_tiktok_acc:
-                        try:
-                            if self.is_stop_upload:
-                                return
-                            self.get_tiktok_config()
-                            videos_folder = self.tiktok_config['template'][account].get('upload_folder')
-                            videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)   
-                            if not videos:
-                                return
-                            print(f"đang thực hiện đăng video tự động cho tài khoản tiktok {account} ...")
-                            tiktok_password = self.tiktok_config['template'][account].get('password')
-                            if self.is_stop_upload:
-                                return
-                            auto_tiktok= TikTokManager(account, tiktok_password, self.download_thread, self.upload_thread, is_auto_upload=True, is_auto_and_schedule=is_auto_and_schedule)
-                            auto_tiktok.upload_video()
-                        except:
-                            getlog()
-                            print(f"Có lỗi trong quá trình đăng video tự động cho tài khoản tiktok {account} !!!")
-                        sleep(2)
+                        account_queue.put(account)
+
+                    # Tạo số luồng tối đa theo giới hạn
+                    self.upload_threads = []
+                    for _ in range(max_threads):
+                        thread = threading.Thread(target=self.worker_upload_task, args=(account_queue, semaphore, is_auto_and_schedule))
+                        thread.start()
+                        self.upload_threads.append(thread)
+
+                    # Chờ tất cả các luồng hoàn thành
+                    for thread in self.upload_threads:
+                        thread.join()
+
                     self.first_check_upload_video_tiktok = False
-        except:
+        except Exception as e:
             getlog()
+            print(f"Lỗi trong auto_upload_tiktok: {e}")
+
+    def worker_upload_task(self, account_queue, semaphore, is_auto_and_schedule):
+        """Luồng xử lý upload video từ hàng đợi, chạy đến khi hàng đợi hết tài khoản"""
+        while not account_queue.empty():
+            account = account_queue.get()  # Lấy tài khoản từ hàng đợi
+            with semaphore:  # Giới hạn số luồng tối đa
+                try:
+                    if self.is_stop_upload:
+                        return
+                    self.get_tiktok_config()
+                    videos_folder = self.tiktok_config['template'][account].get('upload_folder')
+                    videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)
+                    if not videos:
+                        return  # Không có video thì bỏ qua
+                    print(f"Đang thực hiện đăng video tự động cho tài khoản TikTok {account} ...")
+                    tiktok_password = self.tiktok_config['template'][account].get('password')
+                    # Khởi tạo quá trình upload video
+                    auto_tiktok = TikTokManager(account, tiktok_password, self.download_thread, None, is_auto_upload=True, is_auto_and_schedule=is_auto_and_schedule)
+                    auto_tiktok.upload_video()
+                    sleep(2)
+                except:
+                    getlog()
+
+            account_queue.task_done()  # Đánh dấu tài khoản đã được xử lý
+    # def auto_upload_tiktok(self):
+    #     try:
+    #         time_check_cycle = get_time_check_cycle(self.config['time_check_auto_upload'])
+    #         if time_check_cycle == 0:
+    #             return
+    #         if self.config['auto_upload_tiktok']:
+    #             if (self.first_check_upload_video_tiktok and time_check_cycle > 0) or (time() - self.pre_time_check_auto_upload_tiktok >= time_check_cycle):
+    #                 self.pre_time_check_auto_upload_tiktok = time()
+    #                 auto_tiktok_acc = [acc for acc in self.tiktok_config['template'].keys()]
+    #                 is_auto_and_schedule = self.config['is_auto_and_schedule']
+    #                 for account in auto_tiktok_acc:
+    #                     try:
+    #                         if self.is_stop_upload:
+    #                             return
+    #                         self.get_tiktok_config()
+    #                         videos_folder = self.tiktok_config['template'][account].get('upload_folder')
+    #                         videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)   
+    #                         if not videos:
+    #                             return
+    #                         print(f"đang thực hiện đăng video tự động cho tài khoản tiktok {account} ...")
+    #                         tiktok_password = self.tiktok_config['template'][account].get('password')
+    #                         if self.is_stop_upload:
+    #                             return
+    #                         upload_thread = threading.Thread()
+    #                         auto_tiktok= TikTokManager(account, tiktok_password, self.download_thread, upload_thread, is_auto_upload=True, is_auto_and_schedule=is_auto_and_schedule)
+    #                         auto_tiktok.upload_video()
+    #                     except:
+    #                         getlog()
+    #                         print(f"Có lỗi trong quá trình đăng video tự động cho tài khoản tiktok {account} !!!")
+    #                     sleep(2)
+    #                 self.first_check_upload_video_tiktok = False
+    #     except:
+    #         getlog()
 #-------------------------------------------Điều hướng window--------------------------------------------
 
     def get_start_window(self):
@@ -1999,14 +2066,15 @@ class MainApp:
             self.config["auto_upload_facebook"] = self.auto_upload_facebook_var.get() == "Yes"
             self.config["auto_upload_tiktok"] = self.auto_upload_tiktok_var.get() == "Yes"
             self.config["is_auto_and_schedule"] = self.is_auto_and_schedule_var.get() == "Yes"
+            self.config["max_threads"] = self.max_threads_var.get().strip()
             self.config["time_check_auto_upload"] = self.time_check_auto_upload_var.get()
             self.config["time_check_status_video"] = self.time_check_status_video_var.get()
             self.config["is_delete_video"] = self.is_delete_video_var.get() == "Yes"
             self.config['is_move'] = self.is_move_video_var.get() == "Yes"
             self.config['use_profile_facebook'] = self.use_profile_facebook_var.get() == "Yes"
-            self.facebook_config['use_profile_facebook'] = self.use_profile_facebook_var.get() == "Yes"
             self.config['use_profile_tiktok'] = self.use_profile_tiktok_var.get() == "Yes"
-            self.facebook_config['use_profile_tiktok'] = self.use_profile_tiktok_var.get() == "Yes"
+            self.tiktok_config['use_profile_tiktok'] = self.use_profile_tiktok_var.get() == "Yes"
+            self.facebook_config['use_profile_facebook'] = self.use_profile_facebook_var.get() == "Yes"
             self.save_config()
             self.save_youtube_config()
             self.save_tiktok_config()
@@ -2021,6 +2089,8 @@ class MainApp:
         self.auto_upload_facebook_var = self.create_settings_input("Tự động đăng video facebook", "auto_upload_facebook", values=["Yes", "No"], left=0.4, right=0.6)
         self.auto_upload_tiktok_var = self.create_settings_input("Tự động đăng video tiktok", "auto_upload_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
         self.is_auto_and_schedule_var = self.create_settings_input("Đăng tự động và lên lịch", "is_auto_and_schedule", values=["Yes", "No"], left=0.4, right=0.6)
+        self.max_threads_var = self.create_settings_input("Số luồng đăng video tối đa", "max_threads", values=["1", "3", "5"], left=0.4, right=0.6)
+        self.max_threads_var.set("1")
         self.time_check_auto_upload_var = self.create_settings_input("Khoảng thời gian kiểm tra và tự động đăng video (phút)", "time_check_auto_upload", values=["0", "60"], left=0.4, right=0.6)
         self.time_check_status_video_var = self.create_settings_input("Khoảng cách mỗi lần kiểm tra trạng thái video (phút)", "time_check_status_video", values=["0", "60"], left=0.4, right=0.6)
         self.use_profile_facebook_var = self.create_settings_input("Sử dụng chrome profile cho facebook", "use_profile_facebook", values=["Yes", "No"], left=0.4, right=0.6)
@@ -2258,9 +2328,9 @@ class MainApp:
             elif self.is_open_common_setting:
                 self.root.title("Common Setting")
                 self.width = 700
-                self.height_window = 692
+                self.height_window = 740
                 if height_element == 30:
-                    self.height_window = 670
+                    self.height_window = 725
                 self.is_open_common_setting = False
             elif self.is_edit_video_window:
                 self.root.title("Edit Videos")

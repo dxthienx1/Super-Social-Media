@@ -47,11 +47,12 @@ from pystray import MenuItem as item
 import keyboard
 import pyperclip
 import tempfile
+import queue
 
 is_low = False
 
 serials = {
-    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-03-06",
+    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-03-07",
     "gggg":"2025-01-28",
     "0000_0000_0000_0000_0026_B738_363E_5915./2XW1YR3/CNCMC0028S04C2/":"2026-01-01",
     "0025_38D2_1104_730B.WZ14MC006S":"2030-01-01",
@@ -262,11 +263,14 @@ def get_driver_with_profile(target_gmail=None, show=True):
                 with open(preferences_file, 'r', encoding='utf-8') as f:
                     try:
                         preferences = json.load(f)
-                        if 'profile' in preferences:
+                        if 'account_info' in preferences:
                             for account in preferences['account_info']:
                                 if 'email' in account and account['email'] == target_gmail:
                                     return True
-                    except json.JSONDecodeError:
+                        else:
+                            print(f'Không thể lấy thông tin của profile {profile_path}')
+                    except:
+                        getlog()
                         print(f"Không thể đọc file Preferences trong profile {profile_path}.")
             return False
         
@@ -279,10 +283,12 @@ def get_driver_with_profile(target_gmail=None, show=True):
             if os.path.exists(profile_path):
                 if check_gmail_in_profile(profile_path):
                     return profile_name
+        print(f'Không tìm thấy profile cho email {target_gmail} --> sử dụng profile Default')
         return "Default"
     
     profile_name = get_profile_name_by_gmail()
     if profile_name:
+        print(f'Profile đang dùng là {profile_name}')
         options = webdriver.ChromeOptions()
         options.add_argument(f"user-data-dir={profile_folder}")
         options.add_argument(f"profile-directory={profile_name}")
@@ -2302,6 +2308,8 @@ def load_config():
         config = get_json_data(config_path)
         if 'is_auto_and_schedule' not in config:
             config['is_auto_and_schedule'] = True
+        if 'max_threads' not in config:
+            config['max_threads'] = "1"
     else:
         config = {
             "download_folder":"",
@@ -2315,6 +2323,7 @@ def load_config():
             "auto_upload_facebook": False,
             "auto_upload_tiktok": False,
             "is_auto_and_schedule": True,
+            "max_threads": "1",
             "time_check_auto_upload": "0",
             "time_check_status_video": "0",
 
@@ -2890,3 +2899,202 @@ def cleaner_text(text):
         text = text.replace(wrong, correct)
     return text
 
+
+
+
+import re
+
+def number_to_english_with_units(text):
+    if not text:
+        return
+    text = text.lower()
+    """ Chuyển đổi tất cả dạng số thành chữ tiếng Anh. """
+    
+    # Số cơ bản từ 0-99
+    words = {
+        0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
+        6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+        11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen",
+        15: "fifteen", 16: "sixteen", 17: "seventeen", 18: "eighteen",
+        19: "nineteen", 20: "twenty", 30: "thirty", 40: "forty",
+        50: "fifty", 60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety"
+    }
+
+    units = ["", "thousand", "million", "billion", "trillion"]
+
+    ordinal_words = {
+        1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth",
+        6: "sixth", 7: "seventh", 8: "eighth", 9: "ninth", 10: "tenth",
+        11: "eleventh", 12: "twelfth", 13: "thirteenth", 14: "fourteenth",
+        15: "fifteenth", 16: "sixteenth", 17: "seventeenth", 18: "eighteenth",
+        19: "nineteenth", 20: "twentieth", 30: "thirtieth", 40: "fortieth",
+        50: "fiftieth", 60: "sixtieth", 70: "seventieth", 80: "eightieth", 90: "ninetieth"
+    }
+
+    unit_mapping = {
+        "km": "kilometers", "m": "meters", "cm": "centimeters", "mm": "millimeters",
+        "h": "hours", "s": "seconds", "ms": "milliseconds", "%": "percent"
+    }
+
+    def read_three_digits(num, ordinal=False):
+        """ Chuyển số 3 chữ số thành chữ """
+        if num == 0:
+            return ""
+
+        hundreds = num // 100
+        tens = num % 100
+        result = []
+
+        if hundreds:
+            result.append(f"{words[hundreds]} hundred")
+
+        if tens:
+            if tens in words:
+                result.append(ordinal_words[tens] if ordinal else words[tens])
+            else:
+                tens_digit = tens // 10 * 10
+                ones_digit = tens % 10
+                if ordinal and ones_digit:
+                    result.append(f"{words[tens_digit]}-{ordinal_words[ones_digit]}")
+                else:
+                    result.append(words[tens_digit])
+                    if ones_digit:
+                        result.append(words[ones_digit])
+
+        return " ".join(result)
+
+    def number_to_english(number, ordinal=False):
+        """ Chuyển đổi số thành chữ """
+        if number == 0:
+            return "zero" if not ordinal else "zeroth"
+
+        if number < 0:
+            return "negative " + number_to_english(-number, ordinal)
+
+        parts = []
+        idx = 0
+        while number > 0:
+            num_part = number % 1000
+            if num_part:
+                part = read_three_digits(num_part, ordinal if number < 1000 else False)
+                if idx > 0:
+                    part += f" {units[idx]}"
+                parts.append(part)
+            number //= 1000
+            idx += 1
+
+        if ordinal:
+            parts[-1] = ordinal_words.get(int(parts[-1]), parts[-1] + "th")
+
+        return " ".join(reversed(parts))
+
+    def convert_fraction(match):
+        """ Xử lý phân số như 444/7000 """
+        return f"{number_to_english(int(match.group(1)))} over {number_to_english(int(match.group(2)))}"
+    
+    def convert_decimal(match):
+        """ Xử lý số thập phân như 55.65 """
+        integer_part = int(match.group(1))
+        decimal_part = match.group(2)
+        decimal_words = " ".join(number_to_english(int(digit)) for digit in decimal_part)
+        return f"{number_to_english(integer_part)} point {decimal_words}"
+    
+    def convert_units(match):
+        """ Xử lý số có đơn vị như 5649km """
+        number = int(match.group(1))
+        unit = match.group(2)
+        unit_word = unit_mapping.get(unit, unit)
+        return f"{number_to_english(number)} {unit_word}"
+    
+    def convert_ordinal(match):
+        """ Xử lý số thứ tự như 27th """
+        return number_to_english(int(match.group(1)), ordinal=True)
+    
+    def convert_commas(match):
+        """ Xử lý số có dấu phẩy như 1,000,000 """
+        return number_to_english(int(match.group(0).replace(",", "")))
+
+    def convert_integer(match):
+        """ Xử lý số nguyên đơn giản """
+        return number_to_english(int(match.group(0)))
+
+    # Chạy tất cả bộ xử lý
+    text = re.sub(r"(\d+)/(\d+)", convert_fraction, text)  # Phân số
+    text = re.sub(r"(\d+)\.(\d+)", convert_decimal, text)   # Số thập phân
+    text = re.sub(r"(\d+)(km|m|cm|mm|h|s|ms|%)\b", convert_units, text)  # Đơn vị
+    text = re.sub(r"\b(\d{1,3}(,\d{3})+)\b", convert_commas, text)  # Dấu phẩy
+    text = re.sub(r"\b(\d+)(st|nd|rd|th)\b", convert_ordinal, text)  # Số thứ tự
+    text = re.sub(r"\b-?\d+\b", convert_integer, text)  # Số nguyên
+
+    return text
+
+
+
+
+
+# import pandas as pd
+# # Đường dẫn đến thư mục chứa file Parquet
+# folder = "D:\\download\\dataset_en"
+# parquet_files = get_file_in_folder_by_type(folder, '.parquet')
+
+# # Thư mục lưu file audio
+# audio_output_folder = os.path.join(folder, "audio_files")
+# os.makedirs(audio_output_folder, exist_ok=True)
+
+# # Danh sách lưu dữ liệu từ tất cả các file parquet
+# all_data = []
+# audio_idx = 0  # Chỉ số để đặt tên file audio
+
+# for parquet_file in parquet_files:
+#     parquet_file_path = os.path.join(folder, parquet_file)
+#     # Đọc file Parquet
+#     df = pd.read_parquet(parquet_file_path, engine="pyarrow")
+
+#     # Kiểm tra dữ liệu
+#     print(f"Đọc dữ liệu từ: {parquet_file}, Số dòng: {len(df)}")
+
+#     # Chọn các cột và đổi tên
+#     df_filtered = df[["file", "spoken_text"]].copy()
+#     df_filtered.rename(columns={"file": "audio_file", "spoken_text": "text"}, inplace=True)
+
+#     # Chuyển số thành chữ trong cột "text"
+#     df_filtered["text"] = df_filtered["text"].apply(number_to_english_with_units)
+
+#     # Danh sách để lưu đường dẫn file audio sau khi đổi tên
+#     audio_paths = []
+
+#     for _, row in df.iterrows():
+#         file_name = f"{audio_idx}.wav"  # Đặt tên file theo idx.wav
+#         audio_data = row["audio"]["bytes"]  # Lấy dữ liệu nhị phân của audio
+        
+#         # Đường dẫn file audio sau khi lưu
+#         audio_path = os.path.join(audio_output_folder, file_name)
+
+#         # Lưu file .wav
+#         with open(audio_path, "wb") as f:
+#             f.write(audio_data)
+        
+#         # Thêm đường dẫn file audio mới vào danh sách
+#         audio_paths.append(file_name)
+        
+#         # Tăng index cho file tiếp theo
+#         audio_idx += 1
+
+#     # Cập nhật đường dẫn file audio mới vào DataFrame
+#     df_filtered["audio_file"] = audio_paths
+
+#     # Thêm cột speaker_name mặc định là "en_female"
+#     df_filtered["speaker_name"] = "en_female"
+
+#     # Thêm dữ liệu vào danh sách tổng
+#     all_data.append(df_filtered)
+
+# # Gộp tất cả dữ liệu vào một DataFrame duy nhất
+# final_df = pd.concat(all_data, ignore_index=True)
+
+# # Lưu toàn bộ dữ liệu vào một file CSV duy nhất với dấu phân cách "|"
+# csv_file = os.path.join(folder, "output.csv")
+# final_df.to_csv(csv_file, sep="|", index=False, encoding="utf-8")
+
+# print(f"✅ Đã lưu file CSV thành công: {csv_file}")
+# print(f"✅ Đã lưu {audio_idx} file âm thanh vào thư mục: {audio_output_folder}")
