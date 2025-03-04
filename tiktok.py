@@ -45,7 +45,7 @@ class TikTokManager:
                     return False
                 self.load_session()
                 if not self.tiktok_config['template'][self.account]['first_login']:
-                    sleep(8)
+                    sleep(3)
                     self.upload_link = self.get_upload_button()
                 else:
                     self.upload_link = None

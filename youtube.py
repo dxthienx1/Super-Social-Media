@@ -47,19 +47,26 @@ class YouTubeManager():
         try:
             if self.cookies_var and self.cookies_var.get().strip():
                 self.driver = get_driver(show=show)
+                if not self.driver:
+                    return
                 print(f'--> Đang sử dụng cookies để đăng nhập ...')
+                sleep(2)
+                self.load_session()
+                self.driver.get("https://www.youtube.com/")
+                sleep(3)
+                press_esc_key(2, self.driver)
+                account_menu, language = self.get_account_menu()
+                if not account_menu:
+                    self.load_session()
+                    press_esc_key(2, self.driver)
+                    account_menu, language = self.get_account_menu()
             else:
                 self.driver = get_driver_with_profile(target_gmail=self.gmail, show=show)
+                if not self.driver:
+                    return
                 print(f'--> Đang sử dụng chrome profile để đăng nhập ...')
-            if not self.driver:
-                return
-            self.driver.get("https://www.youtube.com/")
-            sleep(3)
-            press_esc_key(2, self.driver)
-            account_menu, language = self.get_account_menu()
-            if not account_menu:
-                self.load_session()
-                press_esc_key(2, self.driver)
+                self.driver.get("https://www.youtube.com/")
+                sleep(3)
                 account_menu, language = self.get_account_menu()
             if account_menu:
                 if language == 'en':
