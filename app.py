@@ -301,44 +301,12 @@ class MainApp:
                     # Khởi tạo quá trình upload video
                     auto_tiktok = TikTokManager(account, tiktok_password, self.download_thread, None, is_auto_upload=True, is_auto_and_schedule=is_auto_and_schedule)
                     auto_tiktok.upload_video()
-                    sleep(2)
+                    sleep(5)
                 except:
                     getlog()
 
             account_queue.task_done()  # Đánh dấu tài khoản đã được xử lý
-    # def auto_upload_tiktok(self):
-    #     try:
-    #         time_check_cycle = get_time_check_cycle(self.config['time_check_auto_upload'])
-    #         if time_check_cycle == 0:
-    #             return
-    #         if self.config['auto_upload_tiktok']:
-    #             if (self.first_check_upload_video_tiktok and time_check_cycle > 0) or (time() - self.pre_time_check_auto_upload_tiktok >= time_check_cycle):
-    #                 self.pre_time_check_auto_upload_tiktok = time()
-    #                 auto_tiktok_acc = [acc for acc in self.tiktok_config['template'].keys()]
-    #                 is_auto_and_schedule = self.config['is_auto_and_schedule']
-    #                 for account in auto_tiktok_acc:
-    #                     try:
-    #                         if self.is_stop_upload:
-    #                             return
-    #                         self.get_tiktok_config()
-    #                         videos_folder = self.tiktok_config['template'][account].get('upload_folder')
-    #                         videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)   
-    #                         if not videos:
-    #                             return
-    #                         print(f"đang thực hiện đăng video tự động cho tài khoản tiktok {account} ...")
-    #                         tiktok_password = self.tiktok_config['template'][account].get('password')
-    #                         if self.is_stop_upload:
-    #                             return
-    #                         upload_thread = threading.Thread()
-    #                         auto_tiktok= TikTokManager(account, tiktok_password, self.download_thread, upload_thread, is_auto_upload=True, is_auto_and_schedule=is_auto_and_schedule)
-    #                         auto_tiktok.upload_video()
-    #                     except:
-    #                         getlog()
-    #                         print(f"Có lỗi trong quá trình đăng video tự động cho tài khoản tiktok {account} !!!")
-    #                     sleep(2)
-    #                 self.first_check_upload_video_tiktok = False
-    #     except:
-    #         getlog()
+
 #-------------------------------------------Điều hướng window--------------------------------------------
 
     def get_start_window(self):

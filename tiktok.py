@@ -603,6 +603,16 @@ class TikTokManager:
             for i, video_file in enumerate(videos):
                 if self.is_stop_upload:
                     break
+                video_path = os.path.join(videos_folder, video_file)
+                temp_video_folder = os.path.join(videos_folder, 'temp_folder')
+                os.makedirs(temp_video_folder, exist_ok=True)
+                temp_video_path = os.path.join(temp_video_folder, video_file)
+                try:
+                    shutil.move(video_path, temp_video_path)
+                except:
+                    continue
+                video_path = temp_video_path
+
                 if is_date_greater_than_current_day(upload_date_str, 9):
                     print("Dừng đăng video vì ngày lên lịch đã vượt  quá giới hạn mà tiktok cho phép(tối đa 10 ngày)")
                     break
@@ -628,7 +638,7 @@ class TikTokManager:
                 location = self.tiktok_config['template'][self.account]['location']
                 description = self.tiktok_config['template'][self.account]['description']
                 description = f"\n{description}"
-                video_path = os.path.join(videos_folder, video_file)
+
                 print(f'--> Bắt đầu đăng video {video_file}')
                 if upload_count > 0:
                     self.driver.get("https://www.tiktok.com/tiktokstudio/upload")
