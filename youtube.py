@@ -224,8 +224,13 @@ class YouTubeManager():
             xpath = get_xpath('div', 'style-scope ytcp-social-suggestions-textbox', attribute='aria-label', attribute_value='Giới thiệu về video của bạn cho người xem (nhập ký tự @ để đề cập tên một kênh)')
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
-            ele.clear()
-            ele.send_keys(description)
+            try:
+                ele.clear()
+                ele.send_keys(description)
+            except:
+                getlog()
+                sleep(1000)
+                pass
             press_esc_key(1, self.driver)
 
     def input_thumbnail(self, thumbnail_path):
