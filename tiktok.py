@@ -27,66 +27,98 @@ class TikTokManager:
 
 #-----------------------------Thao tác trên tiktok--------------------------------------------------------------
 
+    def interact_with_tiktok(self):
+        self.login(True)
+
     def login(self, show=False):
         try:
             self.is_stop_upload = False
             if self.tiktok_config['use_profile_tiktok']:
-                print(f'Đang tìm profile cho tài khoản {self.account}')
-                self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
+                if self.tiktok_config['use_firefox_profile']:
+                    self.driver = get_driver_with_firefox_profile(target_gmail=self.account, show=show)
+                # else:
+                #     self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
                 if not self.driver:
                     return False
                 sleep(1)
-                self.driver.get("https://www.tiktok.com/")
+                self.driver.get("https://www.tiktok.com")
+                if os.path.exists(ff_tiktok_cookies_path):
+                    cookies = pickle.load(open(ff_tiktok_cookies_path, "rb"))
+                    for cookie in cookies:
+                        self.driver.add_cookie(cookie)
                 sleep(3)
-                self.upload_link = self.get_upload_button()
+                return True
+                # if self.input_username_and_pass():
+                #     self.upload_link = self.get_upload_button()
+                #     if self.upload_link:
+                #         if os.path.exists(ff_tiktok_cookies_path):
+                #             cookies = pickle.load(open(ff_tiktok_cookies_path, "rb"))
+                #             for cookie in cookies:
+                #                 self.driver.add_cookie(cookie)
+                #         # self.driver.refresh()
+                #         self.upload_link.click()
+                #         sleep(3)
+                #         return True
             else:
                 self.driver = get_driver(show=show)
                 if not self.driver:
                     return False
                 self.load_session()
                 if not self.tiktok_config['template'][self.account]['first_login']:
-                    sleep(3)
+                    sleep(6)
                     self.upload_link = self.get_upload_button()
                 else:
                     self.upload_link = None
+
                 if not self.upload_link:
-                    print("Đang đăng nhập bằng email và password...")
-                    email_xpath = '//input[@name="username"]'
-                    email_input = get_element_by_xpath(self.driver, email_xpath)
-                    if email_input:
-                        email_input.send_keys(self.account)
-                        sleep(0.5)
-                    pass_xpath = get_xpath_by_multi_attribute("input", ["type='password'", "placeholder='Password'"])
-                    password_input = get_element_by_xpath(self.driver, pass_xpath, "password")
-                    if password_input:
-                        password_input.send_keys(self.password)
-                        sleep(1)
-                        password_input.send_keys(Keys.RETURN)
-                        sleep(5)
-                    self.waiting_for_capcha_verify()
+                    if not self.input_username_and_pass():
+                        return False
                     press_esc_key(2, self.driver)
                     self.upload_link = self.get_upload_button()
             if self.upload_link:
                 try:
                     self.upload_link.click()
+                    self.waiting_for_capcha_verify()
                 except:
                     xpath = get_xpath_by_multi_attribute('button', ['aria-label="Upload "'])
                     self.upload_link = get_element_by_xpath(self.driver, xpath)
                     self.upload_link.click()
                 sleep(2)
-                if self.tiktok_config['template'][self.account]['waiting_verify']:
-                    sleep(5)
                 if not self.tiktok_config['use_profile_tiktok']:
                     self.save_session()
                 self.tiktok_config['template'][self.account]['first_login'] = False
                 self.save_tiktok_config()
                 return True
             else:
-                print("Đăng nhập thất bại !!!")
+                print("Đăng nhập thất bại. Nếu dùng profile thì hãy đăng nhập tài khoản vào profile trước khi dùng ứng dụng!!!")
                 return False
         except:
             getlog()
             print("Lỗi trong quá trình đăng nhập tiktok.")
+            return False
+
+    def input_username_and_pass(self):
+        try:
+            print("Đang đăng nhập bằng email và password...")
+            email_xpath = '//input[@name="username"]'
+            email_input = get_element_by_xpath(self.driver, email_xpath)
+            if email_input:
+                email_input.send_keys(self.account)
+                sleep(0.5)
+            else:
+                self.waiting_for_capcha_verify()
+                return True
+            pass_xpath = get_xpath_by_multi_attribute("input", ["type='password'", "placeholder='Password'"])
+            password_input = get_element_by_xpath(self.driver, pass_xpath, "password")
+            if password_input:
+                password_input.send_keys(self.password)
+                sleep(1)
+                password_input.send_keys(Keys.RETURN)
+                sleep(5)
+                self.waiting_for_capcha_verify()
+                return True
+        except:
+            getlog
             return False
 
     def get_upload_button(self):
@@ -214,10 +246,13 @@ class TikTokManager:
 
     def input_video_on_tiktok(self, video_path):
             try:
+                if not os.path.exists(video_path):
+                    return False
+                video_path = Path(video_path)
                 xpath = "//input[@accept='video/*']"
                 ele = get_element_by_xpath(self.driver, xpath)
                 if ele:
-                    ele.send_keys(video_path)
+                    ele.send_keys(str(video_path))
                     sleep(3)
                     return True
                 else:
@@ -238,13 +273,13 @@ class TikTokManager:
                     sleep(0.5)
                     press_esc_key(1, self.driver)
                 ele.send_keys(Keys.RETURN)
-                sleep(1)
+                sleep(0.5)
                 print(f"Nhập hashtags ... {hashtags}")
                 for hash in hashtags:
                     ele.send_keys(hash)
-                    sleep(3)
+                    sleep(2)
                     ele.send_keys(Keys.RETURN)
-                    sleep(1)
+                    sleep(0.5)
             else:
                 print(f'Không tìm thấy chỗ nhập nội dung')
                 sleep(1000)
@@ -426,7 +461,6 @@ class TikTokManager:
     def waiting_for_capcha_verify(self):
         if self.tiktok_config['template'][self.account]['waiting_verify']:
             sleep(15)
-        self.save_session()
 #--------------------------------Giao diện upload--------------------------------------
 
     def get_start_tiktok(self):
@@ -632,17 +666,17 @@ class TikTokManager:
                     if not self.login(self.tiktok_config['show_browser']):
                         print(f'Có lỗi trong quá trình đăng nhập. Hãy kiểm tra xem tài khoản có cần phải xác minh capcha không.')
                         return False, False
+                    pickle.dump(self.driver.get_cookies(), open(ff_tiktok_cookies_path, "wb"))
                 video_name = os.path.splitext(video_file)[0] #lấy tên
                 thumbnail_path = os.path.join(thumbnail_folder, f'{video_name}.png')
     
                 location = self.tiktok_config['template'][self.account]['location']
                 description = self.tiktok_config['template'][self.account]['description']
-                description = f"\n{description}"
+                description = f"\n{description}" if description else ''
 
                 print(f'--> Bắt đầu đăng video {video_file}')
-                if upload_count > 0:
-                    self.driver.get("https://www.tiktok.com/tiktokstudio/upload")
-                    sleep(3)
+                self.driver.get("https://www.tiktok.com/tiktokstudio/upload")
+                sleep(3)
                 if self.is_stop_upload:
                     break
                 if not self.input_video_on_tiktok(video_path):

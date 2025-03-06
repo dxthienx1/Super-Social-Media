@@ -549,7 +549,7 @@ class YouTubeManager():
             try:
                 ele = get_element_by_xpath(self.driver, xpath)
                 status = ele.text
-                if 'Đã tải được' in status:
+                if 'Đã tải được' in status or 'Uploading' in status:
                     sys.stdout.write(f'\r{status}')
                     sys.stdout.flush()
                     sleep(1)
@@ -952,7 +952,7 @@ class YouTubeManager():
             self.close_driver()
 
 
-    def schedule_videos_by_selenium(self, folder=None, day_delta=30):
+    def schedule_videos_by_selenium(self, folder=None, day_delta=60):
         try:
             thumbnail_folder = self.youtube_config['template'][self.channel_name]['thumbnail_folder']
             if folder:

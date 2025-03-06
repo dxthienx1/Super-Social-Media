@@ -48,8 +48,9 @@ import keyboard
 import pyperclip
 import tempfile
 import queue
-
-is_low = False
+from pathlib import Path
+from selenium.webdriver.firefox.service import Service as ff_Service
+from selenium.webdriver.firefox.options import Options
 
 serials = {
     '0025_38B2_21C3_22BE.YX04C6LZ':"2025-03-07",
@@ -141,6 +142,7 @@ current_dir = get_current_dir()
 sys.path.append(current_dir)
 secret_path = os.path.join(current_dir, 'oauth', 'secret.json')
 chromedriver_path = os.path.join(current_dir, 'import\\chromedriver.exe')
+geckodriver_path = os.path.join(current_dir, 'import\\geckodriver.exe')
 config_path = os.path.join(current_dir, 'config.pkl')
 download_info_path = os.path.join(current_dir, 'download_info.pkl')
 youtube_config_path = os.path.join(current_dir, 'youtube_config.pkl')
@@ -149,6 +151,7 @@ ico_path = os.path.join(current_dir, 'import' , 'icon.ico')
 local_storage_path = os.path.join(current_dir, 'local_storage.pkl')
 facebook_cookies_path = os.path.join(current_dir, 'facebook_cookies.pkl')
 tiktok_cookies_path = os.path.join(current_dir, 'tiktok_cookies.pkl')
+ff_tiktok_cookies_path = os.path.join(current_dir, 'ff_tiktok_cookies.pkl')
 youtube_cookies_path = os.path.join(current_dir, 'youtube_cookies.pkl')
 youtube_config_path = os.path.join(current_dir, 'youtube_config.pkl')
 tiktok_config_path = os.path.join(current_dir, 'tiktok_config.pkl')
@@ -245,6 +248,71 @@ def get_driver(show=True, log_network=False):
         return driver
     except Exception as e:
         print(f"Lỗi trong quá trình khởi tạo chromedriver: {e}")
+        return None
+
+
+
+#firefox
+def get_driver_with_firefox_profile(target_gmail=None, show=True):
+    def get_firefox_profile_folder():
+        """ Xác định thư mục profile của Firefox theo hệ điều hành """
+        if platform.system() == "Windows":
+            return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
+        elif platform.system() == "Darwin":
+            return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "Firefox", "Profiles")
+        elif platform.system() == "Linux":
+            return os.path.join(os.path.expanduser("~"), ".mozilla", "firefox")
+        else:
+            raise Exception("Hệ điều hành không được hỗ trợ.")
+
+    def get_profile_name_by_gmail():
+        if not target_gmail:
+            return None
+        profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
+        for profile in profiles:
+            if target_gmail in profile:
+                return profile
+        print(f'Không tìm thấy profile cho email {target_gmail}. Hãy tạo mới profile và đăng nhập trước.')
+        return None
+
+    try:
+        firefox_profile_folder = get_firefox_profile_folder()
+        profile_name = get_profile_name_by_gmail()
+        if not profile_name:
+            return None
+        
+        profile_path = os.path.join(firefox_profile_folder, profile_name)
+        print(f"Profile đang dùng: {profile_path}")
+
+        if not os.path.exists(profile_path):
+            print(f"❌ Không tìm thấy profile tại: {profile_path}")
+            return None
+        options = Options()
+        
+        # 🔹 Quan trọng: Dùng `moz:firefoxOptions` để mở profile thực sự
+        options.set_preference("browser.startup.homepage_override.mstone", "ignore")  
+        options.set_preference("startup.homepage_welcome_url.additional", "about:blank")  
+        options.set_preference("browser.sessionstore.resume_from_crash", True)  
+        options.set_preference("browser.sessionstore.restore_on_demand", False)  
+        options.set_preference("browser.cache.disk.enable", True)  
+        options.set_preference("browser.cache.memory.enable", True)  
+        options.set_preference("browser.cache.offline.enable", True)  
+        options.set_preference("network.cookie.cookieBehavior", 0)  # Bật cookie
+        # Chỉ định profile bằng đường dẫn
+        options.add_argument(f"--profile")
+        options.add_argument(profile_path)
+
+        # 🔹 Tránh mở Firefox với profile mặc định
+        options.add_argument("--no-remote")
+        if not show:
+            options.add_argument("--headless")  
+        # Chỉ định đúng GeckoDriver
+        service = Service(geckodriver_path)
+        driver = webdriver.Firefox(service=service, options=options)
+        print(f"✅ Đã mở Firefox với profile: {profile_path}")
+        return driver
+    except Exception as e:
+        print(f"Lỗi: {e}")
         return None
     
 def get_driver_with_profile(target_gmail=None, show=True):
@@ -2429,6 +2497,7 @@ tiktok_config = {
    "output_folder": "",
    "show_browser": False,
    "use_profile_tiktok": False,
+   "use_firefox_profile": True,
    "download_url": "",
    "download_folder": "",
    "is_move": False,
@@ -2465,6 +2534,8 @@ def load_tiktok_config():
         config = get_json_data(tiktok_config_path)
     else:
         config = tiktok_config
+    if 'use_firefox_profile' not in config:
+        config['use_firefox_profile'] = True
     save_to_json_file(config, tiktok_config_path)
     return config
 

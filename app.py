@@ -1027,51 +1027,52 @@ class MainApp:
         self.setting_window_size()
         def sign_up_tiktok():
             self.is_sign_up_tiktok = True
-            self.tiktok_account = self.tiktok_account_var.get()
-            self.tiktok_password = self.tiktok_password_var.get()
-            if not self.tiktok_account or not self.tiktok_password:
+            tiktok_account = self.tiktok_account_var.get()
+            tiktok_password = self.tiktok_password_var.get()
+            if not tiktok_account or not tiktok_password:
                 self.noti("Hãy nhập đầy đủ thông tin!")
                 return
-            if self.tiktok_account not in self.tiktok_config['template']:
-                self.tiktok_config['template'][self.tiktok_account] = {}
-            self.tiktok_config['template'][self.tiktok_account]['account'] = self.tiktok_account
-            self.tiktok_config['template'][self.tiktok_account]['password'] = self.tiktok_password
-            self.tiktok_config['template'][self.tiktok_account]['thumbnail_folder'] = ""
-            self.tiktok_config['template'][self.tiktok_account]['upload_folder'] = ""
-            self.tiktok_config['template'][self.tiktok_account]['description'] = ""
-            self.tiktok_config['template'][self.tiktok_account]['location'] = ""
-            self.tiktok_config['template'][self.tiktok_account]['publish_times'] = ""
-            self.tiktok_config['template'][self.tiktok_account]['cnt_upload_in_day'] = 0
-            self.tiktok_config['template'][self.tiktok_account]['title'] = ""
-            self.tiktok_config['template'][self.tiktok_account]['is_title_plus_video_name'] = False
-            self.tiktok_config['template'][self.tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
-            self.tiktok_config['template'][self.tiktok_account]['is_delete_after_upload'] = False
-            self.tiktok_config['template'][self.tiktok_account]['waiting_verify'] = False
-            self.tiktok_config['template'][self.tiktok_account]['number_of_days'] = "1"
-            self.tiktok_config['template'][self.tiktok_account]['day_gap'] = "1"
-            self.tiktok_config['template'][self.tiktok_account]['first_login'] = True
-            if self.tiktok_account not in self.tiktok_config['registered_account']:
-                self.tiktok_config['registered_account'].append(self.tiktok_account)
+            if tiktok_account not in self.tiktok_config['template']:
+                self.tiktok_config['template'][tiktok_account] = {}
+            self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
+            self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
+            self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
+            self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
+            self.tiktok_config['template'][tiktok_account]['description'] = ""
+            self.tiktok_config['template'][tiktok_account]['location'] = ""
+            self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
+            self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
+            self.tiktok_config['template'][tiktok_account]['title'] = ""
+            self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
+            self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
+            self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
+            self.tiktok_config['template'][tiktok_account]['waiting_verify'] = False
+            self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
+            self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
+            self.tiktok_config['template'][tiktok_account]['first_login'] = True
+            if tiktok_account not in self.tiktok_config['registered_account']:
+                self.tiktok_config['registered_account'].append(tiktok_account)
             save_to_json_file(self.tiktok_config, tiktok_config_path)
             self.start_tiktok_management()
 
         self.tiktok_account_var = create_frame_label_and_input(self.root, label_text="Nhập tài khoản tiktok")
         self.tiktok_password_var = create_frame_label_and_input(self.root, label_text="Nhập mật khẩu", is_password=True)
+        # self.profile_folder_name_var = create_frame_label_and_input(self.root, label_text="Thư mục profile")
         create_button(self.root, text="Đăng ký ngay", command=sign_up_tiktok)
         create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
 
     def start_tiktok_management(self):
-        self.tiktok_account = self.tiktok_account_var.get()
+        tiktok_account = self.tiktok_account_var.get()
         if not self.is_sign_up_tiktok:
-            if self.tiktok_account not in self.tiktok_config['registered_account'] or self.tiktok_account not in self.tiktok_config['template']:
-                self.noti(f"tài khoản {self.tiktok_account} chưa được đăng ký")
+            if tiktok_account not in self.tiktok_config['registered_account'] or tiktok_account not in self.tiktok_config['template']:
+                self.noti(f"tài khoản {tiktok_account} chưa được đăng ký")
                 return
-        self.config['current_tiktok_account'] = self.tiktok_account
-        self.tiktok_password = self.tiktok_config['template'][self.tiktok_account]['password']
+        self.config['current_tiktok_account'] = tiktok_account
+        self.tiktok_password = self.tiktok_config['template'][tiktok_account]['password']
         self.save_config()
         self.reset()
         self.setting_window_size()
-        self.tiktok = TikTokManager(self.tiktok_account, self.tiktok_password, self.upload_thread)
+        self.tiktok = TikTokManager(tiktok_account, self.tiktok_password, self.upload_thread)
         self.tiktok.get_start_tiktok()
 
     def open_facebook_window(self):
@@ -2062,7 +2063,7 @@ class MainApp:
         self.time_check_auto_upload_var = self.create_settings_input("Khoảng thời gian kiểm tra và tự động đăng video (phút)", "time_check_auto_upload", values=["0", "60"], left=0.4, right=0.6)
         self.time_check_status_video_var = self.create_settings_input("Khoảng cách mỗi lần kiểm tra trạng thái video (phút)", "time_check_status_video", values=["0", "60"], left=0.4, right=0.6)
         self.use_profile_facebook_var = self.create_settings_input("Sử dụng chrome profile cho facebook", "use_profile_facebook", values=["Yes", "No"], left=0.4, right=0.6)
-        self.use_profile_tiktok_var = self.create_settings_input("Sử dụng chrome profile cho tiktok", "use_profile_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
+        self.use_profile_tiktok_var = self.create_settings_input("Sử dụng profile cho tiktok", "use_profile_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
         self.is_delete_video_var = self.create_settings_input("Xóa video gốc sau chỉnh sửa", "is_delete_video", values=["Yes", "No"], left=0.4, right=0.6)
         self.is_move_video_var = self.create_settings_input("Di chuyển video gốc sau chỉnh sửa", "is_move", values=["Yes", "No"], left=0.4, right=0.6)
         create_button(self.root, text="Lưu cài đặt", command=save_common_config, width=self.width)
