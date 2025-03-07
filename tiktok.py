@@ -482,7 +482,8 @@ class TikTokManager:
                 self.thumbnail_folder_var.insert(0, folder_path)
 
         def load_template():
-            load_template = self.load_template_var.get().strip()
+            load_other_name = self.load_template_var.get().strip()
+            load_template = self.tiktok_config['registered_account_dic'][load_other_name]
             self.description_var.delete("1.0", ctk.END)
             self.description_var.insert(ctk.END, self.tiktok_config['template'][load_template]['description'])
             self.upload_date_var.delete(0, ctk.END)
@@ -521,8 +522,8 @@ class TikTokManager:
         self.thumbnail_folder_var.insert(0, self.tiktok_config['template'][self.account]['thumbnail_folder'])
         self.upload_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa video", command=choose_folder_upload, width=self.width, left=0.3, right=0.7)
         self.upload_folder_var.insert(0, self.tiktok_config['template'][self.account]['upload_folder'])
-        self.load_template_var = create_frame_button_and_combobox(self.root, "Tải mẫu có sẵn", command=load_template, values=[key for key in self.tiktok_config['template'].keys()], width=self.width, left=0.3, right=0.7)
-        self.load_template_var.set(self.account)
+        self.load_template_var = create_frame_button_and_combobox(self.root, "Tải mẫu có sẵn", command=load_template, values=self.tiktok_config['registered_other_name'], width=self.width, left=0.3, right=0.7)
+        self.load_template_var.set(self.tiktok_config['template'][self.account]['other_name'])
         create_frame_button_and_button(self.root, text1="Đăng video ngay", text2="Lên lịch đăng video", command1=self.upload_video_now, command2=self.schedule_upload, width=self.width, left=0.5, right=0.5)
         create_button(self.root, text="Lùi lại", command=self.get_start_tiktok, width=self.width)
     

@@ -984,7 +984,7 @@ class MainApp:
         self.is_tiktok_window = True
         self.show_window()
         self.setting_window_size()
-        self.tiktok_account_var = self.create_settings_input(label_text="Chọn tài khoản", config_key="current_tiktok_account", values=self.tiktok_config['registered_account'])
+        self.tiktok_account_var = self.create_settings_input(label_text="Chọn tài khoản", config_key="current_tiktok_account", values=self.tiktok_config['registered_other_name'])
         create_button(self.root, text="Mở cửa sổ quản lý kênh tiktok", command=self.start_tiktok_management)
         create_button(self.root, text="Đăng ký tài khoản tiktok mới", command=self.sign_up_tiktok_window)
         create_button(self.root, text="Xóa thông tin kênh tiktok", command=self.remove_tiktok_channel_window)
@@ -993,30 +993,35 @@ class MainApp:
     def remove_tiktok_channel_window(self):
         def remove_channel_now():
             try:
-                channel_name = self.tiktok_channel_remove_var.get()
-                if not channel_name:
+                other_name = self.tiktok_channel_remove_var.get()
+                if not other_name:
                     self.noti("Hãy chọn channel muốn xóa.")
                     return
-                self.get_youtube_config()
-                if channel_name in self.tiktok_config['template'].keys():
-                    self.tiktok_config['template'].pop(channel_name, None)
-                    if channel_name in self.tiktok_config['registered_account']:
-                        self.tiktok_config['registered_account'].remove(channel_name)
-                    if self.config['current_tiktok_account'] == channel_name:
-                        self.config['current_tiktok_account'] = ""
-                        self.save_config()
-                    self.save_tiktok_config()
-                    self.noti(f'Xóa kênh [{channel_name}] thành công.')
-                    self.remove_tiktok_channel_window()
-                else:
-                    self.noti(f"Kênh {channel_name} không tồn tại trong cơ sở dữ liệu")
+                self.get_tiktok_config()
+                if other_name not in self.tiktok_config['registered_other_name'] or other_name not in self.tiktok_config['registered_account_dic']:
+                    self.noti(f"Kênh {other_name} không tồn tại")
+                    return
+                tiktok_account = self.tiktok_config['registered_account_dic'][other_name]
+                if tiktok_account in self.tiktok_config['template'].keys():
+                    self.tiktok_config['template'].pop(tiktok_account, None)
+                if other_name in self.tiktok_config['registered_account_dic']:
+                    self.tiktok_config['registered_account_dic'].pop(other_name)
+                if other_name in self.tiktok_config['registered_other_name']:
+                    self.tiktok_config['registered_other_name'].remove(other_name)
+                if self.config['current_tiktok_account'] == other_name:
+                    self.config['current_tiktok_account'] = ""
+                    self.save_config()
+                self.save_tiktok_config()
+                self.noti(f'Xóa kênh [{other_name}] thành công.')
+                self.remove_tiktok_channel_window()
+
             except:
-                self.noti(f"Xóa kênh [{channel_name}] thất bại !!!")
+                self.noti(f"Xóa kênh [{other_name}] thất bại !!!")
         self.reset()
         self.is_remove_channel = True
         self.setting_window_size()
         self.show_window()
-        self.tiktok_channel_remove_var = self.create_settings_input(label_text="Nhập tên kênh tiktok", config_key='current_tiktok_account', values=[key for key in self.tiktok_config['template'].keys()], left=0.3, right=0.7)
+        self.tiktok_channel_remove_var = self.create_settings_input(label_text="Nhập tên kênh tiktok", config_key='current_tiktok_account', values=self.tiktok_config['registered_other_name'], left=0.3, right=0.7)
         create_button(frame=self.root, text="Bắt đầu xóa thông tin kênh tiktok", command=remove_channel_now)
         create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
 
@@ -1027,47 +1032,114 @@ class MainApp:
         self.setting_window_size()
         def sign_up_tiktok():
             self.is_sign_up_tiktok = True
-            tiktok_account = self.tiktok_account_var.get()
-            tiktok_password = self.tiktok_password_var.get()
-            if not tiktok_account or not tiktok_password:
-                self.noti("Hãy nhập đầy đủ thông tin!")
-                return
-            if tiktok_account not in self.tiktok_config['template']:
-                self.tiktok_config['template'][tiktok_account] = {}
-            self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
-            self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
-            self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
-            self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
-            self.tiktok_config['template'][tiktok_account]['description'] = ""
-            self.tiktok_config['template'][tiktok_account]['location'] = ""
-            self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
-            self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
-            self.tiktok_config['template'][tiktok_account]['title'] = ""
-            self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
-            self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
-            self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
-            self.tiktok_config['template'][tiktok_account]['waiting_verify'] = False
-            self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
-            self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
-            self.tiktok_config['template'][tiktok_account]['first_login'] = True
-            if tiktok_account not in self.tiktok_config['registered_account']:
-                self.tiktok_config['registered_account'].append(tiktok_account)
+            account_txt_path = self.chose_account_txt_file_var.get().strip()
+            if account_txt_path:
+                acc_data = get_json_data(account_txt_path)
+                if not acc_data:
+                    print(f"Không tìm thấy thông tin tài khoản trong file {account_txt_path}")
+                    return
+                for line in acc_data:
+                    acc_info = [fff.strip() for fff in line.split(',')]
+                    try:
+                        tiktok_account = acc_info[0]
+                        tiktok_password = acc_info[1]
+                        other_name = acc_info[0]
+                    except:
+                        print(f'{thatbai} Tài khoản không đủ thông tin: <{line}>')
+                        continue
+                    if len(acc_info) == 3:
+                        other_name = acc_info[2]
+                    if not tiktok_account or not tiktok_password:
+                        self.noti("Hãy nhập đầy đủ thông tin!")
+                        continue
+                    if tiktok_account not in self.tiktok_config['template']:
+                        self.tiktok_config['template'][tiktok_account] = {}
+                    self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
+                    self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
+                    self.tiktok_config['template'][tiktok_account]['other_name'] = other_name
+                    self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
+                    self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
+                    self.tiktok_config['template'][tiktok_account]['description'] = ""
+                    self.tiktok_config['template'][tiktok_account]['location'] = ""
+                    self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
+                    self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
+                    self.tiktok_config['template'][tiktok_account]['title'] = ""
+                    self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
+                    self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
+                    self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
+                    self.tiktok_config['template'][tiktok_account]['waiting_verify'] = False
+                    self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
+                    self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
+                    self.tiktok_config['template'][tiktok_account]['first_login'] = True
+                    if 'registered_other_name' not in self.tiktok_config:
+                        self.tiktok_config['registered_other_name'] = []
+                    if other_name not in self.tiktok_config['registered_other_name']:
+                        self.tiktok_config['registered_other_name'].append(other_name)
+                    else:
+                        print(f'{thatbai} Tên hiển thị tại dòng <{line}> đã tồn tại')
+                        continue
+                    if 'registered_account_dic' not in self.tiktok_config:
+                        self.tiktok_config['registered_account_dic'] = {}
+                    self.tiktok_config['registered_account_dic'][other_name] = tiktok_account
+                    print(f'{thanhcong} Đăng ký tài khoản <{other_name}> thành công')
+            else:
+                other_name = self.other_name_var.get()
+                tiktok_account = self.tiktok_account_var.get()
+                tiktok_password = self.tiktok_password_var.get()
+                if not tiktok_account or not tiktok_password:
+                    self.noti("Hãy nhập đầy đủ thông tin!")
+                    return
+                if tiktok_account not in self.tiktok_config['template']:
+                    self.tiktok_config['template'][tiktok_account] = {}
+                self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
+                self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
+                self.tiktok_config['template'][tiktok_account]['other_name'] = other_name
+                self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
+                self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
+                self.tiktok_config['template'][tiktok_account]['description'] = ""
+                self.tiktok_config['template'][tiktok_account]['location'] = ""
+                self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
+                self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
+                self.tiktok_config['template'][tiktok_account]['title'] = ""
+                self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
+                self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
+                self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
+                self.tiktok_config['template'][tiktok_account]['waiting_verify'] = False
+                self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
+                self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
+                self.tiktok_config['template'][tiktok_account]['first_login'] = True
+                if 'registered_other_name' not in self.tiktok_config:
+                    self.tiktok_config['registered_other_name'] = []
+                if other_name not in self.tiktok_config['registered_other_name']:
+                    self.tiktok_config['registered_other_name'].append(other_name)
+                else:
+                    print(f'{thatbai} Tên hiển thị <{other_name}> đã tồn tại')
+                if 'registered_account_dic' not in self.tiktok_config:
+                    self.tiktok_config['registered_account_dic'] = {}
+                self.tiktok_config['registered_account_dic'][other_name] = tiktok_account
             save_to_json_file(self.tiktok_config, tiktok_config_path)
             self.start_tiktok_management()
 
+        self.other_name_var = create_frame_label_and_input(self.root, label_text="Tên hiển thị")
         self.tiktok_account_var = create_frame_label_and_input(self.root, label_text="Nhập tài khoản tiktok")
         self.tiktok_password_var = create_frame_label_and_input(self.root, label_text="Nhập mật khẩu", is_password=True)
-        # self.profile_folder_name_var = create_frame_label_and_input(self.root, label_text="Thư mục profile")
+        self.chose_account_txt_file_var = create_frame_button_and_input(self.root, "Lấy tài khoản từ file .txt", command=self.chose_account_txt_file, width=self.width, left=left, right=right)
         create_button(self.root, text="Đăng ký ngay", command=sign_up_tiktok)
         create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
 
     def start_tiktok_management(self):
-        tiktok_account = self.tiktok_account_var.get()
+        if self.is_sign_up_tiktok:
+            other_name = self.other_name_var.get()
+        else:
+            other_name = self.tiktok_account_var.get()
+        if not other_name:
+            return
         if not self.is_sign_up_tiktok:
-            if tiktok_account not in self.tiktok_config['registered_account'] or tiktok_account not in self.tiktok_config['template']:
-                self.noti(f"tài khoản {tiktok_account} chưa được đăng ký")
+            if other_name not in self.tiktok_config['registered_other_name']:
+                self.noti(f"tài khoản {other_name} chưa được đăng ký")
                 return
-        self.config['current_tiktok_account'] = tiktok_account
+        tiktok_account = self.tiktok_config['registered_account_dic'][other_name]
+        self.config['current_tiktok_account'] = other_name
         self.tiktok_password = self.tiktok_config['template'][tiktok_account]['password']
         self.save_config()
         self.reset()
@@ -1249,6 +1321,14 @@ class MainApp:
             self.audio_edit_path.insert(0, audio_edit_path)
         else:
             self.noti("Hãy chọn file audio muốn xử lý")
+
+    def chose_account_txt_file(self):
+        account_txt_path = choose_file()
+        if account_txt_path:
+            self.chose_account_txt_file_var.delete(0, ctk.END)
+            self.chose_account_txt_file_var.insert(0, account_txt_path)
+        else:
+            print("Hãy chọn file txt chứa tài khoản cần đăng ký")
 
     def choose_video_get_audio_path(self):
         video_get_audio_path = choose_file()
@@ -2286,11 +2366,11 @@ class MainApp:
                     self.height_window = 475
                 self.is_start_window = False
             elif self.is_add_new_channel:
-                self.root.title("Add New Youtube Channel")
+                self.root.title("Add New Channel")
                 self.width = 500
                 self.height_window = 266
             elif self.is_remove_channel:
-                self.root.title("Add New Youtube Channel")
+                self.root.title("Remove Channel")
                 self.width = 500
                 self.height_window = 217
                 self.is_remove_channel = False
@@ -2389,7 +2469,7 @@ class MainApp:
             elif self.is_sign_up_tiktok:
                 self.root.title("Sign Up Tiktok")
                 self.width = 500
-                self.height_window = 265
+                self.height_window = 360
                 self.is_sign_up_tiktok = False
             elif self.is_rename_file_by_index_window:
                 self.root.title("Rename Files")

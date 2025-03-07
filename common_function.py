@@ -177,6 +177,8 @@ right = 0.7
 LEFT = 'left'
 RIGHT = 'right'
 CENTER = 'center'
+thanhcong = "✅"
+thatbai = "❌"
 
 def load_ffmpeg():
     def get_ffmpeg_dir():
@@ -235,8 +237,8 @@ def get_driver(show=True, log_network=False):
             options.set_capability("goog:loggingPrefs", capabilities["goog:loggingPrefs"])
 
         driver = webdriver.Chrome(service=service, options=options)
-
-        driver.maximize_window()
+        driver.set_window_size(screen_width - 200, screen_height - 50)
+        # driver.maximize_window()
         stealth(driver,
                 languages=["en-US", "en"],
                 vendor="Google Inc.",
@@ -2496,6 +2498,8 @@ youtube_config = {
 
 tiktok_config = {
    "registered_account": [],
+   "registered_other_name": [],
+   "registered_account_dic": {},
    "output_folder": "",
    "show_browser": False,
    "use_profile_tiktok": False,
