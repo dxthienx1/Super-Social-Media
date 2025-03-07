@@ -143,6 +143,7 @@ sys.path.append(current_dir)
 secret_path = os.path.join(current_dir, 'oauth', 'secret.json')
 chromedriver_path = os.path.join(current_dir, 'import\\chromedriver.exe')
 geckodriver_path = os.path.join(current_dir, 'import\\geckodriver.exe')
+firefox_binary_path = "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
 config_path = os.path.join(current_dir, 'config.pkl')
 download_info_path = os.path.join(current_dir, 'download_info.pkl')
 youtube_config_path = os.path.join(current_dir, 'youtube_config.pkl')
@@ -288,6 +289,7 @@ def get_driver_with_firefox_profile(target_gmail=None, show=True):
             print(f"❌ Không tìm thấy profile tại: {profile_path}")
             return None
         options = Options()
+        options.binary_location = firefox_binary_path
         
         # 🔹 Quan trọng: Dùng `moz:firefoxOptions` để mở profile thực sự
         options.set_preference("browser.startup.homepage_override.mstone", "ignore")  

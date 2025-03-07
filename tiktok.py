@@ -36,29 +36,14 @@ class TikTokManager:
             if self.tiktok_config['use_profile_tiktok']:
                 if self.tiktok_config['use_firefox_profile']:
                     self.driver = get_driver_with_firefox_profile(target_gmail=self.account, show=show)
-                # else:
-                #     self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
+                else:
+                    self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
                 if not self.driver:
                     return False
                 sleep(1)
                 self.driver.get("https://www.tiktok.com")
-                if os.path.exists(ff_tiktok_cookies_path):
-                    cookies = pickle.load(open(ff_tiktok_cookies_path, "rb"))
-                    for cookie in cookies:
-                        self.driver.add_cookie(cookie)
-                sleep(3)
+                self.load_session("https://www.tiktok.com")
                 return True
-                # if self.input_username_and_pass():
-                #     self.upload_link = self.get_upload_button()
-                #     if self.upload_link:
-                #         if os.path.exists(ff_tiktok_cookies_path):
-                #             cookies = pickle.load(open(ff_tiktok_cookies_path, "rb"))
-                #             for cookie in cookies:
-                #                 self.driver.add_cookie(cookie)
-                #         # self.driver.refresh()
-                #         self.upload_link.click()
-                #         sleep(3)
-                #         return True
             else:
                 self.driver = get_driver(show=show)
                 if not self.driver:
@@ -84,8 +69,7 @@ class TikTokManager:
                     self.upload_link = get_element_by_xpath(self.driver, xpath)
                     self.upload_link.click()
                 sleep(2)
-                if not self.tiktok_config['use_profile_tiktok']:
-                    self.save_session()
+                self.save_session()
                 self.tiktok_config['template'][self.account]['first_login'] = False
                 self.save_tiktok_config()
                 return True
@@ -133,9 +117,12 @@ class TikTokManager:
         self.driver.get(url)
         sleep(1.5)
         try:
-            cookies_info = get_json_data(tiktok_cookies_path)
+            if self.tiktok_config['use_profile_tiktok']:
+                cookies_info = get_json_data(ff_tiktok_cookies_path)
+            else:
+                cookies_info = get_json_data(tiktok_cookies_path)
             if not cookies_info:
-                cookies_info = {}
+                return
             if self.account in cookies_info:
                 cookies = cookies_info[self.account]
                 for cookie in cookies:
@@ -145,13 +132,17 @@ class TikTokManager:
                 sleep(2)
         except:
             getlog()
-            return False
         
     def save_session(self):
         try:
-            cookies_info = get_json_data(tiktok_cookies_path) or {}
-            cookies_info[self.account] = self.driver.get_cookies() or []
-            save_to_json_file(cookies_info, tiktok_cookies_path)
+            if self.tiktok_config['use_profile_tiktok']:
+                cookies_info = get_json_data(ff_tiktok_cookies_path) or {}
+                cookies_info[self.account] = self.driver.get_cookies() or []
+                save_to_json_file(cookies_info, ff_tiktok_cookies_path)
+            else:
+                cookies_info = get_json_data(tiktok_cookies_path) or {}
+                cookies_info[self.account] = self.driver.get_cookies() or []
+                save_to_json_file(cookies_info, tiktok_cookies_path)
         except:
             getlog()
 
@@ -277,7 +268,7 @@ class TikTokManager:
                 print(f"Nhập hashtags ... {hashtags}")
                 for hash in hashtags:
                     ele.send_keys(hash)
-                    sleep(2)
+                    sleep(3)
                     ele.send_keys(Keys.RETURN)
                     sleep(0.5)
             else:
@@ -458,9 +449,9 @@ class TikTokManager:
         else:
             print("không thấy upload more video button")
     
-    def waiting_for_capcha_verify(self):
+    def waiting_for_capcha_verify(self, time_wait=15):
         if self.tiktok_config['template'][self.account]['waiting_verify']:
-            sleep(15)
+            sleep(time_wait)
 #--------------------------------Giao diện upload--------------------------------------
 
     def get_start_tiktok(self):
@@ -666,7 +657,7 @@ class TikTokManager:
                     if not self.login(self.tiktok_config['show_browser']):
                         print(f'Có lỗi trong quá trình đăng nhập. Hãy kiểm tra xem tài khoản có cần phải xác minh capcha không.')
                         return False, False
-                    pickle.dump(self.driver.get_cookies(), open(ff_tiktok_cookies_path, "wb"))
+                    self.save_session()
                 video_name = os.path.splitext(video_file)[0] #lấy tên
                 thumbnail_path = os.path.join(thumbnail_folder, f'{video_name}.png')
     
@@ -676,6 +667,7 @@ class TikTokManager:
 
                 print(f'--> Bắt đầu đăng video {video_file}')
                 self.driver.get("https://www.tiktok.com/tiktokstudio/upload")
+                self.waiting_for_capcha_verify()
                 sleep(3)
                 if self.is_stop_upload:
                     break
