@@ -1034,21 +1034,26 @@ class MainApp:
                 active_threads.append(thread)
 
     def save_insteract_tiktok_thread(self):
-        self.config['insteract_now'] = self.insteract_now_var.get().strip() == 'Yes'
-        self.config['video_number_interact'] = self.video_number_interact_var.get().strip()
-        self.config['watch_time'] = self.watch_time_var.get().strip()
-        self.config['watch_percent'] = self.watch_percent_var.get().strip()
-        self.config['like_percent'] = self.like_percent_var.get().strip()
-        self.config['comment_percent'] = self.comment_percent_var.get().strip()
-        self.config['follow_percent'] = self.follow_percent_var.get().strip()
-        self.config['comments_texts'] = self.comments_texts_var.get().strip()
-        self.save_config()
-
-        if self.config['insteract_now']:
-            self.config['insteract_now'] = False
+        try:
+            self.config['insteract_now'] = self.insteract_now_var.get().strip() == 'Yes'
+            self.config['video_number_interact'] = self.video_number_interact_var.get().strip()
+            self.config['watch_time'] = self.watch_time_var.get().strip()
+            self.config['watch_percent'] = self.watch_percent_var.get().strip()
+            self.config['like_percent'] = self.like_percent_var.get().strip()
+            self.config['comment_percent'] = self.comment_percent_var.get().strip()
+            self.config['follow_percent'] = self.follow_percent_var.get().strip()
+            self.config['comments_texts'] = self.comments_texts_var.get().strip()
             self.save_config()
-            thread = threading.Thread(target=self.start_thread_insteract_tiktok)
-            thread.start()
+            print(f'Thiết lập đã lưu.')
+            if self.config['insteract_now']:
+                self.config['insteract_now'] = False
+                self.save_config()
+                thread = threading.Thread(target=self.start_thread_insteract_tiktok)
+                thread.start()
+            else:
+                self.open_tiktok_window()
+        except:
+            getlog()
 
     def remove_tiktok_channel_window(self):
         def remove_channel_now():
@@ -1148,7 +1153,7 @@ class MainApp:
                     self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
                     self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
                     self.tiktok_config['template'][tiktok_account]['first_login'] = True
-                    self.tiktok_config['template'][tiktok_account]['video_number_interact_befor_upload'] = str(get_random_number_int(3,6))
+                    self.tiktok_config['template'][tiktok_account]['video_number_interact_befor_upload'] = '3-6'
                     self.tiktok_config['template'][tiktok_account]['auto_interact'] = True
                     
                     if 'registered_account_dic' not in self.tiktok_config:

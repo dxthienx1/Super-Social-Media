@@ -398,8 +398,9 @@ def save_download_info(data):
 
 
 
-def create_proxy_extension(proxy_host, proxy_port, proxy_user, proxy_pass, extension_path="proxy_auth.xpi"):
-    """ Tạo extension .xpi để Firefox tự động nhập user & pass proxy """
+def create_firefox_proxy_extension(proxy_host, proxy_port, proxy_user, proxy_pass, extension_path="proxy_auth.xpi"):
+    """Tạo extension .xpi để Firefox tự động nhập user & pass proxy"""
+    
     manifest_json = """
     {
         "manifest_version": 2,
@@ -413,30 +414,27 @@ def create_proxy_extension(proxy_host, proxy_port, proxy_user, proxy_pass, exten
     """
     
     background_js = f"""
-    var config = {{
-        mode: "fixed_servers",
-        rules: {{
-            singleProxy: {{
-                scheme: "http",
+    browser.proxy.onRequest.addListener(
+        (requestInfo) => {{
+            return {{
+                type: "http",
                 host: "{proxy_host}",
                 port: {proxy_port}
-            }},
-            bypassList: ["localhost"]
-        }}
-    }};
-    chrome.proxy.settings.set({{ value: config, scope: "regular" }}, function() {{}});
+            }};
+        }},
+        {{urls: ["<all_urls>"]}}
+    );
 
-    function callbackFn(details) {{
-        return {{
-            authCredentials: {{
-                username: "{proxy_user}",
-                password: "{proxy_pass}"
-            }}
-        }};
-    }}
-    chrome.webRequest.onAuthRequired.addListener(
-        callbackFn,
-        {{ urls: ["<all_urls>"] }},
+    browser.webRequest.onAuthRequired.addListener(
+        (details) => {{
+            return {{
+                authCredentials: {{
+                    username: "{proxy_user}",
+                    password: "{proxy_pass}"
+                }}
+            }};
+        }},
+        {{urls: ["<all_urls>"]}},
         ["blocking"]
     );
     """
@@ -449,10 +447,10 @@ def create_proxy_extension(proxy_host, proxy_port, proxy_user, proxy_pass, exten
 
 
 def get_firefox_driver_with_profile(target_gmail=None, show=True, proxy=None):
-    """ Mở Firefox với profile cụ thể & proxy có user:pass nếu có """
+    """Mở Firefox với profile cụ thể & proxy có user:pass nếu có"""
     
     def get_firefox_profile_folder():
-        """ Xác định thư mục profile của Firefox theo hệ điều hành """
+        """Xác định thư mục profile của Firefox theo hệ điều hành"""
         if platform.system() == "Windows":
             return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
         else:
@@ -489,21 +487,38 @@ def get_firefox_driver_with_profile(target_gmail=None, show=True, proxy=None):
         if not show:
             options.add_argument("--headless")  
 
-        # Nếu có proxy, tạo extension & load vào trình duyệt
-        proxy = None
+        # Nếu có proxy, thiết lập trực tiếp trong prefs.js
         if proxy:
             proxy_host, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
-            extension_path = create_proxy_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
-            options.set_preference("extensions.install_addon", extension_path)
-            print(f"🛠 Đã thiết lập proxy: {proxy_host}:{proxy_port} với user: {proxy_user}")
+            
+            prefs_js_path = os.path.join(profile_path, "prefs.js")
+            with open(prefs_js_path, "a", encoding="utf-8") as f:
+                f.write(f'\nuser_pref("network.proxy.type", 1);')
+                f.write(f'\nuser_pref("network.proxy.http", "{proxy_host}");')
+                f.write(f'\nuser_pref("network.proxy.http_port", {proxy_port});')
+                f.write(f'\nuser_pref("network.proxy.ssl", "{proxy_host}");')
+                f.write(f'\nuser_pref("network.proxy.ssl_port", {proxy_port});')
+                f.write(f'\nuser_pref("network.proxy.socks", "{proxy_host}");')
+                f.write(f'\nuser_pref("network.proxy.socks_port", {proxy_port});')
+                f.write(f'\nuser_pref("network.proxy.socks_version", 5);')
+                f.write(f'\nuser_pref("network.proxy.share_proxy_settings", true);')
+                f.write(f'\nuser_pref("network.proxy.no_proxies_on", "localhost, 127.0.0.1");')
 
-        # Chỉ định đúng GeckoDriver
         service = Service(geckodriver_path)
         driver = webdriver.Firefox(service=service, options=options)
         print(f"✅ Đã mở Firefox với profile: {profile_path}")
+        
+        browser_ip = get_browser_ip(driver)
+        if not browser_ip or (proxy_host and proxy_host != browser_ip):
+            print("❌ Đổi IP không thành công!")
+            driver.quit()
+            return None
+        else:
+            print(f"{tot} IP đang dùng: {browser_ip}")
+        print(f"✅ Đã mở Chrome với profile: {profile_name}")
         return driver
-
     except Exception as e:
+        getlog()
         print(f"Lỗi: {e}")
         return None
 
@@ -575,6 +590,7 @@ def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_
                 else:
                     if proxy_user and proxy_pass:
                         proxy_extension_path = create_proxy_extension_with_chrome_profile(proxy_ip, proxy_port, proxy_user, proxy_pass)
+                        options.add_argument(f"--disable-extensions-except={proxy_extension_path}")
                         options.add_argument(f"--load-extension={proxy_extension_path}")
                     else:
                         options.add_argument(f'--proxy-server=http://{proxy_ip}:{proxy_port}')
@@ -594,7 +610,7 @@ def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_
             driver.set_window_size(screen_width - 100, screen_height - 50)
 
             # Kiểm tra IP sau khi mở trình duyệt
-            sleep_random(2,4)
+            sleep_random(3,6)
             browser_ip = get_browser_ip(driver)
             if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
                 print("❌ Đổi IP không thành công!")
@@ -801,17 +817,17 @@ def get_element_by_text(driver, text, tag_name='*', timeout=6):
         return None
 
 
-def create_chrome_proxy_extension(proxy_ip, proxy_port, username, password):
-    pluginfile_folder = os.path.join(current_dir, "chrome_proxy")
+def create_chrome_proxy_extension(proxy_ip, proxy_port, username, password, extension_name='chrome_proxy'):
+    pluginfile_folder = os.path.join(current_dir, extension_name)
     os.makedirs(pluginfile_folder, exist_ok=True)
     pluginfile = os.path.join(pluginfile_folder, f"{proxy_ip}_{proxy_port}.zip")
     if os.path.exists(pluginfile):
         return pluginfile
     
-    manifest_json = """{
+    manifest_json = f"""{{
         "version": "1.0.0",
         "manifest_version": 2,
-        "name": "Chrome Proxy",
+        "name": "{extension_name}",
         "permissions": [
             "proxy",
             "tabs",
@@ -821,11 +837,11 @@ def create_chrome_proxy_extension(proxy_ip, proxy_port, username, password):
             "webRequest",
             "webRequestBlocking"
         ],
-        "background": {
+        "background": {{
             "scripts": ["background.js"]
-        },
+        }},
         "minimum_chrome_version":"76.0.0"
-    }"""
+    }}"""
 
     background_js = f"""
     var config = {{
@@ -861,63 +877,63 @@ def create_chrome_proxy_extension(proxy_ip, proxy_port, username, password):
 
     return pluginfile
 
-def create_proxy_extension_with_chrome_profile(proxy_ip, proxy_port, username, password):
-    chrome_proxy_profile_folder = os.path.join(os.getcwd(), "chrome_proxy_profile")
+def create_proxy_extension_with_chrome_profile(proxy_ip, proxy_port, username=None, password=None):
+    chrome_proxy_profile_folder = os.path.join(os.getcwd(), "chrome_proxy")
     os.makedirs(chrome_proxy_profile_folder, exist_ok=True)
 
-    manifest_json = """
-    {
-        "version": "1.0.0",
-        "manifest_version": 2,
-        "name": "Chrome Proxy",
-        "permissions": [
-            "proxy",
-            "tabs",
-            "unlimitedStorage",
-            "storage",
-            "<all_urls>",
-            "webRequest",
-            "webRequestBlocking"
-        ],
-        "background": {
-            "scripts": ["background.js"]
-        },
-        "minimum_chrome_version":"76.0.0"
-    }
-    """
+    extension_name = f"Proxy_{proxy_ip}_{proxy_port}"
+    unpacked_folder = os.path.join(chrome_proxy_profile_folder, extension_name)
+    os.makedirs(unpacked_folder, exist_ok=True)
 
+    # ✅ Cập nhật Manifest v3
+    manifest_json = {
+        "name": extension_name,
+        "version": "1.0",
+        "manifest_version": 3,
+        "permissions": ["proxy", "storage", "webRequest", "webRequestBlocking"],
+        "host_permissions": ["<all_urls>"],
+        "background": {
+            "service_worker": "background.js"
+        }
+    }
+
+    # ✅ Cập nhật `background.js`
     background_js = f"""
-    var config = {{
+chrome.proxy.settings.set({{
+    value: {{
         mode: "fixed_servers",
         rules: {{
             singleProxy: {{
                 scheme: "http",
                 host: "{proxy_ip}",
-                port: parseInt({proxy_port})
+                port: {proxy_port}
             }},
             bypassList: []
         }}
-    }};
-    chrome.proxy.settings.set({{value: config, scope: "regular"}}, function() {{}});
+    }},
+    scope: "regular"
+}}, function() {{ console.log("✅ Proxy set to {proxy_ip}:{proxy_port}"); }});
 
-    {"chrome.webRequest.onAuthRequired.addListener(" if username and password else "// Không có username/password, bỏ qua xác thực"}
-        function(details) {{
-            return {{
-                authCredentials: {{
-                    username: "{username}",
-                    password: "{password}"
-                }}
-            }};
-        }},
-        {{urls: ["<all_urls>"]}},
-        ["blocking"]
-    {"});" if username and password else ""}
-    """
-    unpacked_folder = os.path.join(chrome_proxy_profile_folder, f"{proxy_ip}_{proxy_port}_unpacked")
-    os.makedirs(unpacked_folder, exist_ok=True)
-    with open(os.path.join(unpacked_folder, "manifest.json"), "w") as f:
-        f.write(manifest_json)
-    with open(os.path.join(unpacked_folder, "background.js"), "w") as f:
+{"chrome.webRequest.onAuthRequired.addListener(" if username and password else "// Không có username/password"}
+    function(details) {{
+        return {{
+            authCredentials: {{
+                username: "{username}",
+                password: "{password}"
+            }}
+        }};
+    }},
+    {{ urls: ["<all_urls>"] }},
+    ["blocking"]
+{"});" if username and password else ""}
+"""
+
+    # Lưu file manifest.json
+    with open(os.path.join(unpacked_folder, "manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest_json, f, indent=4)
+
+    # Lưu file background.js
+    with open(os.path.join(unpacked_folder, "background.js"), "w", encoding="utf-8") as f:
         f.write(background_js)
 
     return unpacked_folder

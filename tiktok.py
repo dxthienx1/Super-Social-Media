@@ -29,31 +29,40 @@ class TikTokManager:
 #-----------------------------Thao tác trên tiktok--------------------------------------------------------------
 
     def interact_with_tiktok(self, video_number_interact_str=None):
+        def leave_video():
+            if self.check_leave_video:
+                leave = get_element_by_text(self.driver, 'Leave')
+                if leave and leave.text.lower() == 'leave':
+                    try:
+                        leave.click()
+                        self.check_leave_video = False
+                    except:
+                        self.check_leave_video = True
+                        pass
+                else:
+                    self.check_leave_video = False
+            sleep_random(1,2)
+
         def close_video():
             browse_close_x = get_xpath_by_multi_attribute('button', ['aria-label="Close"'])
             browse_close = get_element_by_xpath(self.driver, browse_close_x)
             if browse_close:
                 browse_close.click()
                 sleep_random(1.5,3)
-            leave = get_element_by_text(self.driver, 'Leave')
-            if leave:
-                try:
-                    leave.click()
-                except:
-                    pass
-                sleep(1)
         try:
             if video_number_interact_str:
                 self.login(True)
-                if video_number_interact_str == 'không tương tác':
-                    video_number_interact = 0
-                else:
-                    try:
-                        video_number_interact_list = [int(fff.strip()) for fff in video_number_interact_str.split('-')]
-                        video_number_interact = get_random_number_int(video_number_interact_list[0],video_number_interact_list[1])
-                    except:
-                        print(f'Định dạng số video tương tác phải là min-max. Ví dụ muốn tương tác 3 đến 5 video thì phải đặt là 3-5')
-                        video_number_interact = get_random_number_int(0,3)
+            else:
+                video_number_interact_str = self.tiktok_config['template'][self.account]['video_number_interact_befor_upload']
+            if video_number_interact_str == 'không tương tác':
+                video_number_interact = 0
+            else:
+                try:
+                    video_number_interact_list = [int(fff.strip()) for fff in video_number_interact_str.split('-')]
+                    video_number_interact = get_random_number_int(video_number_interact_list[0],video_number_interact_list[1])
+                except:
+                    print(f'Định dạng số video tương tác phải là min-max. Ví dụ muốn tương tác 3 đến 5 video thì phải đặt là 3-5')
+                    video_number_interact = get_random_number_int(0,3)
             total_config = load_config()
             watch_percent = int(total_config.get('watch_percent', 60)) / 100
             print(f'Tỷ lệ tương tác: {watch_percent*100}%')
@@ -77,32 +86,32 @@ class TikTokManager:
                 comments_list = total_config['comments_texts'].split(',')
             else:
                 comments_list = [
-                    "Amazing! 🤩", "Love this! ❤️", "Pure talent! 🎭", "You killed it! 🔥", "Insane skills! 😱",
-                    "So creative! 🎨", "Obsessed! 😍", "You nailed it! ✅", "Mind-blowing! 🤯", "Iconic! 👑",
-                    "Masterpiece! 🎭", "This is next level! 🚀", "Legendary! 🏆", "Unbelievable! 😲", "So cool! ❄️",
-                    "Brilliant! 💡", "Absolutely stunning! 😍", "On another level! 🔝", "Epic! 🎬", "You're a genius! 🧠",
-                    "Too good! 👍", "Incredible work! 👏", "Simply the best! 🥇", "Masterclass! 🎓", "Sensational! 🎶",
-                    "Phenomenal! 🌟", "I'm in awe! 😍", "Talent overload! ⚡", "Flawless! 🌈", "So much talent! ✨",
-                    "This deserves an award! 🏆", "Picture perfect! 📸", "This is gold! 🏅", "Insanely good! 🎯",
-                    "You inspire me! 💖", "You're a pro! 🎖️", "Mind = Blown! 🤯", "Top-tier content! 🔥", "This is it! ✅",
-                    "Can't stop watching! 👀", "You were born for this! 👏", "Perfection! 🎭", "Extraordinary! 🎨",
-                    "Chills! ❄️", "Wow, just wow! 😍", "Absolute fire! 🔥", "Totally mesmerizing! ✨", "Too smooth! 😎",
-                    "Flawless execution! ✅", "You're unstoppable! 🚀", "Viral-worthy! 🎥", "Took my breath away! 😲",
-                    "A masterpiece in motion! 🎬", "Unmatched energy! ⚡", "Stunning visuals! 📷", "Perfectly done! 🏅",
-                    "Game-changer! 🎮", "100% impressive! 💯", "Dream-level content! 🌙", "Sooo satisfying! 😌",
-                    "Too good to be true! ✨", "Movie star vibes! 🎬", "The definition of talent! 🎭", "Straight-up magic! ✨",
-                    "Out of this world! 🚀", "Such a gift! 🎁", "The GOAT! 🐐", "Everything about this is amazing! 😍",
-                    "Pure perfection! 🔥", "Legend in the making! 🏆", "Brilliantly done! 💡", "Chef’s kiss! 👌",
-                    "Picture-perfect moment! 📸", "A true masterpiece! 🖼️", "On point! 🎯", "The internet won today! 🏆",
-                    "Screaming, crying, stunning! 😭", "This is ART! 🎨", "Sooo talented! ✨", "How do you do this?! 🤯",
-                    "Golden content! 🏅", "The best of the best! 🌟", "Speechless! 🤐", "Total legend! 👑",
-                    "A must-watch! 🎥", "Unreal talent! 🧠", "Absolutely breathtaking! 🌅", "No words! 😍",
-                    "You did THAT! 🔥", "Beyond impressive! 🌟", "Icon status! 👑", "Keep shining! ✨",
-                    "Talent level = 1000%! 🚀", "You're built different! 🔥", "Effortlessly amazing! 💫",
-                    "Straight-up iconic! 👑", "Certified masterpiece! ✅", "Too legendary! 🏆",
-                    "This is why I love the internet! 🌐", "Mind-blowingly good! 🤯", "A standing ovation! 👏",
-                    "Your energy is unmatched! ⚡", "So inspiring! 💖", "Dream-level creativity! 🌈",
-                    "This deserves to be framed! 🖼️", "Simply magical! ✨", "You just won TikTok! 🏆"
+                    "Amazing!", "Love this!", "Pure talent!", "You killed it!", "Insane skills!",
+                    "So creative!", "Obsessed!", "You nailed it!", "Mind-blowing!", "Iconic!",
+                    "Masterpiece!", "This is next level!", "Legendary!", "Unbelievable!", "So cool!",
+                    "Brilliant!", "Absolutely stunning!", "On another level!", "Epic!", "You're a genius!",
+                    "Too good!", "Incredible work!", "Simply the best!", "Masterclass!", "Sensational!",
+                    "Phenomenal!", "I'm in awe!", "Talent overload!", "Flawless!", "So much talent!",
+                    "This deserves an award!", "Picture perfect!", "This is gold!", "Insanely good!",
+                    "You inspire me!", "You're a pro!", "Mind = Blown!", "Top-tier content!", "This is it!",
+                    "Can't stop watching!", "You were born for this!", "Perfection!", "Extraordinary!",
+                    "Chills!", "Wow, just wow!", "Absolute fire!", "Totally mesmerizing!", "Too smooth!",
+                    "Flawless execution!", "You're unstoppable!", "Viral-worthy!", "Took my breath away!",
+                    "A masterpiece in motion!", "Unmatched energy!", "Stunning visuals!", "Perfectly done!",
+                    "Game-changer!", "100% impressive!", "Dream-level content!", "Sooo satisfying!",
+                    "Too good to be true!", "Movie star vibes!", "The definition of talent!", "Straight-up magic!",
+                    "Out of this world!", "Such a gift!", "The GOAT!", "Everything about this is amazing!",
+                    "Pure perfection!", "Legend in the making!", "Brilliantly done!", "Chef's kiss!",
+                    "Picture-perfect moment!", "A true masterpiece!", "On point!", "The internet won today!",
+                    "Screaming, crying, stunning!", "This is ART!", "Sooo talented!", "How do you do this?!",
+                    "Golden content!", "The best of the best!", "Speechless!", "Total legend!",
+                    "A must-watch!", "Unreal talent!", "Absolutely breathtaking!", "No words!",
+                    "You did THAT!", "Beyond impressive!", "Icon status!", "Keep shining!",
+                    "Talent level = 1000%!", "You're built different!", "Effortlessly amazing!",
+                    "Straight-up iconic!", "Certified masterpiece!", "Too legendary!",
+                    "This is why I love the internet!", "Mind-blowingly good!", "A standing ovation!",
+                    "Your energy is unmatched!", "So inspiring!", "Dream-level creativity!",
+                    "This deserves to be framed!", "Simply magical!", "You just won TikTok!"
                 ]
             cnt = 0
             body = None
@@ -115,18 +124,22 @@ class TikTokManager:
                 watch_time_min = 5
                 watch_time_max = 30
             print(f'số video sẽ tương tác: {video_number_interact}')
+            self.check_leave_video = False
             for _ in range(video_number_interact+1):
+                check = 0
                 if self.is_stop_interact:
                     break
                 cnt += 1
+                leave_video()
                 if cnt > 1:
                     print(f"▶️ Đang xem video thứ {cnt-1}...")
                     watch_time = float(get_time_random(watch_time_min,watch_time_max))
                     print(f'Thời gian xem video: {int(watch_time)}s')
-                    sleep(watch_time/2)
                     start_time = time()
+                    sleep(watch_time*2/3)
                     # Xác suất like video
                     if random.random() < like_percent:
+                        check += 1
                         try:
                             like_button_xpath = get_xpath('button', attribute='aria-label', attribute_value='Like video', contain=True)
                             like_buttons = get_element_by_xpath(self.driver, like_button_xpath, multiple_ele=True)
@@ -143,6 +156,7 @@ class TikTokManager:
 
                     # Xác suất comment video (10%)
                     if random.random() < comment_percent:
+                        check += 1
                         try:
                             comment_xpath = get_xpath('button', attribute='aria-label', attribute_value='Read or add comment', contain=True)
                             comment_eles = get_element_by_xpath(self.driver, comment_xpath, multiple_ele=True)
@@ -163,8 +177,8 @@ class TikTokManager:
                                         else:
                                             comment_box.send_keys(Keys.RETURN)
 
-                                        print(f"{comment_icon} Đã comment: {comment_text}")
                                         sleep_random(3,5)
+                                        print(f"{comment_icon} Đã comment: {comment_text}")
                                     if random.random() < follow_percent:
                                         follow = self.driver.find_element(By.XPATH, '//button[div//div[text()="Follow"]]')
                                         if follow:
@@ -172,17 +186,20 @@ class TikTokManager:
                                             print(f'{thanhcong} Đã bấm follow')
                                             sleep_random(0.7,2)
                                     close_video()
+                                    leave_video()
                                     break
                                 except:
                                     pass
                             
-                        except Exception:
-                            close_video()
+                        except:
+                            getlog()
+                            self.check_leave_video = True
                             print("❌ Không tìm thấy ô nhập comment")
                     used_time = time() - start_time
-                    sleep_time = watch_time/2 - used_time
+                    sleep_time = watch_time/3 + check * 3 - used_time
                     if sleep_time> 0:
                         sleep(sleep_time)
+                    sleep_random(1,3)
                 else:
                     sleep_random(1,3)
                 # Lướt sang video tiếp theo
@@ -700,7 +717,7 @@ class TikTokManager:
         self.proxy_var = create_frame_label_and_input(self.root,text="Proxy", width=self.width, left=left, right=right)
         if 'proxy' not in self.tiktok_config['template'][self.account]:
             self.tiktok_config['template'][self.account]['proxy'] = ""
-        self.video_number_interact_var = self.create_settings_input(text="Số video tương tác khi đăng (min-max)", config_key="video_number_interact", config=self.tiktok_config, values=['không tương tác', '3-5', '5-10', '10-20'], left=left, right=right)
+        self.video_number_interact_var = self.create_settings_input(text="Số video tương tác khi đăng (min-max)", config_key="video_number_interact_befor_upload", config=self.tiktok_config['template'][self.account], values=['không tương tác', '3-5', '5-10', '10-20'], left=left, right=right)
         self.video_number_interact_var.set('3-5')
         self.auto_interact_var = self.create_settings_input(text="Tương tác tự động", config_key="auto_interact", config=self.tiktok_config, values=['Yes', 'No'], left=left, right=right)
         self.auto_interact_var.set('Yes')
@@ -741,20 +758,22 @@ class TikTokManager:
                 notification(self.root, message)
                 return False
             self.tiktok_config['template'][self.account]["description"] = self.description_var.get("1.0", ctk.END).strip()
-            self.tiktok_config['template'][self.account]["location"] = self.location_var.get().strip()
-            self.tiktok_config['template'][self.account]["hashtags"] = self.hashtags_var.get().strip()
+            self.tiktok_config['template'][self.account]["location"] = self.location_var.get().strip().strip()
+            self.tiktok_config['template'][self.account]["hashtags"] = self.hashtags_var.get().strip().strip()
             self.tiktok_config['template'][self.account]["upload_date"] = upload_date
-            self.tiktok_config['template'][self.account]["publish_times"] = self.publish_times_var.get()
+            self.tiktok_config['template'][self.account]["publish_times"] = self.publish_times_var.get().strip()
             self.tiktok_config['template'][self.account]['cnt_upload_in_day'] = 0
-            self.tiktok_config['template'][self.account]["upload_folder"] = self.upload_folder_var.get()
-            self.tiktok_config['template'][self.account]["thumbnail_folder"] = self.thumbnail_folder_var.get()
+            self.tiktok_config['template'][self.account]["upload_folder"] = self.upload_folder_var.get().strip()
+            self.tiktok_config['template'][self.account]["thumbnail_folder"] = self.thumbnail_folder_var.get().strip()
             self.tiktok_config['template'][self.account]["waiting_verify"] = self.waiting_verify_var.get() == 'Yes'
             self.tiktok_config['template'][self.account]["use_profile_type"] = self.use_profile_type_var.get().strip()
             self.tiktok_config['template'][self.account]["proxy"] = self.proxy_var.get().strip()
             self.tiktok_config["show_browser"] = self.show_browser_var.get() == 'Yes'
             self.tiktok_config["is_delete_after_upload"] = self.is_delete_after_upload_var.get() == 'Yes'
-            self.tiktok_config['template'][self.account]["number_of_days"] = self.number_of_days_var.get()
-            self.tiktok_config['template'][self.account]["day_gap"] = self.day_gap_var.get()
+            self.tiktok_config['template'][self.account]["number_of_days"] = self.number_of_days_var.get().strip()
+            self.tiktok_config['template'][self.account]["day_gap"] = self.day_gap_var.get().strip()
+            self.tiktok_config['template'][self.account]["video_number_interact_befor_upload"] = self.video_number_interact_var.get().strip()
+            self.tiktok_config['template'][self.account]["auto_interact"] = self.auto_interact_var.get().strip()
             self.save_tiktok_config()
             return True
         except:
