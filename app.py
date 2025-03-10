@@ -27,7 +27,7 @@ class MainApp:
                     is_ok = False
             
             if not is_ok:
-                self.serial = create_frame_label_and_input(self.root, label_text="mã đăng ký", width=self.width, left=0.25, right=0.75)
+                self.serial = create_frame_label_and_input(self.root, text="mã đăng ký", width=self.width, left=0.25, right=0.75)
                 self.serial.delete(0, ctk.END)
                 self.serial.insert(0, serial)
                 return
@@ -58,6 +58,7 @@ class MainApp:
             self.is_sign_up_youtube = False
             self.tiktok = None
             self.is_tiktok_window = False
+            self.is_interact_setting_window = False
             self.is_sign_up_tiktok = False
             self.facebook = None
             self.is_sign_up_facebook = False
@@ -328,6 +329,7 @@ class MainApp:
         create_button(frame=self.root, text="Xử lý audio", command=self.open_edit_audio_window)
         create_button(frame=self.root, text="Thiết lập tự động tải - edit - đăng", command=self.open_auto_process_window)
         create_button(frame=self.root, text="Chức năng khác", command=self.other_function)
+        create_button(frame=self.root, text="Tắt proxy hệ thống", command=disable_system_proxy)
         create_button(frame=self.root, text="Cài đặt chung", command=self.open_common_settings)
     
     def open_auto_process_window(self):
@@ -340,21 +342,21 @@ class MainApp:
             auto_thread = threading.Thread(target=self.start_auto_process)
             auto_thread.start()
 
-        self.download_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục lưu video", command=self.choose_folder_to_save, width=self.width, left=0.3, right=0.7)
-        self.download_video_from_url_var = create_frame_label_and_input(self.root, label_text="Link tải hàng loạt video", width=self.width, left=0.3, right=0.7)
-        self.quantity_download_var = self.create_settings_input("Số video muốn tải", values=["20", "50", "100"], left=0.3, right=0.7)
-        self.filter_by_views_var = self.create_settings_input("Lọc theo số lượt xem", values=["100000", "200000", "300000", "500000", "1000000"], left=0.3, right=0.7)
-        self.edit_video_var = self.create_settings_input("Chỉnh sửa video", values=['Yes', 'No'], left=0.3, right=0.7)
-        self.index_file_name_var, self.file_name_var = create_frame_label_input_input(self.root, label_text="Đổi tên video - Số thứ tự", place_holder2="Nhập tên có chứa chuỗi \"<index>\" là vị trí số thứ tự", place_holder1="Số TT", width=self.width, left=0.3, mid=0.1, right=0.6)
-        self.image_position_var = create_frame_label_and_input(self.root, label_text="Trích xuất ảnh làm thumbnail", width=self.width, left=0.3, right=0.7, place_holder='Vd: 5(5 giây cuối) hoặc 00:01:30(giây thứ 90)')
+        self.download_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục lưu video", command=self.choose_folder_to_save, width=self.width, left=left, right=right)
+        self.download_video_from_url_var = create_frame_label_and_input(self.root, text="Link tải hàng loạt video", width=self.width, left=left, right=right)
+        self.quantity_download_var = self.create_settings_input("Số video muốn tải", values=["20", "50", "100"], left=left, right=right)
+        self.filter_by_views_var = self.create_settings_input("Lọc theo số lượt xem", values=["100000", "200000", "300000", "500000", "1000000"], left=left, right=right)
+        self.edit_video_var = self.create_settings_input("Chỉnh sửa video", values=['Yes', 'No'], left=left, right=right)
+        self.index_file_name_var, self.file_name_var = create_frame_label_input_input(self.root, text="Đổi tên video - Số thứ tự", place_holder2="Nhập tên có chứa chuỗi \"<index>\" là vị trí số thứ tự", place_holder1="Số TT", width=self.width, left=left, mid=0.1, right=0.6)
+        self.image_position_var = create_frame_label_and_input(self.root, text="Trích xuất ảnh làm thumbnail", width=self.width, left=left, right=right, place_holder='Vd: 5(5 giây cuối) hoặc 00:01:30(giây thứ 90)')
         youtube_channels = [key for key in self.youtube_config['template'].keys()]
-        self.youtube_channel_var = self.create_settings_input("Đăng lên youtube", values=youtube_channels, left=0.3, right=0.7)
+        self.youtube_channel_var = self.create_settings_input("Đăng lên youtube", values=youtube_channels, left=left, right=right)
         tiktok_channels = [key for key in self.tiktok_config['template'].keys()]
-        self.tiktok_channel_var = self.create_settings_input("Đăng lên tiktok", values=tiktok_channels, left=0.3, right=0.7)
+        self.tiktok_channel_var = self.create_settings_input("Đăng lên tiktok", values=tiktok_channels, left=left, right=right)
         facebook_channels = [key for key in self.facebook_config['template'].keys()]
-        self.facebook_channel_var = self.create_settings_input("Đăng lên facebook", values=facebook_channels, left=0.3, right=0.7)
-        self.delete_after_edit_var = self.create_settings_input("Xóa video gốc sau khi chỉnh sửa", values=['Yes', 'No'], left=0.3, right=0.7)
-        self.delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", values=['Yes', 'No'], left=0.3, right=0.7)
+        self.facebook_channel_var = self.create_settings_input("Đăng lên facebook", values=facebook_channels, left=left, right=right)
+        self.delete_after_edit_var = self.create_settings_input("Xóa video gốc sau khi chỉnh sửa", values=['Yes', 'No'], left=left, right=right)
+        self.delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", values=['Yes', 'No'], left=left, right=right)
         create_button(frame=self.root, text="Bắt đầu tiến trình tự động", command=start_thread_auto_process, width=self.width)
         create_button(self.root, text="Lùi lại", command=self.get_start_window, width=self.width)
 
@@ -855,9 +857,9 @@ class MainApp:
         self.is_open_change_mac_addres_window = True
         self.show_window()
         self.setting_window_size()
-        self.old_mac_address_var = create_frame_label_and_input(self.root, label_text="Nhập mã máy cũ",  width=self.width, left=0.4, right=0.6)
-        self.pass_mac_var = create_frame_label_and_input(self.root, label_text="Nhập mật mã xác nhận", width=self.width, left=0.4, right=0.6)
-        self.new_mac_address_var = create_frame_label_and_input(self.root, label_text="Nhập mã máy mới",  width=self.width, left=0.4, right=0.6)
+        self.old_mac_address_var = create_frame_label_and_input(self.root, text="Nhập mã máy cũ",  width=self.width, left=0.4, right=0.6)
+        self.pass_mac_var = create_frame_label_and_input(self.root, text="Nhập mật mã xác nhận", width=self.width, left=0.4, right=0.6)
+        self.new_mac_address_var = create_frame_label_and_input(self.root, text="Nhập mã máy mới",  width=self.width, left=0.4, right=0.6)
         create_button(frame=self.root, text="Đổi thông tin mã máy", command= change_mac_address_now, width=self.width)
         create_button(self.root, text="Lùi lại", command=self.other_function, width=self.width)
 
@@ -867,7 +869,7 @@ class MainApp:
         self.show_window()
         self.setting_window_size()
         values = list(set([self.youtube_config['template'][key]['gmail'] for key in self.youtube_config['template'].keys()])) or ['-------------------------']
-        self.input_gmail = self.create_settings_input("Chọn tài khoản Youtube", "current_youtube_account" ,values=values, left=0.4, right=0.6, add_button=True, text='Tìm channel', command=self.choose_a_youtube_channel)
+        self.input_gmail = self.create_settings_input("Chọn tài khoản Youtube", "current_youtube_account" ,values=values, left=0.4, right=0.6, add_button=True, text_btn='Tìm channel', command=self.choose_a_youtube_channel)
         self.input_gmail.set(self.youtube_config['current_youtube_account'])
         values = [k for k,v in self.youtube_config['template'].items() if v.get('gmail') == self.youtube_config['current_youtube_account']] or ['-------------------------']
         self.input_current_channel_name = self.create_settings_input("Chọn tên kênh", "current_channel" ,values=values, left=0.4, right=0.6)
@@ -908,7 +910,7 @@ class MainApp:
         self.is_remove_channel = True
         self.setting_window_size()
         self.show_window()
-        self.channel_remove_var = self.create_settings_input(label_text="Nhập tên kênh youtube", config_key='current_channel', values=[key for key in self.youtube_config['template'].keys()], left=0.3, right=0.7)
+        self.channel_remove_var = self.create_settings_input(text="Nhập tên kênh youtube", config_key='current_channel', values=[key for key in self.youtube_config['template'].keys()], left=left, right=right)
         create_button(frame=self.root, text="Bắt đầu xóa thông tin kênh youtube", command=remove_channel_now)
         create_button(self.root, text="Lùi lại", command=self.open_youtube_window, width=self.width)
 
@@ -917,8 +919,8 @@ class MainApp:
         self.is_add_new_channel = True
         self.setting_window_size()
         self.show_window()
-        self.input_gmail = self.create_settings_input(label_text="Tài khoản youtube", config_key='current_youtube_account', values=self.youtube_config['registered_account'], left=0.3, right=0.7)
-        self.input_current_channel_name = create_frame_label_and_input(self.root, label_text="Nhập tên kênh")
+        self.input_gmail = self.create_settings_input(text="Tài khoản youtube", config_key='current_youtube_account', values=self.youtube_config['registered_account'], left=left, right=right)
+        self.input_current_channel_name = create_frame_label_and_input(self.root, text="Nhập tên kênh")
         create_button(frame=self.root, text="Đăng ký ngay", command=self.sign_up_youtube_channel)
         create_button(self.root, text="Lùi lại", command=self.open_youtube_window, width=self.width)
     
@@ -984,11 +986,69 @@ class MainApp:
         self.is_tiktok_window = True
         self.show_window()
         self.setting_window_size()
-        self.tiktok_account_var = self.create_settings_input(label_text="Chọn tài khoản", config_key="current_tiktok_account", values=self.tiktok_config['registered_other_name'])
+        self.tiktok_account_var = self.create_settings_input(text="Chọn tài khoản", config_key="current_tiktok_account", values=self.tiktok_config['registered_other_name'])
         create_button(self.root, text="Mở cửa sổ quản lý kênh tiktok", command=self.start_tiktok_management)
         create_button(self.root, text="Đăng ký tài khoản tiktok mới", command=self.sign_up_tiktok_window)
         create_button(self.root, text="Xóa thông tin kênh tiktok", command=self.remove_tiktok_channel_window)
+        create_button(self.root, text="Thiết lập tương tác cho các kênh tiktok", command=self.interact_setting_window)
         create_button(self.root, text="Lùi lại", command=self.get_start_window, width=self.width)
+
+
+    def interact_setting_window(self):
+        self.reset()
+        self.is_interact_setting_window = True
+        self.show_window()
+        self.setting_window_size()
+        self.insteract_now_var = self.create_settings_input(text="Tương tác ngay", config_key='insteract_now', values=['Yes', 'No'], left=left, right=right)
+        self.video_number_interact_var = self.create_settings_input(text="Số video tương tác(min-max)", config_key='video_number_interact', values=['5-10', '10-20'], left=left, right=right)
+        self.watch_time_var = self.create_settings_input(text="Thời gian xem(min-max) (giây)", config_key='watch_time', values=['5-30', '10-40'], left=left, right=right)
+        self.watch_percent_var = self.create_settings_input(text="Xác suất tiến hành tương tác (%)", config_key='watch_percent', values=['50', '60', '70'], left=left, right=right)
+        self.like_percent_var = self.create_settings_input(text="Xác suất bấm like (%)", config_key='like_percent', values=['30', '40', '50'], left=left, right=right)
+        self.comment_percent_var = self.create_settings_input(text="Xác suất comment (%)", config_key='comment_percent', values=['20', '30', '40'], left=left, right=right)
+        self.follow_percent_var = self.create_settings_input(text="Xác suất bấm follow so với xs comment (%)", config_key='follow_percent', values=['30', '40', '50'], left=left, right=right)
+        self.comments_texts_var = create_frame_label_and_input(self.root, 'Các lời commnet', 'hay lắm,tuyệt vời,...', width=self.width, left=left, right=right)
+        create_button(self.root, text="Lưu thiết lập tương tác", command=self.save_insteract_tiktok_thread, width=self.width)
+        create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
+
+    def start_thread_insteract_tiktok(self):
+        active_threads = []
+        max_threads = 1
+        tiktok_account_othernames = self.tiktok_config['registered_other_name']
+        for othername in tiktok_account_othernames:
+            tiktok_account = self.tiktok_config['registered_account_dic'][othername]
+            if 'auto_interact' not in self.tiktok_config['template'][tiktok_account]:
+                self.tiktok_config['template'][tiktok_account]['auto_interact'] = True
+            if self.tiktok_config['template'][tiktok_account]['auto_interact']:
+                while len(active_threads) >= max_threads:
+                    # Nếu đã đạt giới hạn, chờ một chút trước khi kiểm tra lại
+                    active_threads = [t for t in active_threads if t.is_alive()]
+                    sleep(10)
+
+                print(f'Bắt đầu tương tác cho kênh {othername}: {tiktok_account}')
+                password = self.tiktok_config['template'][tiktok_account]['password']
+                Tiktok = TikTokManager(tiktok_account, password, is_auto_upload=True)
+                Tiktok.tiktok_config['template'][tiktok_account]['use_profile_type'] = "Không dùng"
+                # Tạo và lưu thread vào danh sách
+                thread = threading.Thread(target=Tiktok.interact_with_tiktok, args=(self.config['video_number_interact'],))
+                thread.start()
+                active_threads.append(thread)
+
+    def save_insteract_tiktok_thread(self):
+        self.config['insteract_now'] = self.insteract_now_var.get().strip() == 'Yes'
+        self.config['video_number_interact'] = self.video_number_interact_var.get().strip()
+        self.config['watch_time'] = self.watch_time_var.get().strip()
+        self.config['watch_percent'] = self.watch_percent_var.get().strip()
+        self.config['like_percent'] = self.like_percent_var.get().strip()
+        self.config['comment_percent'] = self.comment_percent_var.get().strip()
+        self.config['follow_percent'] = self.follow_percent_var.get().strip()
+        self.config['comments_texts'] = self.comments_texts_var.get().strip()
+        self.save_config()
+
+        if self.config['insteract_now']:
+            self.config['insteract_now'] = False
+            self.save_config()
+            thread = threading.Thread(target=self.start_thread_insteract_tiktok)
+            thread.start()
 
     def remove_tiktok_channel_window(self):
         def remove_channel_now():
@@ -1021,7 +1081,7 @@ class MainApp:
         self.is_remove_channel = True
         self.setting_window_size()
         self.show_window()
-        self.tiktok_channel_remove_var = self.create_settings_input(label_text="Nhập tên kênh tiktok", config_key='current_tiktok_account', values=self.tiktok_config['registered_other_name'], left=0.3, right=0.7)
+        self.tiktok_channel_remove_var = self.create_settings_input(text="Nhập tên kênh tiktok", config_key='current_tiktok_account', values=self.tiktok_config['registered_other_name'], left=left, right=right)
         create_button(frame=self.root, text="Bắt đầu xóa thông tin kênh tiktok", command=remove_channel_now)
         create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
 
@@ -1032,6 +1092,7 @@ class MainApp:
         self.setting_window_size()
         def sign_up_tiktok():
             self.is_sign_up_tiktok = True
+            self.get_tiktok_config()
             account_txt_path = self.chose_account_txt_file_var.get().strip()
             if account_txt_path:
                 acc_data = get_json_data(account_txt_path)
@@ -1039,24 +1100,40 @@ class MainApp:
                     print(f"Không tìm thấy thông tin tài khoản trong file {account_txt_path}")
                     return
                 for line in acc_data:
+                    tiktok_account = tiktok_password = other_name = proxy = ""
                     acc_info = [fff.strip() for fff in line.split(',')]
                     try:
-                        tiktok_account = acc_info[0]
-                        tiktok_password = acc_info[1]
-                        other_name = acc_info[0]
+                        if len(acc_info) == 4:
+                            tiktok_account, tiktok_password, other_name, proxy = acc_info
+                        elif len(acc_info) == 3:
+                            if ":" in acc_info[2]:
+                                tiktok_account, tiktok_password, proxy = acc_info
+                            else:
+                                tiktok_account, tiktok_password, other_name = acc_info
+                        elif len(acc_info) == 2:
+                            tiktok_account, tiktok_password = acc_info
+                        else:
+                            print(f'{thatbai} Tài khoản phải có ít nhất 2 thông tin account,password: \n<{line}>')
+                            continue
+
+                        if not other_name or other_name == 'none':
+                            other_name = tiktok_account
                     except:
-                        print(f'{thatbai} Tài khoản không đủ thông tin: <{line}>')
+                        print(f'{thatbai} Tài khoản phải có ít nhất 2 thông tin account,password: \n<{line}>')
                         continue
-                    if len(acc_info) == 3:
-                        other_name = acc_info[2]
-                    if not tiktok_account or not tiktok_password:
+  
+                    if not tiktok_account or not tiktok_password or not other_name:
                         self.noti("Hãy nhập đầy đủ thông tin!")
                         continue
+                    if 'registered_other_name' not in self.tiktok_config:
+                        self.tiktok_config['registered_other_name'] = []
+    
                     if tiktok_account not in self.tiktok_config['template']:
                         self.tiktok_config['template'][tiktok_account] = {}
                     self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
                     self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
                     self.tiktok_config['template'][tiktok_account]['other_name'] = other_name
+                    self.tiktok_config['template'][tiktok_account]['proxy'] = proxy
                     self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
                     self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
                     self.tiktok_config['template'][tiktok_account]['description'] = ""
@@ -1071,29 +1148,36 @@ class MainApp:
                     self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
                     self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
                     self.tiktok_config['template'][tiktok_account]['first_login'] = True
-                    if 'registered_other_name' not in self.tiktok_config:
-                        self.tiktok_config['registered_other_name'] = []
-                    if other_name not in self.tiktok_config['registered_other_name']:
-                        self.tiktok_config['registered_other_name'].append(other_name)
-                    else:
-                        print(f'{thatbai} Tên hiển thị tại dòng <{line}> đã tồn tại')
-                        continue
+                    self.tiktok_config['template'][tiktok_account]['video_number_interact_befor_upload'] = str(get_random_number_int(3,6))
+                    self.tiktok_config['template'][tiktok_account]['auto_interact'] = True
+                    
                     if 'registered_account_dic' not in self.tiktok_config:
                         self.tiktok_config['registered_account_dic'] = {}
                     self.tiktok_config['registered_account_dic'][other_name] = tiktok_account
-                    print(f'{thanhcong} Đăng ký tài khoản <{other_name}> thành công')
+                    if other_name not in self.tiktok_config['registered_other_name']:
+                        self.tiktok_config['registered_other_name'].append(other_name)
+                        print(f'{thanhcong} Đăng ký tài khoản <{other_name}> thành công')
+                    else:
+                        print(f'{thanhcong} Cập nhật thành công cho tài khoản: <{line}>')
             else:
-                other_name = self.other_name_var.get()
-                tiktok_account = self.tiktok_account_var.get()
-                tiktok_password = self.tiktok_password_var.get()
+                other_name = self.other_name_var.get().strip()
+                tiktok_account = self.tiktok_account_var.get().strip()
+                tiktok_password = self.tiktok_password_var.get().strip()
+                proxy = self.proxy_var.get().strip()
                 if not tiktok_account or not tiktok_password:
                     self.noti("Hãy nhập đầy đủ thông tin!")
                     return
+                if not other_name or other_name == 'none':
+                    other_name = tiktok_account
+                if 'registered_other_name' not in self.tiktok_config:
+                    self.tiktok_config['registered_other_name'] = []
+  
                 if tiktok_account not in self.tiktok_config['template']:
                     self.tiktok_config['template'][tiktok_account] = {}
                 self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
                 self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
                 self.tiktok_config['template'][tiktok_account]['other_name'] = other_name
+                self.tiktok_config['template'][tiktok_account]['proxy'] = proxy
                 self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
                 self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
                 self.tiktok_config['template'][tiktok_account]['description'] = ""
@@ -1108,21 +1192,21 @@ class MainApp:
                 self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
                 self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
                 self.tiktok_config['template'][tiktok_account]['first_login'] = True
-                if 'registered_other_name' not in self.tiktok_config:
-                    self.tiktok_config['registered_other_name'] = []
-                if other_name not in self.tiktok_config['registered_other_name']:
-                    self.tiktok_config['registered_other_name'].append(other_name)
-                else:
-                    print(f'{thatbai} Tên hiển thị <{other_name}> đã tồn tại')
+
                 if 'registered_account_dic' not in self.tiktok_config:
                     self.tiktok_config['registered_account_dic'] = {}
                 self.tiktok_config['registered_account_dic'][other_name] = tiktok_account
+                if other_name not in self.tiktok_config['registered_other_name']:
+                    self.tiktok_config['registered_other_name'].append(other_name)
+                    print(f'{thanhcong} Đăng ký tài khoản <{other_name}> thành công')
+                else:
+                    print(f'{thanhcong} Cập nhật thành công cho tài khoản: <{other_name}>')
             save_to_json_file(self.tiktok_config, tiktok_config_path)
             self.start_tiktok_management()
 
-        self.other_name_var = create_frame_label_and_input(self.root, label_text="Tên hiển thị")
-        self.tiktok_account_var = create_frame_label_and_input(self.root, label_text="Nhập tài khoản tiktok")
-        self.tiktok_password_var = create_frame_label_and_input(self.root, label_text="Nhập mật khẩu", is_password=True)
+        self.other_name_var = create_frame_label_and_input(self.root, text="Tên hiển thị")
+        self.tiktok_account_var = create_frame_label_and_input(self.root, text="Nhập tài khoản tiktok")
+        self.tiktok_password_var = create_frame_label_and_input(self.root, text="Nhập mật khẩu", is_password=True)
         self.chose_account_txt_file_var = create_frame_button_and_input(self.root, "Lấy tài khoản từ file .txt", command=self.chose_account_txt_file, width=self.width, left=left, right=right)
         create_button(self.root, text="Đăng ký ngay", command=sign_up_tiktok)
         create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
@@ -1153,8 +1237,8 @@ class MainApp:
         self.is_facebook_window = True
         self.show_window()
         self.setting_window_size()
-        self.facebook_account_var = self.create_settings_input(label_text="Chọn tài khoản facebook", config_key="current_facebook_account", values=self.facebook_config['registered_account'])
-        self.facebook_page_name_var = self.create_settings_input(label_text="Chọn trang facebook", config_key="current_page", values=[key for key in self.facebook_config['template'].keys()])
+        self.facebook_account_var = self.create_settings_input(text="Chọn tài khoản facebook", config_key="current_facebook_account", values=self.facebook_config['registered_account'])
+        self.facebook_page_name_var = self.create_settings_input(text="Chọn trang facebook", config_key="current_page", values=[key for key in self.facebook_config['template'].keys()])
         create_button(self.root, text="Mở cửa sổ quản lý trang facebook", command=self.start_facebook_management)
         create_button(self.root, text="Đăng ký trang facebook mới", command=self.sign_up_facebook_window)
         create_button(self.root, text="Xóa thông tin trang facebook", command=self.remove_facebook_page_window)
@@ -1195,9 +1279,9 @@ class MainApp:
             save_to_json_file(self.facebook_config, facebook_config_path)
             self.start_facebook_management()
 
-        self.facebook_account_var = self.create_settings_input(label_text="Tài khoản Facebook", config_key='current_facebook_account', values=self.facebook_config['registered_account'], left=0.3, right=0.7)
-        self.facebook_password_var = create_frame_label_and_input(self.root, label_text="Nhập mật khẩu", is_password=True)
-        self.facebook_page_name_var = create_frame_label_and_input(self.root, label_text="Nhập tên trang")
+        self.facebook_account_var = self.create_settings_input(text="Tài khoản Facebook", config_key='current_facebook_account', values=self.facebook_config['registered_account'], left=left, right=right)
+        self.facebook_password_var = create_frame_label_and_input(self.root, text="Nhập mật khẩu", is_password=True)
+        self.facebook_page_name_var = create_frame_label_and_input(self.root, text="Nhập tên trang")
         create_button(self.root, text="Đăng ký ngay", command=sign_up_facebook)
         create_button(self.root, text="Lùi lại", command=self.open_facebook_window, width=self.width)
 
@@ -1223,7 +1307,7 @@ class MainApp:
         self.is_remove_channel = True
         self.setting_window_size()
         self.show_window()
-        self.page_remove_var = self.create_settings_input(label_text="Nhập tên kênh youtube", config_key='current_facebook_account', values=[key for key in self.facebook_config['template'].keys()], left=0.3, right=0.7)
+        self.page_remove_var = self.create_settings_input(text="Nhập tên kênh youtube", config_key='current_facebook_account', values=[key for key in self.facebook_config['template'].keys()], left=left, right=right)
         create_button(frame=self.root, text="Bắt đầu xóa thông tin trang facebook", command=remove_channel_now)
         create_button(self.root, text="Lùi lại", command=self.open_facebook_window, width=self.width)
 
@@ -1276,14 +1360,14 @@ class MainApp:
         self.is_edit_audio_option = True
         self.setting_window_size()
         self.show_window()
-        self.end_cut_var, self.first_cut_var = create_frame_label_input_input(self.root, label_text="Cắt ở đầu/cuối video (s)", width=self.width, left=0.4, mid=0.28, right=0.32)
+        self.end_cut_var, self.first_cut_var = create_frame_label_input_input(self.root, text="Cắt ở đầu/cuối video (s)", width=self.width, left=0.4, mid=0.28, right=0.32)
         # self.end_cut_var.delete(0, ctk.END)
         self.end_cut_var.insert(0, 0)
         self.first_cut_var.insert(0, 0)
-        self.audio_speed_var = self.create_settings_input(label_text="Tốc độ phát", config_key="audio_speed", values=['0.8', '1', '1.2'], left=0.4, right=0.6)
-        self.pitch_factor_var = self.create_settings_input(label_text="Điều chỉnh cao độ (vd: 1.2)", config_key="pitch_factor", values=['-0.8','1','1.2'], left=0.4, right=0.6)
-        self.cut_silence_var = self.create_settings_input(label_text="Cắt bỏ những đoạn im lặng", config_key="cut_silence", values=['Yes', 'No'], left=0.4, right=0.6)
-        self.aecho_var = self.create_settings_input(label_text="Tạo tiếng vang (ms)", config_key="aecho", values=['100', '500', '1000'], left=0.4, right=0.6)
+        self.audio_speed_var = self.create_settings_input(text="Tốc độ phát", config_key="audio_speed", values=['0.8', '1', '1.2'], left=0.4, right=0.6)
+        self.pitch_factor_var = self.create_settings_input(text="Điều chỉnh cao độ (vd: 1.2)", config_key="pitch_factor", values=['-0.8','1','1.2'], left=0.4, right=0.6)
+        self.cut_silence_var = self.create_settings_input(text="Cắt bỏ những đoạn im lặng", config_key="cut_silence", values=['Yes', 'No'], left=0.4, right=0.6)
+        self.aecho_var = self.create_settings_input(text="Tạo tiếng vang (ms)", config_key="aecho", values=['100', '500', '1000'], left=0.4, right=0.6)
         self.folder_get_audio_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa audio", command= self.choose_folder_get_audio, left=0.4, right=0.6, width=self.width)
         self.folder_get_audio_var.insert(0, self.config['audios_edit_folder'])
         create_button(self.root, text="Bắt đầu chỉnh sửa audio", command=start_thread_edit_audio, width=self.width)
@@ -1294,8 +1378,8 @@ class MainApp:
         self.is_extract_audio_option = True
         self.setting_window_size()
         self.show_window()
-        self.segment_audio_var = create_frame_label_and_input(self.root, label_text="Thời gian bắt đầu-kết thúc", width=self.width, left=0.4, right=0.6)
-        self.video_get_audio_url = create_frame_label_and_input(self.root, label_text="Lấy audio từ Link", left=0.4, right=0.6)
+        self.segment_audio_var = create_frame_label_and_input(self.root, text="Thời gian bắt đầu-kết thúc", width=self.width, left=0.4, right=0.6)
+        self.video_get_audio_url = create_frame_label_and_input(self.root, text="Lấy audio từ Link", left=0.4, right=0.6)
         self.audio_edit_path = create_frame_button_and_input(self.root,text="Lấy audio từ file MP3", command= self.choose_audio_edit_file, left=0.4, right=0.6)
         self.video_get_audio_path = create_frame_button_and_input(self.root,text="Lấy audio từ file video", command= self.choose_video_get_audio_path, left=0.4, right=0.6)
         self.folder_get_audio_var = create_frame_button_and_input(self.root,text="Lấy audio từ video trong thư mục", command= self.choose_folder_get_audio, left=0.4, right=0.6)
@@ -1379,12 +1463,12 @@ class MainApp:
         self.is_cut_video_window =True
         self.show_window()
         self.setting_window_size()
-        self.segments_var = self.create_settings_input(label_text="Khoảng thời gian muốn lấy(start-end)", left=0.4, right=0.6)
-        self.fast_cut_var = self.create_settings_input(label_text="Cắt nhanh", values=["Yes", "No"], left=0.4, right=0.6)
+        self.segments_var = self.create_settings_input(text="Khoảng thời gian muốn lấy(start-end)", left=0.4, right=0.6)
+        self.fast_cut_var = self.create_settings_input(text="Cắt nhanh", values=["Yes", "No"], left=0.4, right=0.6)
         self.fast_cut_var.set(value="No")
-        self.get_audio_var = self.create_settings_input(label_text="Trích xuất MP3", values=["Yes", "No"], left=0.4, right=0.6)
+        self.get_audio_var = self.create_settings_input(text="Trích xuất MP3", values=["Yes", "No"], left=0.4, right=0.6)
         self.get_audio_var.set(value="No")
-        self.choose_is_connect_var = self.create_settings_input(label_text="Nối các video lại", values=["No", "Connect", "Fast Connect"], left=0.4, right=0.6)
+        self.choose_is_connect_var = self.create_settings_input(text="Nối các video lại", values=["No", "Connect", "Fast Connect"], left=0.4, right=0.6)
         self.choose_is_connect_var.set(value="No")
         self.videos_edit_path_var = create_frame_button_and_input(self.root, "Chọn video muốn cắt", width=self.width, command=self.choose_videos_edit_file, left=0.4, right=0.6)
         self.videos_edit_folder_var = create_frame_button_and_input(self.root, "Chọn thư mục chứa các video", width=self.width, command=self.choose_videos_edit_folder, left=0.4, right=0.6)
@@ -1397,7 +1481,7 @@ class MainApp:
         self.show_window()
         self.setting_window_size()
         self.file_name_var = create_frame_label_and_input(self.root, "Đặt tên file sau khi gộp", width=self.width, left=0.4, right=0.6)
-        self.fast_combine_var = self.create_settings_input(label_text="Gộp nhanh", values=["Yes", "No"], left=0.4, right=0.6)
+        self.fast_combine_var = self.create_settings_input(text="Gộp nhanh", values=["Yes", "No"], left=0.4, right=0.6)
         self.fast_combine_var.set('Yes')
         self.videos_edit_folder_var = create_frame_button_and_input(self.root, "Chọn thư mục chứa video", command=self.choose_videos_edit_folder, width=self.width, left=0.4, right=0.6)
         self.videos_edit_folder_var.insert(0, self.config['videos_edit_folder'])
@@ -1410,7 +1494,7 @@ class MainApp:
         self.show_window()
         self.setting_window_size()
         self.file_name_var = create_frame_label_and_input(self.root, "Đặt tên file sau khi gộp", width=self.width, left=0.4, right=0.6)
-        self.fast_combine_var = self.create_settings_input(label_text="Gộp nhanh", values=["Yes", "No"], left=0.4, right=0.6)
+        self.fast_combine_var = self.create_settings_input(text="Gộp nhanh", values=["Yes", "No"], left=0.4, right=0.6)
         self.fast_combine_var.set('Yes')
         self.videos_edit_folder_var = create_frame_button_and_input(self.root, "Chọn thư mục chứa audio", command=self.choose_videos_edit_folder, width=self.width, left=0.4, right=0.6)
         self.videos_edit_folder_var.insert(0, self.config['videos_edit_folder'])
@@ -1432,9 +1516,9 @@ class MainApp:
         self.is_convert_video_window = True
         self.show_window()
         self.setting_window_size()
-        self.choose_convert_type = self.create_settings_input(label_text="Chọn tỷ lệ muốn chuyển đổi", config_key="convert_type", values=["16:9 to 9:16", "9:16 to 16:9"])
+        self.choose_convert_type = self.create_settings_input(text="Chọn tỷ lệ muốn chuyển đổi", config_key="convert_type", values=["16:9 to 9:16", "9:16 to 16:9"])
         self.choose_convert_type.set("16:9 to 9:16")
-        self.choose_zoom_size = self.create_settings_input(label_text="Zoom video(16:9 to 9:16)")
+        self.choose_zoom_size = self.create_settings_input(text="Zoom video(16:9 to 9:16)")
         self.videos_edit_folder_var = create_frame_button_and_input(self.root, "Chọn thư mục chứa video", width=self.width, command=self.choose_videos_edit_folder, left=0.4, right=0.6)
         self.videos_edit_folder_var.insert(0, self.config['videos_edit_folder'])
         create_button(self.root, text="Bắt đầu chuyển đổi", width=self.width, command=self.start_convert_video)
@@ -1617,7 +1701,7 @@ class MainApp:
         self.is_edit_video_window = True
         self.setting_window_size()
         self.show_window()
-        self.end_cut_var, self.first_cut_var = create_frame_label_input_input(self.root, label_text="Cắt ở đầu/cuối video (s)", width=self.width, left=0.4, mid=0.28, right=0.32)
+        self.end_cut_var, self.first_cut_var = create_frame_label_input_input(self.root, text="Cắt ở đầu/cuối video (s)", width=self.width, left=0.4, mid=0.28, right=0.32)
         self.first_cut_var.insert(0, self.config['first_cut'])
         self.end_cut_var.insert(0, self.config['end_cut'])
         self.flip_video_var = self.create_settings_input("Lật ngang video", "flip_video", values=["Yes", "No"])
@@ -2093,13 +2177,13 @@ class MainApp:
         save_to_json_file(self.download_info, download_info_path)
 
     def get_youtube_config(self):
-        self.youtube_config = get_json_data(youtube_config_path)
+        self.youtube_config = load_youtube_config()
 
     def get_tiktok_config(self):
-        self.tiktok_config = get_json_data(tiktok_config_path)
+        self.tiktok_config = load_tiktok_config()
 
     def get_facebook_config(self):
-        self.facebook_config = get_json_data(facebook_config_path)
+        self.facebook_config = load_facebook_config()
 
     def save_youtube_config(self):
         save_to_json_file(self.youtube_config, youtube_config_path)
@@ -2172,11 +2256,11 @@ class MainApp:
         self.water_path_var.insert(0, water_mask_image)
 
 #------------------------------------------------------Common-----------------------------------------------------
-    def create_settings_input(self, label_text, config_key=None, values=None, is_textbox = False, left=0.4, right=0.6, add_button=False, text=None, command=None):
+    def create_settings_input(self, text, config_key=None, values=None, is_textbox = False, left=0.4, right=0.6, add_button=False, command=None, text_btn=None):
         frame = create_frame(self.root)
         if add_button:
-            create_button(frame= frame, text=text, command=command, width=0.2, side=RIGHT)
-        create_label(frame, text=label_text, side=LEFT, width=self.width*left, anchor='w')
+            create_button(frame= frame, text=text_btn, command=command, width=0.2, side=RIGHT)
+        create_label(frame, text=text, side=LEFT, width=self.width*left, anchor='w')
 
         if values:
             if not config_key:
@@ -2218,6 +2302,7 @@ class MainApp:
         self.is_start_window = False
         self.is_youtube_window = False
         self.is_tiktok_window = False
+        self.is_interact_setting_window = False
         self.is_facebook_window= False
         self.is_edit_video_window= False
         self.is_edit_video_window= False
@@ -2464,8 +2549,13 @@ class MainApp:
             elif self.is_tiktok_window:
                 self.root.title("Tiktok Window")
                 self.width = 500
-                self.height_window = 307
+                self.height_window = 352
                 self.is_tiktok_window = False
+            elif self.is_interact_setting_window:
+                self.root.title("Tiktok Insteract Window")
+                self.width = 600
+                self.height_window = 550
+                self.is_interact_setting_window = False
             elif self.is_sign_up_tiktok:
                 self.root.title("Sign Up Tiktok")
                 self.width = 500
@@ -2525,10 +2615,10 @@ class MainApp:
         self.reset()
         self.is_rename_file_by_index_window = True
         self.setting_window_size()
-        self.file_name_var = create_frame_label_and_input(self.root, label_text="Tên file muốn đổi", place_holder="Tên file có chứa \"<index>\" làm vị trí đặt số", width=self.width, left=0.4, right=0.6)
-        self.index_file_name_var = create_frame_label_and_input(self.root, label_text="Số thứ tự bắt đầu", width=self.width, left=0.4, right=0.6)
+        self.file_name_var = create_frame_label_and_input(self.root, text="Tên file muốn đổi", place_holder="Tên file có chứa \"<index>\" làm vị trí đặt số", width=self.width, left=0.4, right=0.6)
+        self.index_file_name_var = create_frame_label_and_input(self.root, text="Số thứ tự bắt đầu", width=self.width, left=0.4, right=0.6)
         self.index_file_name_var.insert(0, '1')
-        self.file_name_extension_var = create_frame_label_and_input(self.root, label_text="Loại file muốn đổi tên", width=self.width, left=0.4, right=0.6)
+        self.file_name_extension_var = create_frame_label_and_input(self.root, text="Loại file muốn đổi tên", width=self.width, left=0.4, right=0.6)
         self.file_name_extension_var.insert(0, '.mp4')
         self.videos_edit_folder_var = create_frame_button_and_input(self.root,text="Chọn Thư Mục Chứa File", command= self.choose_videos_edit_folder, left=0.4, right=0.6, width=self.width)
         create_button(frame=self.root, text="Bắt Đầu Đổi Tên", command= self.rename_file_by_index)
@@ -2539,7 +2629,7 @@ class MainApp:
         self.reset()
         self.is_extract_image_from_video_window = True
         self.setting_window_size()
-        self.image_position_var = create_frame_label_and_input(self.root, label_text="Chọn vị trí trích xuất ảnh", width=self.width, left=0.4, right=0.6, place_holder='Ví dụ: 00:40 hoặc 00:10:15')
+        self.image_position_var = create_frame_label_and_input(self.root, text="Chọn vị trí trích xuất ảnh", width=self.width, left=0.4, right=0.6, place_holder='Ví dụ: 00:40 hoặc 00:10:15')
         self.videos_edit_folder_var = create_frame_button_and_input(self.root,text="Chọn Thư Mục Chứa Video", command= self.choose_videos_edit_folder, left=0.4, right=0.6, width=self.width)
         create_button(frame=self.root, text="Bắt Đầu Trích Xuất Ảnh", command= self.extract_image_from_video)
         create_button(self.root, text="Lùi lại", command=self.other_function, width=self.width)
@@ -2549,8 +2639,8 @@ class MainApp:
         self.reset()
         self.is_remove_char_in_file_name_window = True
         self.setting_window_size()
-        self.char_want_to_remove_var = create_frame_label_and_input(self.root, label_text="Nhập các ký tự muốn loại bỏ", width=self.width, left=0.4, right=0.6, place_holder='Ví dụ: .,-,#')
-        self.file_name_extension_var = create_frame_label_and_input(self.root, label_text="Loại file muốn đổi tên", width=self.width, left=0.4, right=0.6)
+        self.char_want_to_remove_var = create_frame_label_and_input(self.root, text="Nhập các ký tự muốn loại bỏ", width=self.width, left=0.4, right=0.6, place_holder='Ví dụ: .,-,#')
+        self.file_name_extension_var = create_frame_label_and_input(self.root, text="Loại file muốn đổi tên", width=self.width, left=0.4, right=0.6)
         self.file_name_extension_var.insert(0, '.mp4')
         self.videos_edit_folder_var = create_frame_button_and_input(self.root,text="Chọn Thư Mục Chứa File", command= self.choose_videos_edit_folder, left=0.4, right=0.6, width=self.width)
         create_button(frame=self.root, text="Bắt Đầu Đổi Tên", command= self.remove_char_in_file_name)
@@ -2591,8 +2681,8 @@ class MainApp:
         self.is_text_to_mp3_window = True
         self.setting_window_size()
         self.file_path_get_var = create_frame_button_and_input(self.root, text="File \'.txt\' muốn chuyển đổi", command= self.choose_directory_get_txt_file, width=self.width, left=0.4, right=0.6)
-        self.speed_talk_var = self.create_settings_input(label_text="Tốc độ đọc", config_key='speed_talk', values=["0.8", "0.9", "1", "1.1", "1.2"])
-        self.convert_multiple_record_var = self.create_settings_input(label_text="Chế độ chuyển theo từng dòng", values=["Yes", "No"])
+        self.speed_talk_var = self.create_settings_input(text="Tốc độ đọc", config_key='speed_talk', values=["0.8", "0.9", "1", "1.1", "1.2"])
+        self.convert_multiple_record_var = self.create_settings_input(text="Chế độ chuyển theo từng dòng", values=["Yes", "No"])
         self.convert_multiple_record_var.set("No")
         create_button(frame=self.root, text="Bắt đầu chuyển đổi", command= self.text_to_mp3)
         create_button(self.root, text="Lùi lại", command=self.open_edit_audio_window, width=self.width)

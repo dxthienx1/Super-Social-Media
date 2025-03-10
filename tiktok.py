@@ -24,33 +24,210 @@ class TikTokManager:
         self.is_stop_upload = False
         self.is_stop_download = False
         self.check_copyright = True
+        self.is_stop_interact = False
 
 #-----------------------------Thao tác trên tiktok--------------------------------------------------------------
 
-    def interact_with_tiktok(self):
-        self.login(True)
+    def interact_with_tiktok(self, video_number_interact_str=None):
+        def close_video():
+            browse_close_x = get_xpath_by_multi_attribute('button', ['aria-label="Close"'])
+            browse_close = get_element_by_xpath(self.driver, browse_close_x)
+            if browse_close:
+                browse_close.click()
+                sleep_random(1.5,3)
+            leave = get_element_by_text(self.driver, 'Leave')
+            if leave:
+                try:
+                    leave.click()
+                except:
+                    pass
+                sleep(1)
+        try:
+            if video_number_interact_str:
+                self.login(True)
+                if video_number_interact_str == 'không tương tác':
+                    video_number_interact = 0
+                else:
+                    try:
+                        video_number_interact_list = [int(fff.strip()) for fff in video_number_interact_str.split('-')]
+                        video_number_interact = get_random_number_int(video_number_interact_list[0],video_number_interact_list[1])
+                    except:
+                        print(f'Định dạng số video tương tác phải là min-max. Ví dụ muốn tương tác 3 đến 5 video thì phải đặt là 3-5')
+                        video_number_interact = get_random_number_int(0,3)
+            total_config = load_config()
+            watch_percent = int(total_config.get('watch_percent', 60)) / 100
+            print(f'Tỷ lệ tương tác: {watch_percent*100}%')
+            like_percent = int(total_config.get('like_percent', 40)) / 100
+            comment_percent = int(total_config.get('comment_percent', 20)) / 100
+            follow_percent = int(total_config.get('follow_percent', 30)) / 100
+            print(f'Tỷ lệ bấm like: {like_percent*100}%')
+            print(f'Tỷ lệ comment: {comment_percent*100}%')
+            print(f'Tỷ lệ bấm follow so với tỷ lệ comment: {follow_percent*100}%')
+            
+            if random.random() > watch_percent:
+                print("🚀 Bỏ qua tương tác TikTok lần này.")
+                return
+            self.driver.get(trang_chu_tiktok)
+            sleep_random(3,5)
+            print("🎯 Bắt đầu tương tác trên TikTok...")
+
+            if 'comments_texts' not in total_config:
+                total_config['comments_texts'] = ""
+            if total_config['comments_texts']:
+                comments_list = total_config['comments_texts'].split(',')
+            else:
+                comments_list = [
+                    "Amazing! 🤩", "Love this! ❤️", "Pure talent! 🎭", "You killed it! 🔥", "Insane skills! 😱",
+                    "So creative! 🎨", "Obsessed! 😍", "You nailed it! ✅", "Mind-blowing! 🤯", "Iconic! 👑",
+                    "Masterpiece! 🎭", "This is next level! 🚀", "Legendary! 🏆", "Unbelievable! 😲", "So cool! ❄️",
+                    "Brilliant! 💡", "Absolutely stunning! 😍", "On another level! 🔝", "Epic! 🎬", "You're a genius! 🧠",
+                    "Too good! 👍", "Incredible work! 👏", "Simply the best! 🥇", "Masterclass! 🎓", "Sensational! 🎶",
+                    "Phenomenal! 🌟", "I'm in awe! 😍", "Talent overload! ⚡", "Flawless! 🌈", "So much talent! ✨",
+                    "This deserves an award! 🏆", "Picture perfect! 📸", "This is gold! 🏅", "Insanely good! 🎯",
+                    "You inspire me! 💖", "You're a pro! 🎖️", "Mind = Blown! 🤯", "Top-tier content! 🔥", "This is it! ✅",
+                    "Can't stop watching! 👀", "You were born for this! 👏", "Perfection! 🎭", "Extraordinary! 🎨",
+                    "Chills! ❄️", "Wow, just wow! 😍", "Absolute fire! 🔥", "Totally mesmerizing! ✨", "Too smooth! 😎",
+                    "Flawless execution! ✅", "You're unstoppable! 🚀", "Viral-worthy! 🎥", "Took my breath away! 😲",
+                    "A masterpiece in motion! 🎬", "Unmatched energy! ⚡", "Stunning visuals! 📷", "Perfectly done! 🏅",
+                    "Game-changer! 🎮", "100% impressive! 💯", "Dream-level content! 🌙", "Sooo satisfying! 😌",
+                    "Too good to be true! ✨", "Movie star vibes! 🎬", "The definition of talent! 🎭", "Straight-up magic! ✨",
+                    "Out of this world! 🚀", "Such a gift! 🎁", "The GOAT! 🐐", "Everything about this is amazing! 😍",
+                    "Pure perfection! 🔥", "Legend in the making! 🏆", "Brilliantly done! 💡", "Chef’s kiss! 👌",
+                    "Picture-perfect moment! 📸", "A true masterpiece! 🖼️", "On point! 🎯", "The internet won today! 🏆",
+                    "Screaming, crying, stunning! 😭", "This is ART! 🎨", "Sooo talented! ✨", "How do you do this?! 🤯",
+                    "Golden content! 🏅", "The best of the best! 🌟", "Speechless! 🤐", "Total legend! 👑",
+                    "A must-watch! 🎥", "Unreal talent! 🧠", "Absolutely breathtaking! 🌅", "No words! 😍",
+                    "You did THAT! 🔥", "Beyond impressive! 🌟", "Icon status! 👑", "Keep shining! ✨",
+                    "Talent level = 1000%! 🚀", "You're built different! 🔥", "Effortlessly amazing! 💫",
+                    "Straight-up iconic! 👑", "Certified masterpiece! ✅", "Too legendary! 🏆",
+                    "This is why I love the internet! 🌐", "Mind-blowingly good! 🤯", "A standing ovation! 👏",
+                    "Your energy is unmatched! ⚡", "So inspiring! 💖", "Dream-level creativity! 🌈",
+                    "This deserves to be framed! 🖼️", "Simply magical! ✨", "You just won TikTok! 🏆"
+                ]
+            cnt = 0
+            body = None
+            watch_time_str = total_config.get('watch_time', '5-30')
+            watch_time_list = watch_time_str.split('-')
+            try:
+                watch_time_min = int(watch_time_list[0])
+                watch_time_max = int(watch_time_list[1])
+            except:
+                watch_time_min = 5
+                watch_time_max = 30
+            print(f'số video sẽ tương tác: {video_number_interact}')
+            for _ in range(video_number_interact+1):
+                if self.is_stop_interact:
+                    break
+                cnt += 1
+                if cnt > 1:
+                    print(f"▶️ Đang xem video thứ {cnt-1}...")
+                    watch_time = float(get_time_random(watch_time_min,watch_time_max))
+                    print(f'Thời gian xem video: {int(watch_time)}s')
+                    sleep(watch_time/2)
+                    start_time = time()
+                    # Xác suất like video
+                    if random.random() < like_percent:
+                        try:
+                            like_button_xpath = get_xpath('button', attribute='aria-label', attribute_value='Like video', contain=True)
+                            like_buttons = get_element_by_xpath(self.driver, like_button_xpath, multiple_ele=True)
+                            for like_button in like_buttons:
+                                try:
+                                    like_button.click()
+                                    print(f"{like_icon} Đã like video")
+                                    break
+                                except:
+                                    pass
+                            sleep_random(0.5,1)
+                        except Exception:
+                            print("❌ Không tìm thấy nút like")
+
+                    # Xác suất comment video (10%)
+                    if random.random() < comment_percent:
+                        try:
+                            comment_xpath = get_xpath('button', attribute='aria-label', attribute_value='Read or add comment', contain=True)
+                            comment_eles = get_element_by_xpath(self.driver, comment_xpath, multiple_ele=True)
+                            for comment_ele in comment_eles:
+                                try:
+                                    comment_ele.click()
+                                    sleep_random(1,3)
+                                    comment_text = random.choice(comments_list)
+                                    comment_box_xpath = get_xpath_by_multi_attribute('div', ['role="textbox"', 'contenteditable="true"'])
+                                    comment_box = get_element_by_xpath(self.driver, comment_box_xpath)
+                                    if comment_box:
+                                        input_char_by_char(comment_box, comment_text)
+                                        sleep_random(1,2)
+                                        post_xpath = get_xpath_by_multi_attribute('div', ['aria-label="Post"', 'role="button"'])
+                                        post_ele = get_element_by_xpath(self.driver, post_xpath)
+                                        if post_ele:
+                                            post_ele.click()
+                                        else:
+                                            comment_box.send_keys(Keys.RETURN)
+
+                                        print(f"{comment_icon} Đã comment: {comment_text}")
+                                        sleep_random(3,5)
+                                    if random.random() < follow_percent:
+                                        follow = self.driver.find_element(By.XPATH, '//button[div//div[text()="Follow"]]')
+                                        if follow:
+                                            follow.click()
+                                            print(f'{thanhcong} Đã bấm follow')
+                                            sleep_random(0.7,2)
+                                    close_video()
+                                    break
+                                except:
+                                    pass
+                            
+                        except Exception:
+                            close_video()
+                            print("❌ Không tìm thấy ô nhập comment")
+                    used_time = time() - start_time
+                    sleep_time = watch_time/2 - used_time
+                    if sleep_time> 0:
+                        sleep(sleep_time)
+                else:
+                    sleep_random(1,3)
+                # Lướt sang video tiếp theo
+                body = self.driver.find_element(By.TAG_NAME, "body")
+                body.send_keys(Keys.ARROW_DOWN)
+            if cnt > 1:
+                print("✅ Hoàn thành tương tác trên TikTok!")
+        except:
+            getlog()
+
 
     def login(self, show=False):
         try:
             self.is_stop_upload = False
-            if self.tiktok_config['use_profile_tiktok']:
-                if self.tiktok_config['use_firefox_profile']:
-                    self.driver = get_driver_with_firefox_profile(target_gmail=self.account, show=show)
-                else:
-                    self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
+            proxy = self.tiktok_config['template'][self.account]["proxy"]
+            if self.tiktok_config['template'][self.account]['use_profile_type'] == 'Firefox':
+                self.driver = get_firefox_driver_with_profile(target_gmail=self.account, show=show, proxy=proxy)
                 if not self.driver:
                     return False
-                sleep(1)
-                self.driver.get("https://www.tiktok.com")
+                self.load_session(trang_chu_tiktok)
+                self.save_session()
+                return True
+            elif self.tiktok_config['template'][self.account]['use_profile_type'] == 'Chrome':
+                self.driver = get_chrome_driver_with_profile(target_gmail=self.account, show=show, proxy=proxy)
+                if not self.driver:
+                    return False
                 self.load_session("https://www.tiktok.com")
+                self.save_session()
                 return True
             else:
-                self.driver = get_driver(show=show)
+                self.driver = get_driver(show=show, proxy=proxy)
                 if not self.driver:
                     return False
+                if self.tiktok_config['template'][self.account]['use_profile_type'] != 'Firefox' and self.tiktok_config['template'][self.account]['use_profile_type'] != 'Chrome':
+                    self.driver.execute_script("window.open('');")
+                    self.driver.switch_to.window(self.driver.window_handles[-1])
+                    if len(self.driver.window_handles) > 1:
+                        self.driver.switch_to.window(self.driver.window_handles[0])  
+                        self.driver.close()
+                    # Chuyển lại sang tab mới
+                    self.driver.switch_to.window(self.driver.window_handles[-1])
+                    sleep(1)
                 self.load_session()
                 if not self.tiktok_config['template'][self.account]['first_login']:
-                    sleep(6)
+                    sleep_random(6,9)
                     self.upload_link = self.get_upload_button()
                 else:
                     self.upload_link = None
@@ -60,22 +237,17 @@ class TikTokManager:
                         return False
                     press_esc_key(2, self.driver)
                     self.upload_link = self.get_upload_button()
-            if self.upload_link:
-                try:
-                    self.upload_link.click()
-                    self.waiting_for_capcha_verify()
-                except:
-                    xpath = get_xpath_by_multi_attribute('button', ['aria-label="Upload "'])
-                    self.upload_link = get_element_by_xpath(self.driver, xpath)
-                    self.upload_link.click()
-                sleep(2)
-                self.save_session()
-                self.tiktok_config['template'][self.account]['first_login'] = False
-                self.save_tiktok_config()
-                return True
-            else:
-                print("Đăng nhập thất bại. Nếu dùng profile thì hãy đăng nhập tài khoản vào profile trước khi dùng ứng dụng!!!")
-                return False
+
+                if self.upload_link:
+                    # self.save_session()
+
+                    self.tiktok_config['template'][self.account]['first_login'] = False
+                    self.tiktok_config['template'][self.account]['waiting_verify'] = False
+                    self.save_tiktok_config()
+                    return True
+                else:
+                    print("Đăng nhập thất bại. Nếu dùng profile thì hãy đăng nhập tài khoản vào profile trước khi dùng ứng dụng!!!")
+                    return False
         except:
             getlog()
             print("Lỗi trong quá trình đăng nhập tiktok.")
@@ -93,7 +265,7 @@ class TikTokManager:
                 self.waiting_for_capcha_verify()
                 return True
             pass_xpath = get_xpath_by_multi_attribute("input", ["type='password'", "placeholder='Password'"])
-            password_input = get_element_by_xpath(self.driver, pass_xpath, "password")
+            password_input = get_element_by_xpath(self.driver, pass_xpath)
             if password_input:
                 password_input.send_keys(self.password)
                 sleep(1)
@@ -117,7 +289,7 @@ class TikTokManager:
         self.driver.get(url)
         sleep(1.5)
         try:
-            if self.tiktok_config['use_profile_tiktok']:
+            if self.tiktok_config['template'][self.account]['use_profile_type'] == 'Firefox':
                 cookies_info = get_json_data(ff_tiktok_cookies_path)
             else:
                 cookies_info = get_json_data(tiktok_cookies_path)
@@ -128,6 +300,7 @@ class TikTokManager:
                 for cookie in cookies:
                     self.driver.add_cookie(cookie)
                 sleep(1.5)
+            if self.tiktok_config['template'][self.account]['use_profile_type'] != 'Firefox' and self.tiktok_config['template'][self.account]['use_profile_type'] != 'Chrome':
                 self.driver.refresh()
                 sleep(2)
         except:
@@ -135,7 +308,7 @@ class TikTokManager:
         
     def save_session(self):
         try:
-            if self.tiktok_config['use_profile_tiktok']:
+            if self.tiktok_config['template'][self.account]['use_profile_type'] == 'Firefox':
                 cookies_info = get_json_data(ff_tiktok_cookies_path) or {}
                 cookies_info[self.account] = self.driver.get_cookies() or []
                 save_to_json_file(cookies_info, ff_tiktok_cookies_path)
@@ -264,16 +437,17 @@ class TikTokManager:
                     sleep(0.5)
                     press_esc_key(1, self.driver)
                 ele.send_keys(Keys.RETURN)
-                sleep(0.5)
+                sleep(1)
                 print(f"Nhập hashtags ... {hashtags}")
                 for hash in hashtags:
-                    ele.send_keys(hash)
-                    sleep(3)
+                    for char in hash:
+                        ele.send_keys(char)
+                        sleep(0.15)
+                    sleep(4)
                     ele.send_keys(Keys.RETURN)
-                    sleep(0.5)
+                    sleep(1)
             else:
                 print(f'Không tìm thấy chỗ nhập nội dung')
-                sleep(1000)
 
         except:
             print("Lỗi khi nhập nội dung")
@@ -449,9 +623,9 @@ class TikTokManager:
         else:
             print("không thấy upload more video button")
     
-    def waiting_for_capcha_verify(self, time_wait=15):
+    def waiting_for_capcha_verify(self, time_wait=25):
         if self.tiktok_config['template'][self.account]['waiting_verify']:
-            sleep(time_wait)
+            sleep_random(time_wait, time_wait + 3)
 #--------------------------------Giao diện upload--------------------------------------
 
     def get_start_tiktok(self):
@@ -498,6 +672,10 @@ class TikTokManager:
             self.number_of_days_var.insert(0, self.tiktok_config['template'][load_template]['number_of_days'])
             self.location_var.delete(0, ctk.END)
             self.location_var.insert(0, self.tiktok_config['template'][load_template]['location'])
+            if 'proxy' not in self.tiktok_config['template'][load_template]:
+                self.tiktok_config['template'][load_template]['proxy'] = ""
+            self.proxy_var.delete(0, ctk.END)
+            self.proxy_var.insert(0, self.tiktok_config['template'][load_template]['proxy'])
             self.day_gap_var.delete(0, ctk.END)
             self.day_gap_var.insert(0, self.tiktok_config['template'][load_template]['day_gap'])
             self.show_browser_var.set(convert_boolean_to_Yes_No(self.tiktok_config['show_browser']))
@@ -508,21 +686,32 @@ class TikTokManager:
             if folder:
                 self.upload_folder_var.delete(0, ctk.END)
                 self.upload_folder_var.insert(0, folder)
-        self.description_var = self.create_settings_input("Mô tả", "description", config=self.tiktok_config['template'][self.account], is_textbox=True, left=0.3, right=0.7)
-        self.hashtags_var = self.create_settings_input("Hashtags", "hashtags", config=self.tiktok_config['template'][self.account], left=0.3, right=0.7)
-        self.upload_date_var = self.create_settings_input("Ngày đăng(yyyy-mm-dd)", "upload_date", config=self.tiktok_config['template'][self.account], left=0.3, right=0.7)
-        self.publish_times_var = self.create_settings_input("Giờ đăng(hh:mm)", "publish_times", config=self.tiktok_config['template'][self.account], left=0.3, right=0.7)
-        self.waiting_verify_var = self.create_settings_input(label_text="Thêm giời gian chờ xác minh capcha", config_key="waiting_verify", config=self.tiktok_config['template'][self.account], values=['Yes', 'No'], left=0.3, right=0.7)
-        self.number_of_days_var = self.create_settings_input("Số ngày muốn đăng", config_key="number_of_days", config=self.tiktok_config['template'][self.account], left=0.3, right=0.7)
-        self.day_gap_var = self.create_settings_input("Khoảng cách giữa các ngày đăng", "day_gap", config=self.tiktok_config['template'][self.account], left=0.3, right=0.7)
-        self.location_var = self.create_settings_input("Vị trí muốn đăng(vd: New York)", "location", config=self.tiktok_config['template'][self.account], left=0.3, right=0.7)
-        self.is_delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", "is_delete_after_upload", config=self.tiktok_config['template'][self.account], values=["Yes", "No"], left=0.3, right=0.7)
-        self.show_browser_var = self.create_settings_input(label_text="Hiển thị trình duyệt", config_key="show_browser", config=self.tiktok_config, values=['Yes', 'No'], left=0.3, right=0.7)
+        self.description_var = self.create_settings_input("Mô tả", "description", config=self.tiktok_config['template'][self.account], is_textbox=True, left=left, right=right)
+        self.hashtags_var = self.create_settings_input("Hashtags", "hashtags", config=self.tiktok_config['template'][self.account], left=left, right=right)
+        self.upload_date_var = self.create_settings_input("Ngày đăng(yyyy-mm-dd)", "upload_date", config=self.tiktok_config['template'][self.account], left=left, right=right)
+        self.publish_times_var = self.create_settings_input("Giờ đăng(hh:mm)", "publish_times", config=self.tiktok_config['template'][self.account], left=left, right=right)
+        self.waiting_verify_var = self.create_settings_input(text="Thêm giời gian chờ xác minh capcha", config_key="waiting_verify", config=self.tiktok_config['template'][self.account], values=['Yes', 'No'], left=left, right=right)
+        self.number_of_days_var = self.create_settings_input("Số ngày muốn đăng", config_key="number_of_days", config=self.tiktok_config['template'][self.account], left=left, right=right)
+        self.day_gap_var = self.create_settings_input("Khoảng cách giữa các ngày đăng", "day_gap", config=self.tiktok_config['template'][self.account], left=left, right=right)
+        self.location_var = self.create_settings_input("Vị trí muốn đăng(vd: New York)", "location", config=self.tiktok_config['template'][self.account], left=left, right=right)
+        self.is_delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", "is_delete_after_upload", config=self.tiktok_config['template'][self.account], values=["Yes", "No"], left=left, right=right)
+        self.use_profile_type_var = self.create_settings_input(text="Sử dụng profile", config_key="use_profile_type", config=self.tiktok_config['template'][self.account], values=['Không dùng', 'Firefox', 'Chrome'], left=left, right=right)
+        self.show_browser_var = self.create_settings_input(text="Hiển thị trình duyệt", config_key="show_browser", config=self.tiktok_config, values=['Yes', 'No'], left=left, right=right)
+        self.proxy_var = create_frame_label_and_input(self.root,text="Proxy", width=self.width, left=left, right=right)
+        if 'proxy' not in self.tiktok_config['template'][self.account]:
+            self.tiktok_config['template'][self.account]['proxy'] = ""
+        self.video_number_interact_var = self.create_settings_input(text="Số video tương tác khi đăng (min-max)", config_key="video_number_interact", config=self.tiktok_config, values=['không tương tác', '3-5', '5-10', '10-20'], left=left, right=right)
+        self.video_number_interact_var.set('3-5')
+        self.auto_interact_var = self.create_settings_input(text="Tương tác tự động", config_key="auto_interact", config=self.tiktok_config, values=['Yes', 'No'], left=left, right=right)
+        self.auto_interact_var.set('Yes')
+
+
+        self.proxy_var.insert(0, self.tiktok_config['template'][self.account]['proxy'])
         self.thumbnail_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa thumbnail", command=set_thumbnail_folder, width=self.width)
         self.thumbnail_folder_var.insert(0, self.tiktok_config['template'][self.account]['thumbnail_folder'])
-        self.upload_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa video", command=choose_folder_upload, width=self.width, left=0.3, right=0.7)
+        self.upload_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa video", command=choose_folder_upload, width=self.width, left=left, right=right)
         self.upload_folder_var.insert(0, self.tiktok_config['template'][self.account]['upload_folder'])
-        self.load_template_var = create_frame_button_and_combobox(self.root, "Tải mẫu có sẵn", command=load_template, values=self.tiktok_config['registered_other_name'], width=self.width, left=0.3, right=0.7)
+        self.load_template_var = create_frame_button_and_combobox(self.root, "Tải mẫu có sẵn", command=load_template, values=self.tiktok_config['registered_other_name'], width=self.width, left=left, right=right)
         self.load_template_var.set(self.tiktok_config['template'][self.account]['other_name'])
         create_frame_button_and_button(self.root, text1="Đăng video ngay", text2="Lên lịch đăng video", command1=self.upload_video_now, command2=self.schedule_upload, width=self.width, left=0.5, right=0.5)
         create_button(self.root, text="Lùi lại", command=self.get_start_tiktok, width=self.width)
@@ -560,6 +749,8 @@ class TikTokManager:
             self.tiktok_config['template'][self.account]["upload_folder"] = self.upload_folder_var.get()
             self.tiktok_config['template'][self.account]["thumbnail_folder"] = self.thumbnail_folder_var.get()
             self.tiktok_config['template'][self.account]["waiting_verify"] = self.waiting_verify_var.get() == 'Yes'
+            self.tiktok_config['template'][self.account]["use_profile_type"] = self.use_profile_type_var.get().strip()
+            self.tiktok_config['template'][self.account]["proxy"] = self.proxy_var.get().strip()
             self.tiktok_config["show_browser"] = self.show_browser_var.get() == 'Yes'
             self.tiktok_config["is_delete_after_upload"] = self.is_delete_after_upload_var.get() == 'Yes'
             self.tiktok_config['template'][self.account]["number_of_days"] = self.number_of_days_var.get()
@@ -656,8 +847,13 @@ class TikTokManager:
                             break
                 if upload_count == 0:
                     if not self.login(self.tiktok_config['show_browser']):
-                        print(f'Có lỗi trong quá trình đăng nhập. Hãy kiểm tra xem tài khoản có cần phải xác minh capcha không.')
+                        print(f'Có lỗi trong quá trình đăng nhập.')
                         return False, False
+                    self.interact_with_tiktok()
+                self.driver.get("https://www.tiktok.com/tiktokstudio/upload")
+                sleep_random(3,5)
+                if upload_count == 0:
+                    self.waiting_for_capcha_verify(20)
                     self.save_session()
                 video_name = os.path.splitext(video_file)[0] #lấy tên
                 thumbnail_path = os.path.join(thumbnail_folder, f'{video_name}.png')
@@ -667,9 +863,6 @@ class TikTokManager:
                 description = f"\n{description}" if description else ''
 
                 print(f'--> Bắt đầu đăng video {video_file}')
-                self.driver.get("https://www.tiktok.com/tiktokstudio/upload")
-                self.waiting_for_capcha_verify()
-                sleep(3)
                 if self.is_stop_upload:
                     break
                 if not self.input_video_on_tiktok(video_path):
@@ -747,6 +940,7 @@ class TikTokManager:
                         break
             if upload_count > 0:
                 print(f"Đăng thành công {upload_count} video.")
+                sleep_random(1,3)
                 return True, False
             return False, False
         except:
@@ -759,10 +953,16 @@ class TikTokManager:
         save_to_json_file(self.tiktok_config, tiktok_config_path)
 
     def get_tiktok_config(self):
-        self.tiktok_config = get_json_data(tiktok_config_path)
+        self.tiktok_config = load_tiktok_config()
         if 'hashtags' not in self.tiktok_config['template'][self.account]:
             self.tiktok_config['template'][self.account]['hashtags'] = "#trend,#xuhuong"
-            self.save_tiktok_config()
+        if 'use_profile_type' not in self.tiktok_config['template'][self.account]:
+            self.tiktok_config['template'][self.account]['use_profile_type'] = "Chrome"
+        if 'video_number_interact_befor_upload' not in self.tiktok_config['template'][self.account]:
+            self.tiktok_config['template'][self.account]['video_number_interact_befor_upload'] = '10-30'
+        if 'auto_interact' not in self.tiktok_config['template'][self.account]:
+            self.tiktok_config['template'][self.account]['auto_interact'] = True
+        self.save_tiktok_config()
 
 #---------------------------------Giao diện download------------------------------------------
     def open_download_video_window(self):
@@ -796,9 +996,9 @@ class TikTokManager:
                         self.download_thread.start()
                 else:
                     notification(self.root, "Đang tải ở một luồng khác.")
-            self.download_by_channel_url_var = create_frame_label_and_input(self.root, label_text="Nhập link tải video", left=0.4, right=0.6, width=self.width)
+            self.download_by_channel_url_var = create_frame_label_and_input(self.root, text="Nhập link tải video", left=0.4, right=0.6, width=self.width)
             self.filter_by_views_var = self.create_settings_input("Lọc theo số lượt xem", "filter_by_views", config=self.tiktok_config, values=["100000", "200000", "300000", "500000", "1000000"], left=0.4, right=0.6)
-            self.show_browser_var = self.create_settings_input(label_text="Hiển thị trình duyệt", config_key="show_browser", config=self.tiktok_config, values=['Yes', 'No'])
+            self.show_browser_var = self.create_settings_input(text="Hiển thị trình duyệt", config_key="show_browser", config=self.tiktok_config, values=['Yes', 'No'])
             self.download_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục lưu video", command=self.choose_folder_to_save, left=0.4, right=0.6, width=self.width)
             self.download_folder_var.insert(0, self.tiktok_config['download_folder'])
             create_button(self.root, text="Bắt đầu tải video", command=start_download_by_channel_url, width=self.width)
@@ -974,9 +1174,9 @@ class TikTokManager:
         elif self.is_upload_video_window:
             self.root.title(f"Upload video Tiktok: {self.account}")
             self.width = 800
-            self.height_window = 840
+            self.height_window = 1025
             if height_element == 30:
-                self.height_window = 826
+                self.height_window = 990
             self.is_upload_video_window = False
         elif self.is_download_window:
             self.root.title("Download videos Tiktok")
@@ -1012,9 +1212,9 @@ class TikTokManager:
         self.root.withdraw()
 
     
-    def create_settings_input(self, label_text, config_key, values=None, is_textbox = False, left=0.4, right=0.6, config=None):
+    def create_settings_input(self, text, config_key, values=None, is_textbox = False, left=0.4, right=0.6, config=None):
         frame = create_frame(self.root)
-        create_label(frame, text=label_text, side=LEFT, width=self.width*left, anchor='w')
+        create_label(frame, text=text, side=LEFT, width=self.width*left, anchor='w')
 
         if values:
             if not config_key:
@@ -1037,7 +1237,7 @@ class TikTokManager:
             return combobox
         
         elif is_textbox:
-            textbox = ctk.CTkTextbox(frame, height=90, width=self.width*right)
+            textbox = ctk.CTkTextbox(frame, height=80, width=self.width*right)
             textbox.insert("1.0", config[config_key])  # Đặt giá trị ban đầu vào textbox
             textbox.pack(side=RIGHT, padx=padx)
             return textbox

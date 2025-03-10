@@ -86,20 +86,20 @@ class FacebookManager:
             if folder:
                 self.upload_folder_var.delete(0, ctk.END)
                 self.upload_folder_var.insert(0, folder)
-        self.title_var = self.create_settings_input("Tiêu đề", "title", left=0.3, right=0.7)
-        self.is_title_plus_video_name_var = self.create_settings_input("Thêm tên video vào tiêu đề", "is_title_plus_video_name", values=["Yes", "No"], left=0.3, right=0.7)
-        self.description_var = self.create_settings_input("Mô tả", "description", is_textbox=True, left=0.3, right=0.7)
-        self.upload_date_var = self.create_settings_input("Ngày đăng(yyyy-mm-dd)", "upload_date", left=0.3, right=0.7)
-        self.publish_times_var = self.create_settings_input("Giờ đăng(vd: 08:00)", "publish_times", left=0.3, right=0.7)
-        self.number_of_days_var = self.create_settings_input("Số ngày muốn đăng", "number_of_days", left=0.3, right=0.7)
-        self.day_gap_var = self.create_settings_input("Khoảng cách giữa các ngày đăng", "day_gap", left=0.3, right=0.7)
-        self.is_delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", "is_delete_after_upload", values=["Yes", "No"], left=0.3, right=0.7)
-        self.is_reel_video_var = self.create_settings_input("Đây là thước phim?", "is_reel_video", values=["Yes", "No"], left=0.3, right=0.7)
-        self.waiting_verify_var = self.create_settings_input("Thêm thời gian chờ xác minh", "waiting_verify", values=["Yes", "No"], left=0.3, right=0.7)
-        self.show_browser_var = self.create_settings_input(label_text="Hiển thị trình duyệt", config_key="show_browser", values=['Yes', 'No'], left=0.3, right=0.7, is_data_in_template=False)
-        self.upload_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa video", command=choose_folder_upload, width=self.width, left=0.3, right=0.7)
+        self.title_var = self.create_settings_input("Tiêu đề", "title", left=left, right=right)
+        self.is_title_plus_video_name_var = self.create_settings_input("Thêm tên video vào tiêu đề", "is_title_plus_video_name", values=["Yes", "No"], left=left, right=right)
+        self.description_var = self.create_settings_input("Mô tả", "description", is_textbox=True, left=left, right=right)
+        self.upload_date_var = self.create_settings_input("Ngày đăng(yyyy-mm-dd)", "upload_date", left=left, right=right)
+        self.publish_times_var = self.create_settings_input("Giờ đăng(vd: 08:00)", "publish_times", left=left, right=right)
+        self.number_of_days_var = self.create_settings_input("Số ngày muốn đăng", "number_of_days", left=left, right=right)
+        self.day_gap_var = self.create_settings_input("Khoảng cách giữa các ngày đăng", "day_gap", left=left, right=right)
+        self.is_delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", "is_delete_after_upload", values=["Yes", "No"], left=left, right=right)
+        self.is_reel_video_var = self.create_settings_input("Đây là thước phim?", "is_reel_video", values=["Yes", "No"], left=left, right=right)
+        self.waiting_verify_var = self.create_settings_input("Thêm thời gian chờ xác minh", "waiting_verify", values=["Yes", "No"], left=left, right=right)
+        self.show_browser_var = self.create_settings_input(text="Hiển thị trình duyệt", config_key="show_browser", values=['Yes', 'No'], left=left, right=right, is_data_in_template=False)
+        self.upload_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa video", command=choose_folder_upload, width=self.width, left=left, right=right)
         self.upload_folder_var.insert(0, self.facebook_config['template'][self.page_name]['upload_folder'])
-        self.load_template_var = create_frame_button_and_combobox(self.root, "Tải mẫu có sẵn", command=load_template, values=[key for key in self.facebook_config['template'].keys()], width=self.width, left=0.3, right=0.7)
+        self.load_template_var = create_frame_button_and_combobox(self.root, "Tải mẫu có sẵn", command=load_template, values=[key for key in self.facebook_config['template'].keys()], width=self.width, left=left, right=right)
         self.load_template_var.set(self.page_name)
         create_frame_button_and_button(self.root, text1="Đăng video ngay", text2="Lên lịch đăng video", command1=self.start_upload_video_now, command2=self.start_schedule_upload, width=self.width, left=0.5, right=0.5)
         create_button(self.root, text="Lùi lại", command=self.get_start_facebook, width=self.width)
@@ -201,8 +201,8 @@ class FacebookManager:
         
         self.download_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục lưu video", command=choose_folder_to_save, width=self.width, left=0.35, right=0.65)
         self.download_folder_var.insert(0, self.facebook_config['download_folder'])
-        self.page_link_var = create_frame_label_and_input(self.root,label_text="Tải từ link trang facebook", width=self.width, left=0.35, right=0.65)
-        self.filter_by_views_var = create_frame_label_and_input(self.root, label_text="Lọc theo số lượt xem", width=self.width, left=0.35, right=0.65)
+        self.page_link_var = create_frame_label_and_input(self.root,text="Tải từ link trang facebook", width=self.width, left=0.35, right=0.65)
+        self.filter_by_views_var = create_frame_label_and_input(self.root, text="Lọc theo số lượt xem", width=self.width, left=0.35, right=0.65)
         self.filter_by_views_var.insert(0,'0')
         create_button(self.root, text="Bắt đầu tải video", command=start_thread_download_page_video, width=self.width)
         create_button(self.root, text="Lùi lại", command=self.get_start_facebook, width=self.width)
@@ -366,7 +366,7 @@ class FacebookManager:
     def login(self, show=False):
         try:
             if self.facebook_config['use_profile_facebook']:
-                self.driver = get_driver_with_profile(target_gmail=self.account, show=show)
+                self.driver = get_chrome_driver_with_profile(target_gmail=self.account, show=show)
                 sleep(5)
             else:
                 self.driver = get_driver(show=show)
@@ -1045,7 +1045,7 @@ class FacebookManager:
     def clear_after_action(self):
         pass
 
-    def create_settings_input(self, label_text, config_key=None, values=None, is_textbox = False, left=0.4, right=0.6, add_button=False, text=None, command=None, is_data_in_template=True):
+    def create_settings_input(self, text, config_key=None, values=None, is_textbox = False, left=0.4, right=0.6, add_button=False, command=None, is_data_in_template=True):
         if is_data_in_template:
             config = self.facebook_config['template'][self.page_name]
         else:
@@ -1053,7 +1053,7 @@ class FacebookManager:
         frame = create_frame(self.root)
         if add_button:
             create_button(frame= frame, text=text, command=command, width=0.2, side=RIGHT)
-        create_label(frame, text=label_text, side=LEFT, width=self.width*left, anchor='w')
+        create_label(frame, text=text, side=LEFT, width=self.width*left, anchor='w')
 
         if values:
             if not config_key:

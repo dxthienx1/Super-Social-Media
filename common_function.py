@@ -51,9 +51,12 @@ import queue
 from pathlib import Path
 from selenium.webdriver.firefox.service import Service as ff_Service
 from selenium.webdriver.firefox.options import Options
+import zipfile
+from imageio import imwrite
+# from seleniumwire import webdriver as seleniumwire_webdriver
 
 serials = {
-    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-03-07",
+    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-04-08",
     "gggg":"2025-01-28",
     "0000_0000_0000_0000_0026_B738_363E_5915./2XW1YR3/CNCMC0028S04C2/":"2026-01-01",
     "0025_38D2_1104_730B.WZ14MC006S":"2030-01-01",
@@ -177,8 +180,18 @@ right = 0.7
 LEFT = 'left'
 RIGHT = 'right'
 CENTER = 'center'
+watch_percent = 1
+like_percent = 0.7
+comment_percent = 0.7
+follow_percent = 0.7
+tot = "🟢"
 thanhcong = "✅"
+comment_icon = "💬"
+like_icon = "❤️"
 thatbai = "❌"
+canhbao = "⚠"
+trang_chu_tiktok = "https://www.tiktok.com"
+upload_tiktok_url = "https://www.tiktok.com/tiktokstudio/upload"
 
 def load_ffmpeg():
     def get_ffmpeg_dir():
@@ -213,58 +226,235 @@ def load_download_info():
 def save_download_info(data):
     save_to_json_file(data, download_info_path)
 
-def get_driver(show=True, log_network=False):
-    try:
-        service = Service(chromedriver_path)
-        options = webdriver.ChromeOptions()
-        if not show:
-            options.add_argument('--headless')
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-        options.add_argument('--disable-gpu')
-        options.add_argument('--disable-blink-features=AutomationControlled')
-        options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
-        options.add_argument("--log-level=3")
-        options.add_argument("--disable-logging")
-        options.add_experimental_option('excludeSwitches', ['enable-automation'])
-        options.add_experimental_option('useAutomationExtension', False)
+# def get_driver(show=True, log_network=False):
+#     try:
+#         service = Service(chromedriver_path)
+#         options = webdriver.ChromeOptions()
+#         if not show:
+#             options.add_argument('--headless')
+#             options.add_argument("--no-sandbox")
+#             options.add_argument("--disable-dev-shm-usage")
+#         options.add_argument('--disable-gpu')
+#         options.add_argument('--disable-blink-features=AutomationControlled')
+#         options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
+#         options.add_argument("--log-level=3")
+#         options.add_argument("--disable-logging")
+#         options.add_experimental_option('excludeSwitches', ['enable-automation'])
+#         options.add_experimental_option('useAutomationExtension', False)
 
-        if log_network:
-            # Cấu hình log network
-            from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-            capabilities = DesiredCapabilities.CHROME.copy()
-            capabilities["goog:loggingPrefs"] = {"performance": "ALL"}
-            options.set_capability("goog:loggingPrefs", capabilities["goog:loggingPrefs"])
+#         if log_network:
+#             # Cấu hình log network
+#             from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+#             capabilities = DesiredCapabilities.CHROME.copy()
+#             capabilities["goog:loggingPrefs"] = {"performance": "ALL"}
+#             options.set_capability("goog:loggingPrefs", capabilities["goog:loggingPrefs"])
 
-        driver = webdriver.Chrome(service=service, options=options)
-        driver.set_window_size(screen_width - 200, screen_height - 50)
-        # driver.maximize_window()
-        stealth(driver,
-                languages=["en-US", "en"],
-                vendor="Google Inc.",
-                platform="Win32",
-                webgl_vendor="Intel Inc.",
-                renderer="Intel Iris OpenGL Engine",
-                fix_hairline=True
-                )
-        sleep(1)
-        return driver
-    except Exception as e:
-        print(f"Lỗi trong quá trình khởi tạo chromedriver: {e}")
-        return None
+#         driver = webdriver.Chrome(service=service, options=options)
+#         driver.set_window_size(screen_width - 200, screen_height - 50)
+#         # driver.maximize_window()
+#         stealth(driver,
+#                 languages=["en-US", "en"],
+#                 vendor="Google Inc.",
+#                 platform="Win32",
+#                 webgl_vendor="Intel Inc.",
+#                 renderer="Intel Iris OpenGL Engine",
+#                 fix_hairline=True
+#                 )
+#         sleep(1)
+#         return driver
+#     except Exception as e:
+#         print(f"Lỗi trong quá trình khởi tạo chromedriver: {e}")
+#         return None
 
 
 
 #firefox
-def get_driver_with_firefox_profile(target_gmail=None, show=True):
+# def get_driver_with_firefox_profile(target_gmail=None, show=True):
+#     def get_firefox_profile_folder():
+#         """ Xác định thư mục profile của Firefox theo hệ điều hành """
+#         if platform.system() == "Windows":
+#             return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
+#         elif platform.system() == "Darwin":
+#             return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "Firefox", "Profiles")
+#         elif platform.system() == "Linux":
+#             return os.path.join(os.path.expanduser("~"), ".mozilla", "firefox")
+#         else:
+#             raise Exception("Hệ điều hành không được hỗ trợ.")
+
+#     def get_profile_name_by_gmail():
+#         if not target_gmail:
+#             return None
+#         profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
+#         for profile in profiles:
+#             if target_gmail in profile:
+#                 return profile
+#         print(f'Không tìm thấy profile cho email {target_gmail}. Hãy tạo mới profile và đăng nhập trước.')
+#         return None
+
+#     try:
+#         firefox_profile_folder = get_firefox_profile_folder()
+#         profile_name = get_profile_name_by_gmail()
+#         if not profile_name:
+#             return None
+        
+#         profile_path = os.path.join(firefox_profile_folder, profile_name)
+#         print(f"Profile đang dùng: {profile_path}")
+
+#         if not os.path.exists(profile_path):
+#             print(f"❌ Không tìm thấy profile tại: {profile_path}")
+#             return None
+#         options = Options()
+#         options.binary_location = firefox_binary_path
+        
+#         # 🔹 Quan trọng: Dùng `moz:firefoxOptions` để mở profile thực sự
+#         options.set_preference("browser.startup.homepage_override.mstone", "ignore")  
+#         options.set_preference("startup.homepage_welcome_url.additional", "about:blank")  
+#         options.set_preference("browser.sessionstore.resume_from_crash", True)  
+#         options.set_preference("browser.sessionstore.restore_on_demand", False)  
+#         options.set_preference("browser.cache.disk.enable", True)  
+#         options.set_preference("browser.cache.memory.enable", True)  
+#         options.set_preference("browser.cache.offline.enable", True)  
+#         options.set_preference("network.cookie.cookieBehavior", 0)  # Bật cookie
+#         # Chỉ định profile bằng đường dẫn
+#         options.add_argument(f"--profile")
+#         options.add_argument(profile_path)
+
+#         # 🔹 Tránh mở Firefox với profile mặc định
+#         options.add_argument("--no-remote")
+#         if not show:
+#             options.add_argument("--headless")  
+#         # Chỉ định đúng GeckoDriver
+#         service = Service(geckodriver_path)
+#         driver = webdriver.Firefox(service=service, options=options)
+#         print(f"✅ Đã mở Firefox với profile: {profile_path}")
+#         return driver
+#     except Exception as e:
+#         print(f"Lỗi: {e}")
+#         return None
+
+    
+# def get_driver_with_profile(target_gmail=None, show=True):
+#     try:
+#         os.system("taskkill /F /IM chrome.exe /T >nul 2>&1")
+#     except:
+#         pass
+#     sleep(1)
+#     def get_profile_name_by_gmail():
+#         if not target_gmail:
+#             return "Default"
+#         def check_gmail_in_profile(profile_path):
+#             preferences_file = os.path.join(profile_path, "Preferences")
+            
+#             if os.path.exists(preferences_file):
+#                 with open(preferences_file, 'r', encoding='utf-8') as f:
+#                     try:
+#                         preferences = json.load(f)
+#                         if 'account_info' in preferences:
+#                             for account in preferences['account_info']:
+#                                 if 'email' in account and account['email'] == target_gmail:
+#                                     return True
+#                         else:
+#                             print(f'Không thể lấy thông tin của profile {profile_path}')
+#                     except:
+#                         getlog()
+#                         print(f"Không thể đọc file Preferences trong profile {profile_path}.")
+#             return False
+        
+#         profiles = [name for name in os.listdir(profile_folder) if os.path.isdir(os.path.join(profile_folder, name)) and name.startswith("Profile")]
+#         if "Default" in os.listdir(profile_folder):
+#             profiles.append("Default")
+
+#         for profile_name in profiles:
+#             profile_path = os.path.join(profile_folder, profile_name)
+#             if os.path.exists(profile_path):
+#                 if check_gmail_in_profile(profile_path):
+#                     return profile_name
+#         print(f'Không tìm thấy profile cho email {target_gmail} --> sử dụng profile Default')
+#         return "Default"
+    
+#     profile_name = get_profile_name_by_gmail()
+#     if profile_name:
+#         print(f'Profile đang dùng là {profile_name}')
+#         options = webdriver.ChromeOptions()
+#         options.add_argument(f"user-data-dir={profile_folder}")
+#         options.add_argument(f"profile-directory={profile_name}")
+#         if not show:
+#             options.add_argument("--headless")
+#         options.add_argument('--disable-gpu')
+#         options.add_argument('--disable-blink-features=AutomationControlled')
+#         options.add_argument("--log-level=3")
+#         options.add_argument("--disable-logging")
+#         options.add_experimental_option('excludeSwitches', ['enable-automation'])
+#         options.add_experimental_option('useAutomationExtension', False)
+#         driver = webdriver.Chrome(options=options)
+#         driver.set_window_size(screen_width - 200, screen_height - 50)
+#         return driver
+#     else:
+#         print(f'Không tìm thấy profile cho tài khoản google {target_gmail}')
+#         print("--> Hãy dùng cookies để đăng nhập !")
+#         return None
+
+
+
+
+
+def create_proxy_extension(proxy_host, proxy_port, proxy_user, proxy_pass, extension_path="proxy_auth.xpi"):
+    """ Tạo extension .xpi để Firefox tự động nhập user & pass proxy """
+    manifest_json = """
+    {
+        "manifest_version": 2,
+        "name": "Proxy Auth",
+        "version": "1.0",
+        "permissions": ["proxy", "storage", "webRequest", "webRequestBlocking"],
+        "background": {
+            "scripts": ["background.js"]
+        }
+    }
+    """
+    
+    background_js = f"""
+    var config = {{
+        mode: "fixed_servers",
+        rules: {{
+            singleProxy: {{
+                scheme: "http",
+                host: "{proxy_host}",
+                port: {proxy_port}
+            }},
+            bypassList: ["localhost"]
+        }}
+    }};
+    chrome.proxy.settings.set({{ value: config, scope: "regular" }}, function() {{}});
+
+    function callbackFn(details) {{
+        return {{
+            authCredentials: {{
+                username: "{proxy_user}",
+                password: "{proxy_pass}"
+            }}
+        }};
+    }}
+    chrome.webRequest.onAuthRequired.addListener(
+        callbackFn,
+        {{ urls: ["<all_urls>"] }},
+        ["blocking"]
+    );
+    """
+
+    with zipfile.ZipFile(extension_path, 'w') as z:
+        z.writestr("manifest.json", manifest_json)
+        z.writestr("background.js", background_js)
+    
+    return extension_path
+
+
+def get_firefox_driver_with_profile(target_gmail=None, show=True, proxy=None):
+    """ Mở Firefox với profile cụ thể & proxy có user:pass nếu có """
+    
     def get_firefox_profile_folder():
         """ Xác định thư mục profile của Firefox theo hệ điều hành """
         if platform.system() == "Windows":
             return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
-        elif platform.system() == "Darwin":
-            return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "Firefox", "Profiles")
-        elif platform.system() == "Linux":
-            return os.path.join(os.path.expanduser("~"), ".mozilla", "firefox")
         else:
             raise Exception("Hệ điều hành không được hỗ trợ.")
 
@@ -290,97 +480,317 @@ def get_driver_with_firefox_profile(target_gmail=None, show=True):
         if not os.path.exists(profile_path):
             print(f"❌ Không tìm thấy profile tại: {profile_path}")
             return None
-        options = Options()
-        options.binary_location = firefox_binary_path
         
-        # 🔹 Quan trọng: Dùng `moz:firefoxOptions` để mở profile thực sự
-        options.set_preference("browser.startup.homepage_override.mstone", "ignore")  
-        options.set_preference("startup.homepage_welcome_url.additional", "about:blank")  
-        options.set_preference("browser.sessionstore.resume_from_crash", True)  
-        options.set_preference("browser.sessionstore.restore_on_demand", False)  
-        options.set_preference("browser.cache.disk.enable", True)  
-        options.set_preference("browser.cache.memory.enable", True)  
-        options.set_preference("browser.cache.offline.enable", True)  
-        options.set_preference("network.cookie.cookieBehavior", 0)  # Bật cookie
-        # Chỉ định profile bằng đường dẫn
+        options = Options()
         options.add_argument(f"--profile")
         options.add_argument(profile_path)
-
-        # 🔹 Tránh mở Firefox với profile mặc định
         options.add_argument("--no-remote")
+
         if not show:
             options.add_argument("--headless")  
+
+        # Nếu có proxy, tạo extension & load vào trình duyệt
+        proxy = None
+        if proxy:
+            proxy_host, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+            extension_path = create_proxy_extension(proxy_host, proxy_port, proxy_user, proxy_pass)
+            options.set_preference("extensions.install_addon", extension_path)
+            print(f"🛠 Đã thiết lập proxy: {proxy_host}:{proxy_port} với user: {proxy_user}")
+
         # Chỉ định đúng GeckoDriver
         service = Service(geckodriver_path)
         driver = webdriver.Firefox(service=service, options=options)
         print(f"✅ Đã mở Firefox với profile: {profile_path}")
         return driver
+
     except Exception as e:
         print(f"Lỗi: {e}")
         return None
+
     
-def get_driver_with_profile(target_gmail=None, show=True):
+def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_remove_proxy=False):
     try:
-        os.system("taskkill /F /IM chrome.exe /T >nul 2>&1")
-    except:
-        pass
-    sleep(1)
-    def get_profile_name_by_gmail():
-        if not target_gmail:
-            return "Default"
-        def check_gmail_in_profile(profile_path):
-            preferences_file = os.path.join(profile_path, "Preferences")
-            
-            if os.path.exists(preferences_file):
-                with open(preferences_file, 'r', encoding='utf-8') as f:
+        # Tắt Chrome đang chạy (không ảnh hưởng tới session khác)
+        try:
+            subprocess.run(["taskkill", "/F", "/IM", "chrome.exe", "/T"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            pass
+        sleep(1)
+        def get_profile_name_by_gmail():
+            if not target_gmail:
+                return "Default"
+
+            def check_gmail_in_profile(profile_path):
+                preferences_file = os.path.join(profile_path, "Preferences")
+                if os.path.exists(preferences_file):
                     try:
-                        preferences = json.load(f)
-                        if 'account_info' in preferences:
-                            for account in preferences['account_info']:
-                                if 'email' in account and account['email'] == target_gmail:
-                                    return True
-                        else:
-                            print(f'Không thể lấy thông tin của profile {profile_path}')
+                        with open(preferences_file, 'r', encoding='utf-8') as f:
+                            preferences = json.load(f)
+                            if 'account_info' in preferences:
+                                for account in preferences['account_info']:
+                                    if 'email' in account and account['email'] == target_gmail:
+                                        return preferences_file
                     except:
                         getlog()
-                        print(f"Không thể đọc file Preferences trong profile {profile_path}.")
-            return False
-        
-        profiles = [name for name in os.listdir(profile_folder) if os.path.isdir(os.path.join(profile_folder, name)) and name.startswith("Profile")]
-        if "Default" in os.listdir(profile_folder):
-            profiles.append("Default")
+                        print(f"{canhbao} Không thể đọc Preferences trong {profile_path}: {e}")
+                return None
 
-        for profile_name in profiles:
-            profile_path = os.path.join(profile_folder, profile_name)
-            if os.path.exists(profile_path):
-                if check_gmail_in_profile(profile_path):
-                    return profile_name
-        print(f'Không tìm thấy profile cho email {target_gmail} --> sử dụng profile Default')
-        return "Default"
-    
-    profile_name = get_profile_name_by_gmail()
-    if profile_name:
-        print(f'Profile đang dùng là {profile_name}')
+            profiles = [name for name in os.listdir(profile_folder) if os.path.isdir(os.path.join(profile_folder, name)) and name.startswith("Profile")]
+            if "Default" in os.listdir(profile_folder):
+                profiles.append("Default")
+
+            for profile_name in profiles:
+                profile_path = os.path.join(profile_folder, profile_name)
+                preferences_file = check_gmail_in_profile(profile_path)
+                if preferences_file:
+                    return profile_name, preferences_file
+            print(f"{thatbai} Không tìm thấy profile cho email {target_gmail}")
+            return None, None
+
+        profile_name, preferences_file = get_profile_name_by_gmail()
+        if profile_name and preferences_file:
+            options = webdriver.ChromeOptions()
+            options.add_argument(f"user-data-dir={profile_folder}")
+            options.add_argument(f"profile-directory={profile_name}")
+
+            # Cấu hình Proxy
+            proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+            if proxy_ip and proxy_port:
+                if is_remove_proxy:
+                    options.add_argument('--no-proxy-server')
+                    options.add_argument('--proxy-server="direct://"')
+                    options.add_argument('--proxy-bypass-list=*')
+                    with open(preferences_file, "r", encoding="utf-8") as f:
+                        preferences = json.load(f)
+                    if "proxy" in preferences:
+                        del preferences["proxy"]
+                    with open(preferences_file, "w", encoding="utf-8") as f:
+                        json.dump(preferences, f, indent=4)
+                    print("✅ Đã xóa cấu hình proxy trong Preferences.")
+                    chrome_proxy_profile_folder = os.path.join(os.getcwd(), "chrome_proxy_profile")
+                    if os.path.exists(chrome_proxy_profile_folder):
+                        unpacked_folder = os.path.join(chrome_proxy_profile_folder, f"{proxy_ip}_{proxy_port}_unpacked")
+                        shutil.rmtree(unpacked_folder, ignore_errors=True)
+                        print("✅ Đã xóa extension proxy.")
+                else:
+                    if proxy_user and proxy_pass:
+                        proxy_extension_path = create_proxy_extension_with_chrome_profile(proxy_ip, proxy_port, proxy_user, proxy_pass)
+                        options.add_argument(f"--load-extension={proxy_extension_path}")
+                    else:
+                        options.add_argument(f'--proxy-server=http://{proxy_ip}:{proxy_port}')
+
+            # Tối ưu Chrome để tránh bị phát hiện là bot
+            if not show:
+                options.add_argument("--headless")
+            options.add_argument('--disable-gpu')
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_argument("--log-level=3")
+            options.add_argument("--disable-logging")
+            options.add_experimental_option('excludeSwitches', ['enable-automation'])
+            options.add_experimental_option('useAutomationExtension', False)
+
+            # Mở trình duyệt Chrome
+            driver = webdriver.Chrome(options=options)
+            driver.set_window_size(screen_width - 100, screen_height - 50)
+
+            # Kiểm tra IP sau khi mở trình duyệt
+            sleep_random(2,4)
+            browser_ip = get_browser_ip(driver)
+            if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
+                print("❌ Đổi IP không thành công!")
+                driver.quit()
+                return None
+            else:
+                print(f"{tot} IP đang dùng: {browser_ip}")
+
+            print(f"✅ Đã mở Chrome với profile: {profile_name}")
+            return driver
+        else:
+            print(f"❌ Không tìm thấy Chrome profile cho tài khoản: {target_gmail}")
+            return None
+    except Exception as e:
+        print(f"❌ Lỗi khi khởi tạo trình duyệt: {e}")
+        return None
+
+
+def get_driver(show=True, proxy=None):
+    try:
+        service = Service(chromedriver_path)
         options = webdriver.ChromeOptions()
-        options.add_argument(f"user-data-dir={profile_folder}")
-        options.add_argument(f"profile-directory={profile_name}")
+
+        # Random hóa User-Agent để tránh bị Google theo dõi
+        proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+        if not proxy_country or proxy_country not in USER_AGENTS_WINDOWS:
+            proxy_country = "Other"
+        user_agent = USER_AGENTS_WINDOWS[proxy_country]
+        options.add_argument(f"--user-agent={user_agent}")
+
+        if proxy_ip and proxy_port:
+            if proxy_user and proxy_pass:
+                pluginfile = create_chrome_proxy_extension(proxy_ip, proxy_port, proxy_user, proxy_pass)
+                options.add_extension(pluginfile)
+                # proxy_extension_path = create_proxy_extension_with_chrome_profile(proxy_ip, proxy_port, proxy_user, proxy_pass)
+                # options.add_argument(f"--load-extension={proxy_extension_path}")
+            else:
+                proxy_url = f"http://{proxy_ip}:{proxy_port}"
+                options.add_argument(f'--proxy-server={proxy_url}')
+
+        # Chạy ở chế độ headless nếu cần
         if not show:
-            options.add_argument("--headless")
-        options.add_argument('--disable-gpu')
+            options.add_argument('--headless=new')
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--force-device-scale-factor=1")
+        # Tắt tính năng tự động hóa để tránh bị phát hiện
         options.add_argument('--disable-blink-features=AutomationControlled')
         options.add_argument("--log-level=3")
         options.add_argument("--disable-logging")
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         options.add_experimental_option('useAutomationExtension', False)
-        driver = webdriver.Chrome(options=options)
-        driver.maximize_window()
+        options.add_argument("--disable-popup-blocking")
+        options.add_argument("--remote-debugging-port=9222")
+        driver = webdriver.Chrome(service=service, options=options)
+        driver.set_window_size(screen_width - 200, screen_height - 50)
+        # driver.maximize_window()
+
+        # Xóa dấu hiệu bot bằng JavaScript
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+        try:
+            stealth(driver,
+                    languages=["en-US", "en"],
+                    vendor="Google Inc.",
+                    platform="Win32",
+                    webgl_vendor="Intel Inc.",
+                    renderer="Intel Iris OpenGL Engine",
+                    fix_hairline=True
+                    )
+        except ImportError:
+            pass
+
+        # Kiểm tra IP sau khi mở trình duyệt
+        browser_ip = get_browser_ip(driver)
+        if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
+            print("❌ Đổi IP không thành công!")
+            driver.quit()
+            return None
+        else:
+            print(f"{tot} IP đang dùng: {browser_ip}")
+
         return driver
-    else:
-        print(f'Không tìm thấy profile cho tài khoản google {target_gmail}')
-        print("--> Hãy dùng cookies để đăng nhập !")
+    except Exception as e:
+        getlog()
         return None
 
-def get_element_by_text(driver, text, tag_name='*', timeout=10):
+
+    
+def disable_system_proxy():
+    try:
+        # Reset proxy trong Windows
+        subprocess.run('netsh winhttp reset proxy', shell=True)
+        subprocess.run('REG ADD "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" '
+                       '/v ProxyEnable /t REG_DWORD /d 0 /f', shell=True)
+        # Xóa biến môi trường HTTP_PROXY & HTTPS_PROXY (nếu có)
+        if "HTTP_PROXY" in os.environ:
+            del os.environ["HTTP_PROXY"]
+        if "HTTPS_PROXY" in os.environ:
+            del os.environ["HTTPS_PROXY"]
+
+        print("🚫 Proxy hệ thống đã được tắt")
+    except:
+        getlog()
+
+def set_system_proxy(proxy_ip, proxy_port, username=None, password=None):
+    try:
+        proxy_address = f"{proxy_ip}:{proxy_port}"
+        subprocess.run('REG ADD "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" '
+                       '/v ProxyEnable /t REG_DWORD /d 1 /f', shell=True, check=True)
+        subprocess.run(f'REG ADD "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" '
+                       f'/v ProxyServer /t REG_SZ /d {proxy_address} /f', shell=True, check=True)
+        if username and password:
+            proxy_auth = f"{username}:{password}@{proxy_ip}:{proxy_port}"
+            auth_proxy = f"http://{proxy_auth}"
+            
+            subprocess.run(f'REG ADD "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" '
+                           f'/v ProxyUser /t REG_SZ /d {username} /f', shell=True, check=True)
+            subprocess.run(f'REG ADD "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" '
+                           f'/v ProxyPass /t REG_SZ /d {password} /f', shell=True, check=True)
+
+        print(f"✅ Proxy hệ thống đã đổi thành {proxy_address}")
+    except:
+        getlog()
+
+def get_proxy_info(proxy=None):
+    proxy_ip = proxy_port = proxy_user = proxy_pass = proxy_country = None
+    if proxy:
+        proxy_info = proxy.split(":")
+        if len(proxy_info) == 5:
+            proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = proxy_info
+        if len(proxy_info) == 4:
+            proxy_ip, proxy_port, proxy_user, proxy_pass = proxy_info
+        if len(proxy_info) == 3:
+            proxy_ip, proxy_port, proxy_country = proxy_info
+        elif len(proxy_info) == 2:
+            proxy_ip, proxy_port = proxy_info
+    return proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country
+
+def get_browser_ip(driver):
+    try:
+        driver.get("https://checkip.amazonaws.com")
+        sleep(random.uniform(2, 5))
+        ip = driver.find_element("tag name", "body").text.strip()
+        return ip
+    except:
+        return "Không xác định" 
+
+USER_AGENTS_WINDOWS = {
+    "United States": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "United Kingdom": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Canada": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Australia": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "France": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Germany": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Russia": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Japan": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "China": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Vietnam": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "India": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "South Korea": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Brazil": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mexico": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Italy": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Spain": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Turkey": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Netherlands": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Indonesia": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Thailand": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Philippines": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Argentina": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "South Africa": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Pakistan": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Egypt": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Other": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+}
+
+def sleep_random(from_second=1, to_second=5):
+    sleep(random.uniform(from_second, to_second))
+
+def get_time_random(from_second=1, to_second=10):
+    get_time = random.uniform(from_second, to_second)
+    return get_time
+
+def get_random_number_int(from_second=1, to_second=10):
+    get_time = random.randint(from_second, to_second)
+    return get_time
+
+def input_char_by_char(ele, text):
+    for char in text:
+        ele.send_keys(char)
+        if char == ' ':
+            sleep_random(0.1,0.4)
+        else:
+            sleep_random(0.05,0.1)
+def get_element_by_text(driver, text, tag_name='*', timeout=6):
     try:
         # Tìm element chứa text thuộc thẻ xác định
         element = WebDriverWait(driver, timeout).until(
@@ -389,6 +799,130 @@ def get_element_by_text(driver, text, tag_name='*', timeout=10):
         return element
     except:
         return None
+
+
+def create_chrome_proxy_extension(proxy_ip, proxy_port, username, password):
+    pluginfile_folder = os.path.join(current_dir, "chrome_proxy")
+    os.makedirs(pluginfile_folder, exist_ok=True)
+    pluginfile = os.path.join(pluginfile_folder, f"{proxy_ip}_{proxy_port}.zip")
+    if os.path.exists(pluginfile):
+        return pluginfile
+    
+    manifest_json = """{
+        "version": "1.0.0",
+        "manifest_version": 2,
+        "name": "Chrome Proxy",
+        "permissions": [
+            "proxy",
+            "tabs",
+            "unlimitedStorage",
+            "storage",
+            "<all_urls>",
+            "webRequest",
+            "webRequestBlocking"
+        ],
+        "background": {
+            "scripts": ["background.js"]
+        },
+        "minimum_chrome_version":"76.0.0"
+    }"""
+
+    background_js = f"""
+    var config = {{
+        mode: "fixed_servers",
+        rules: {{
+            singleProxy: {{
+                scheme: "http",
+                host: "{proxy_ip}",
+                port: parseInt({proxy_port})
+            }},
+            bypassList: []
+        }}
+    }};
+    chrome.proxy.settings.set({{value: config, scope: "regular"}}, function() {{}});
+
+    chrome.webRequest.onAuthRequired.addListener(
+        function(details) {{
+            return {{
+                authCredentials: {{
+                    username: "{username}",
+                    password: "{password}"
+                }}
+            }};
+        }},
+        {{urls: ["<all_urls>"]}},
+        ["blocking"]
+    );
+    """
+    
+    with zipfile.ZipFile(pluginfile, 'w') as zp:
+        zp.writestr("manifest.json", manifest_json)
+        zp.writestr("background.js", background_js)
+
+    return pluginfile
+
+def create_proxy_extension_with_chrome_profile(proxy_ip, proxy_port, username, password):
+    chrome_proxy_profile_folder = os.path.join(os.getcwd(), "chrome_proxy_profile")
+    os.makedirs(chrome_proxy_profile_folder, exist_ok=True)
+
+    manifest_json = """
+    {
+        "version": "1.0.0",
+        "manifest_version": 2,
+        "name": "Chrome Proxy",
+        "permissions": [
+            "proxy",
+            "tabs",
+            "unlimitedStorage",
+            "storage",
+            "<all_urls>",
+            "webRequest",
+            "webRequestBlocking"
+        ],
+        "background": {
+            "scripts": ["background.js"]
+        },
+        "minimum_chrome_version":"76.0.0"
+    }
+    """
+
+    background_js = f"""
+    var config = {{
+        mode: "fixed_servers",
+        rules: {{
+            singleProxy: {{
+                scheme: "http",
+                host: "{proxy_ip}",
+                port: parseInt({proxy_port})
+            }},
+            bypassList: []
+        }}
+    }};
+    chrome.proxy.settings.set({{value: config, scope: "regular"}}, function() {{}});
+
+    {"chrome.webRequest.onAuthRequired.addListener(" if username and password else "// Không có username/password, bỏ qua xác thực"}
+        function(details) {{
+            return {{
+                authCredentials: {{
+                    username: "{username}",
+                    password: "{password}"
+                }}
+            }};
+        }},
+        {{urls: ["<all_urls>"]}},
+        ["blocking"]
+    {"});" if username and password else ""}
+    """
+    unpacked_folder = os.path.join(chrome_proxy_profile_folder, f"{proxy_ip}_{proxy_port}_unpacked")
+    os.makedirs(unpacked_folder, exist_ok=True)
+    with open(os.path.join(unpacked_folder, "manifest.json"), "w") as f:
+        f.write(manifest_json)
+    with open(os.path.join(unpacked_folder, "background.js"), "w") as f:
+        f.write(background_js)
+
+    return unpacked_folder
+
+
 
 def get_element_by_xpath(driver, xpath, key=None, index=0, multiple_ele=False, timeout=10):
     try:
@@ -415,18 +949,29 @@ def get_element_by_xpath(driver, xpath, key=None, index=0, multiple_ele=False, t
 
 def get_xpath(maintag, class_name=None, attribute=None, attribute_value=None, contain=False):
     if contain:
+        conditions = []
         if class_name:
             class_list = class_name.split()
-            class_condition = " and ".join([f"contains(@class, '{cls}')" for cls in class_list])
+            conditions.append(" and ".join([f"contains(@class, '{cls}')" for cls in class_list]))
         if attribute and attribute_value:
-            xpath = f"//{maintag}[{class_condition} and @{attribute}=\"{attribute_value}\"]"
+            conditions.append(f"contains(@{attribute}, '{attribute_value}')")
+        
+        if conditions:
+            xpath = f"//{maintag}[{' and '.join(conditions)}]"
         else:
-            xpath = f"//{maintag}[{class_condition}]"
+            xpath = f"//{maintag}"
     else:
+        conditions = []
+        if class_name:
+            conditions.append(f"@class='{class_name}'")
         if attribute and attribute_value:
-            xpath = f"//{maintag}[@class=\"{class_name}\" and @{attribute}=\"{attribute_value}\"]"
+            conditions.append(f"@{attribute}='{attribute_value}'")
+        
+        if conditions:
+            xpath = f"//{maintag}[{' and '.join(conditions)}]"
         else:
-            xpath = f"//{maintag}[@class=\"{class_name}\"]"
+            xpath = f"//{maintag}"
+
     return xpath
 
 def get_xpath_by_multi_attribute(maintag, attributes): #attributes = ['name="postSchedule"', ...]
@@ -727,25 +1272,25 @@ def get_current_folder_and_basename(input_video_path):
 
 def download_video_by_bravedown(video_urls, download_folder=None, root_web="https://bravedown.com/ixigua-video-downloader"):
     try:
-        driver = get_driver_with_profile(show=True)
-        def choose_downlaod_folder():
-            if download_folder:
-                try:
-                    driver.get("chrome://settings/downloads")
-                    pyperclip.copy(download_folder)
-                    sleep(1)
-                    press_TAB_key(driver, 2)
-                    sleep(0.5)
-                    press_SPACE_key(driver, 1)
-                    sleep(0.5)
-                    press_key_on_window('tab', 4)
-                    press_key_on_window('space', 1)
-                    keyboard.send('ctrl+v')
-                    press_key_on_window('enter', 4)
-                    sleep(1)
-                except:
-                    pass
-            sleep(1)
+        driver = get_chrome_driver_with_profile(show=True)
+        # def choose_downlaod_folder():
+        #     if download_folder:
+        #         try:
+        #             driver.get("chrome://settings/downloads")
+        #             pyperclip.copy(download_folder)
+        #             sleep(1)
+        #             press_TAB_key(driver, 2)
+        #             sleep(0.5)
+        #             press_SPACE_key(driver, 1)
+        #             sleep(0.5)
+        #             press_key_on_window('tab', 4)
+        #             press_key_on_window('space', 1)
+        #             keyboard.send('ctrl+v')
+        #             press_key_on_window('enter', 4)
+        #             sleep(1)
+        #         except:
+        #             pass
+        #     sleep(1)
         # choose_downlaod_folder()
         def verify_human(video_url):
             ele = get_element_by_text(driver, "you are human")
@@ -1188,7 +1733,7 @@ def get_image_from_video(videos_folder, position=None, noti=True):
                 print(f'Thời điểm trích xuất ảnh vượt quá thời lượng của video {video_file}. Lấy thời điểm trích xuất ở cuối video')
                 extraction_time = video.duration
             frame = video.get_frame(extraction_time)
-            from imageio import imwrite
+            
             imwrite(image_path, frame)
             video.close()
     except:
@@ -1327,8 +1872,8 @@ def create_combobox(frame, values=None, variable=None, side=RIGHT, width=width_w
     combobox.pack(side=side, padx=padx, pady=pady)
     return combobox
 
-def create_frame_label_and_progress_bar(frame, label_text="", width=width_window, left=left, right=right):
-    label = create_label(frame=frame, text=label_text, side=LEFT, width=width*left, compound=LEFT)
+def create_frame_label_and_progress_bar(frame, text="", width=width_window, left=left, right=right):
+    label = create_label(frame=frame, text=text, side=LEFT, width=width*left, compound=LEFT)
     processbar = create_progress_bar(frame=frame, width=width*right, side=RIGHT)
     return frame, processbar
 
@@ -1337,16 +1882,16 @@ def create_progress_bar(frame=None, width=width_window):
     processbar.pack(padx=padx, pady=pady)
     return processbar
 
-def create_frame_label_input_input(root, label_text="", place_holder1=None, place_holder2=None, width=width_window, left=0.25, mid=0.56, right=0.19):
+def create_frame_label_input_input(root, text="", place_holder1=None, place_holder2=None, width=width_window, left=0.25, mid=0.56, right=0.19):
     frame = create_frame(root)
-    label = create_label(frame=frame, text=label_text, side=LEFT, width=width*left, compound=LEFT, anchor='w')
+    label = create_label(frame=frame, text=text, side=LEFT, width=width*left, compound=LEFT, anchor='w')
     entry1 = create_text_input(frame=frame, width=width*mid, placeholder=place_holder1, side=RIGHT)
     entry2 = create_text_input(frame=frame, width=width*right, placeholder=place_holder2)
     return entry1, entry2
 
-def create_frame_label_and_input(root, label_text="", place_holder=None, width=width_window, left=left, right=right, is_password=False):
+def create_frame_label_and_input(root, text="", place_holder=None, width=width_window, left=left, right=right, is_password=False):
     frame = create_frame(root)
-    label = create_label(frame=frame, text=label_text, side=LEFT, width=width*left, compound=LEFT, anchor='w')
+    label = create_label(frame=frame, text=text, side=LEFT, width=width*left, compound=LEFT, anchor='w')
     entry = create_text_input(frame=frame, width=width*right, placeholder=place_holder, is_password=is_password)
 
     return entry
@@ -2382,6 +2927,20 @@ def load_config():
             config['is_auto_and_schedule'] = True
         if 'max_threads' not in config:
             config['max_threads'] = "1"
+        if 'insteract_now' not in config:
+            config['insteract_now'] = False
+        if 'video_number_interact' not in config:
+            config['video_number_interact'] = "10-40"
+        if 'watch_time' not in config:
+            config['watch_time'] = "5-30"
+        if 'watch_percent' not in config:
+            config['watch_percent'] = "60"
+        if 'like_percent' not in config:
+            config['like_percent'] = "40"
+        if 'comment_percent' not in config:
+            config['comment_percent'] = "20"
+        if 'follow_percent' not in config:
+            config['follow_percent'] = "30"
     else:
         config = {
             "download_folder":"",
@@ -2439,6 +2998,15 @@ def load_config():
             "convert_multiple_record": False, 
             "video_get_audio_path": "", 
             "video_get_audio_url": "", 
+
+            "insteract_now": False, 
+            "video_number_interact": "6-20", 
+            "watch_time": "10-40", 
+            "watch_percent": "60", 
+            "like_percent": "40", 
+            "comment_percent": "20", 
+            "follow_percent": "30", 
+            "comments_texts": "", 
 
             "supported_languages": {
                 "en-us": "English (United States)",
@@ -2503,7 +3071,6 @@ tiktok_config = {
    "output_folder": "",
    "show_browser": False,
    "use_profile_tiktok": False,
-   "use_firefox_profile": True,
    "download_url": "",
    "download_folder": "",
    "is_move": False,
@@ -2540,9 +3107,8 @@ def load_tiktok_config():
         config = get_json_data(tiktok_config_path)
     else:
         config = tiktok_config
-    if 'use_firefox_profile' not in config:
-        config['use_firefox_profile'] = True
-    save_to_json_file(config, tiktok_config_path)
+    if 'registered_other_name' not in config:
+        config['registered_other_name'] = []
     return config
 
 def load_facebook_config():
@@ -3175,3 +3741,11 @@ def number_to_english_with_units(text):
 
 # print(f"✅ Đã lưu file CSV thành công: {csv_file}")
 # print(f"✅ Đã lưu {audio_idx} file âm thanh vào thư mục: {audio_output_folder}")
+
+
+
+
+
+
+
+# get_chrome_driver_with_profile('themysteries.001@gmail.com', True, proxy='154.203.38.33:5821:tonggiang:Zxcv123123', is_remove_proxy=True)

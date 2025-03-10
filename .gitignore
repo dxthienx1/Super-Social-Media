@@ -26,3 +26,4 @@ download_info.json
 *.pem
 *.mp3
 *.mp4
+*proxy*/

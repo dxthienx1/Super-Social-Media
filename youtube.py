@@ -61,7 +61,7 @@ class YouTubeManager():
                     press_esc_key(2, self.driver)
                     account_menu, language = self.get_account_menu()
             else:
-                self.driver = get_driver_with_profile(target_gmail=self.gmail, show=show)
+                self.driver = get_chrome_driver_with_profile(target_gmail=self.gmail, show=show)
                 if not self.driver:
                     return
                 print(f'--> Đang sử dụng chrome profile để đăng nhập ...')
@@ -664,7 +664,7 @@ class YouTubeManager():
                         self.download_thread = threading.Thread(target=self.download_videos_by_channel_id_selenium)
                     else:
                         if not self.youtube:
-                            get_driver_with_profile(self.gmail, show=False)
+                            get_chrome_driver_with_profile(self.gmail, show=False)
                             self.youtube = self.get_authenticated_service()
                             if not self.youtube:
                                 print(f"Xác thực với google không thành công. Hãy đảm bảo bạn đã đăng ký api trước đó.")
@@ -674,7 +674,7 @@ class YouTubeManager():
                 else:
                     return
 
-        self.download_url_var = create_frame_label_and_input(self.root,label_text="Nhập link kênh", width=self.width, left=0.4, right=0.6)
+        self.download_url_var = create_frame_label_and_input(self.root,text="Nhập link kênh", width=self.width, left=0.4, right=0.6)
         self.filter_by_views_var = self.create_settings_input("Lọc theo số lượt xem", "filter_by_views", is_data_in_template=False, values=["100000", "200000", "300000", "500000", "1000000"], left=0.4, right=0.6)
         self.filter_by_like_var = self.create_settings_input("Lọc theo số lượt thích(đăng ký API google)", "filter_by_like", is_data_in_template= False, values=["10000", "20000", "30000", "50000", "100000"], left=0.4, right=0.6)
         self.download_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục lưu video", command=self.choose_folder_to_save, width=self.width, left=0.4, right=0.6)
@@ -743,19 +743,19 @@ class YouTubeManager():
         self.is_title_plus_video_name_var = self.create_settings_input("Thêm tên video vào tiêu đề", "is_title_plus_video_name", values=["Yes", "No"], left=left, right=right)
         self.description_var = self.create_settings_input("Mô tả", "description", is_textbox=True, left=left, right=right)
         self.upload_date_var = self.create_settings_input("Ngày bắt đầu đăng video (yyyy-mm-dd)", "upload_date", left=left, right=right)
-        self.day_gap_var, self.number_of_days_var = create_frame_label_input_input(self.root,label_text="Số ngày đăng/Khoảng cách ngày đăng", width=self.width, left=left, mid=0.33, right=0.37)
+        self.day_gap_var, self.number_of_days_var = create_frame_label_input_input(self.root,text="Số ngày đăng/Khoảng cách ngày đăng", width=self.width, left=left, mid=0.33, right=0.37)
         self.number_of_days_var.insert(0, self.youtube_config['template'][self.channel_name]['number_of_days'])
         self.day_gap_var.insert(0, self.youtube_config['template'][self.channel_name]['day_gap'])
         self.publish_times_var = self.create_settings_input("Giờ đăng(vd: 20:30)", "publish_times", left=left, right=right)
-        self.altered_content_var = self.create_settings_input(label_text="Nội dung đã bị chỉnh sửa", config_key="altered_content", values=['Yes', 'No'], left=0.3, right=0.7)
+        self.altered_content_var = self.create_settings_input(text="Nội dung đã bị chỉnh sửa", config_key="altered_content", values=['Yes', 'No'], left=left, right=right)
         self.playlist_var = self.create_settings_input("Chọn Playlist", "curent_playlist", values=self.youtube_config['template'][self.channel_name]["playlist"], left=left, right=right)
         try:
             self.playlist_var.set(self.youtube_config['template'][self.channel_name]["curent_playlist"])
         except:
             self.playlist_var.insert(0, self.youtube_config['template'][self.channel_name]["curent_playlist"])
-        self.show_browser_var = self.create_settings_input(label_text="Hiển thị trình duyệt", config_key="show_browser", values=['Yes', 'No'], left=0.3, right=0.7, is_data_in_template=False)
+        self.show_browser_var = self.create_settings_input(text="Hiển thị trình duyệt", config_key="show_browser", values=['Yes', 'No'], left=left, right=right, is_data_in_template=False)
         self.is_delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", "is_delete_after_upload", values=["Yes", "No"], left=left, right=right)
-        self.cookies_var = create_frame_label_and_input(self.root, label_text="Đăng nhập bằng cookies", width=self.width, left=left, right=right)
+        self.cookies_var = create_frame_label_and_input(self.root, text="Đăng nhập bằng cookies", width=self.width, left=left, right=right)
         self.thumbnail_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa thumbnail", command=set_thumbnail_folder, width=self.width)
         self.thumbnail_folder_var.insert(0, self.youtube_config['template'][self.channel_name]['thumbnail_folder'])
         self.upload_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa video", command=set_upload_folder, width=self.width)
@@ -1430,13 +1430,13 @@ class YouTubeManager():
     def clear_after_action(self):
         self.root.withdraw()
 
-    def create_settings_input(self, label_text, config_key, values=None, is_textbox = False, left=0.5, right=0.5, is_data_in_template=True):
+    def create_settings_input(self, text, config_key, values=None, is_textbox = False, left=0.5, right=0.5, is_data_in_template=True):
         if is_data_in_template:
             config = config=self.youtube_config['template'][self.channel_name]
         else:
             config = self.youtube_config
         frame = create_frame(self.root)
-        create_label(frame, text=label_text, side=LEFT, width=self.width*left, anchor='w')
+        create_label(frame, text=text, side=LEFT, width=self.width*left, anchor='w')
         val = config[config_key]
         if values:
             if not config_key:
