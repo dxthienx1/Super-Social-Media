@@ -230,18 +230,19 @@ class TikTokManager:
                 self.save_session()
                 return True
             else:
+
                 self.driver = get_driver(show=show, proxy=proxy)
                 if not self.driver:
                     return False
-                if self.tiktok_config['template'][self.account]['use_profile_type'] != 'Firefox' and self.tiktok_config['template'][self.account]['use_profile_type'] != 'Chrome':
-                    self.driver.execute_script("window.open('');")
-                    self.driver.switch_to.window(self.driver.window_handles[-1])
-                    if len(self.driver.window_handles) > 1:
-                        self.driver.switch_to.window(self.driver.window_handles[0])  
-                        self.driver.close()
-                    # Chuyển lại sang tab mới
-                    self.driver.switch_to.window(self.driver.window_handles[-1])
-                    sleep(1)
+                # if self.tiktok_config['template'][self.account]['use_profile_type'] != 'Firefox' and self.tiktok_config['template'][self.account]['use_profile_type'] != 'Chrome':
+                #     self.driver.execute_script("window.open('');")
+                #     self.driver.switch_to.window(self.driver.window_handles[-1])
+                #     if len(self.driver.window_handles) > 1:
+                #         self.driver.switch_to.window(self.driver.window_handles[0])  
+                #         self.driver.close()
+                #     # Chuyển lại sang tab mới
+                #     self.driver.switch_to.window(self.driver.window_handles[-1])
+                #     sleep(1)
                 self.load_session()
                 if not self.tiktok_config['template'][self.account]['first_login']:
                     sleep_random(6,9)
@@ -781,10 +782,9 @@ class TikTokManager:
             return False
         
     def start_thread_upload_video(self):
-        if not self.upload_thread or not self.upload_thread.is_alive():
-            self.is_stop_upload = False
-            self.upload_video_thread = threading.Thread(target=self.upload_video)
-            self.upload_video_thread.start()
+        self.is_stop_upload = False
+        upload_video_thread = threading.Thread(target=self.upload_video)
+        upload_video_thread.start()
 
     def upload_video(self, folder=None):
         try:

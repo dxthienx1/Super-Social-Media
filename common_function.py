@@ -692,7 +692,15 @@ def get_driver(show=True, proxy=None):
             return None
         else:
             print(f"{tot} IP đang dùng: {browser_ip}")
-
+            
+        driver.execute_script("window.open('');")
+        driver.switch_to.window(driver.window_handles[-1])
+        if len(driver.window_handles) > 1:
+            driver.switch_to.window(driver.window_handles[0])  
+            driver.close()
+        # Chuyển lại sang tab mới
+        driver.switch_to.window(driver.window_handles[-1])
+        sleep_random(1,2)
         return driver
     except Exception as e:
         getlog()
