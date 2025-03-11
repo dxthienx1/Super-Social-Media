@@ -1000,6 +1000,7 @@ class MainApp:
         self.show_window()
         self.setting_window_size()
         self.insteract_now_var = self.create_settings_input(text="Tương tác ngay", config_key='insteract_now', values=['Yes', 'No'], left=left, right=right)
+        self.max_threads_var = self.create_settings_input(text="Số acc chạy cùng lúc", config_key='max_threads', values=['1', '2', '3', '4'], left=left, right=right)
         self.video_number_interact_var = self.create_settings_input(text="Số video tương tác(min-max)", config_key='video_number_interact', values=['5-10', '10-20'], left=left, right=right)
         self.watch_time_var = self.create_settings_input(text="Thời gian xem(min-max) (giây)", config_key='watch_time', values=['5-30', '10-40'], left=left, right=right)
         self.watch_percent_var = self.create_settings_input(text="Xác suất tiến hành tương tác (%)", config_key='watch_percent', values=['50', '60', '70'], left=left, right=right)
@@ -1012,7 +1013,10 @@ class MainApp:
 
     def start_thread_insteract_tiktok(self):
         active_threads = []
-        max_threads = 1
+        try:
+            max_threads = int(self.config['max_threads'])
+        except:
+            max_threads = 1
         tiktok_account_othernames = self.tiktok_config['registered_other_name']
         for othername in tiktok_account_othernames:
             tiktok_account = self.tiktok_config['registered_account_dic'][othername]
@@ -1032,11 +1036,14 @@ class MainApp:
                 thread = threading.Thread(target=Tiktok.interact_with_tiktok, args=(self.config['video_number_interact'],))
                 thread.start()
                 active_threads.append(thread)
+            sleep(10)
+
 
     def save_insteract_tiktok_thread(self):
         try:
             self.config['insteract_now'] = self.insteract_now_var.get().strip() == 'Yes'
             self.config['video_number_interact'] = self.video_number_interact_var.get().strip()
+            self.config['max_threads'] = self.max_threads_var.get().strip()
             self.config['watch_time'] = self.watch_time_var.get().strip()
             self.config['watch_percent'] = self.watch_percent_var.get().strip()
             self.config['like_percent'] = self.like_percent_var.get().strip()
@@ -1233,8 +1240,10 @@ class MainApp:
         self.save_config()
         self.reset()
         self.setting_window_size()
-        self.tiktok = TikTokManager(tiktok_account, self.tiktok_password, self.upload_thread)
+        self.tiktok = TikTokManager(tiktok_account, self.tiktok_password)
         self.tiktok.get_start_tiktok()
+
+
 
     def open_facebook_window(self):
         self.get_facebook_config()
@@ -1717,8 +1726,8 @@ class MainApp:
         self.is_random_zoom_var.insert(0, "3-5")
         self.horizontal_position_var = self.create_settings_input("Vị trí zoom theo chiều ngang", "horizontal_position", values=["left", "center", "right"])
         self.vertical_position_var = self.create_settings_input("Vị trí zoom theo chiều dọc", "vertical_position", values=["top", "center", "bottom"])
-        self.top_bot_overlay_var = self.create_settings_input("Chiều cao lớp phủ trên, dưới(vd: 100,50)", "top_bot_overlay", values=["50", "100", "150"])
-        self.left_right_overlay_var = self.create_settings_input("Chiều cao lớp phủ trái, phải(vd: 100,50)", "left_right_overlay", values=["50", "100", "150"])
+        self.top_bot_overlay_var = self.create_settings_input("Lớp phủ trên, dưới(vd: 10,10,black,100)", "top_bot_overlay", values=["10,10,black,100", "10,10,white,100", "10,10,red,100", "10,10,green,100", "10,10,blue,100", "10,10,yellow,100", "10,10,gray,100", "10,10,orange,100", "10,10,purple,100", "10,10,pink,100"])
+        self.left_right_overlay_var = self.create_settings_input("Lớp phủ trái, phải(vd: 10,10,black,100)", "left_right_overlay", values=["10,10,black,100", "10,10,white,100", "10,10,red,100", "10,10,green,100", "10,10,blue,100", "10,10,yellow,100", "10,10,gray,100", "10,10,orange,100", "10,10,purple,100", "10,10,pink,100"])
         self.is_delete_original_audio_var = self.create_settings_input("Xóa audio gốc", "is_delete_original_audio", values=["Yes", "No"])
         self.background_music_path, self.background_music_volume_var = create_frame_button_input_input(self.root,text="Chọn thư mục chứa nhạc nền", width=self.width, command= self.choose_background_music_folder, place_holder1="Đường dẫn thư mục chứa file mp3", place_holder2="âm lượng")
         self.background_music_path.insert(0, self.config['background_music_path'])
@@ -1817,6 +1826,29 @@ class MainApp:
         if cnt > 0:
             self.noti(f"Chỉnh sửa thành công {cnt} video")
 
+    def get_overlay_demention(self, demention_str="0,0,black,100"):
+        try:
+            top_bot = demention_str.split(',')
+            if len(top_bot) == 4:
+                top_overlay, bot_overlay, color, transparent = top_bot
+            elif len(top_bot) == 2:
+                top_overlay, bot_overlay = top_bot
+            else:
+                print(f'Thiết lập lớp phủ chưa đúng định dạng(phủ trên,phủ dưới, màu sắc, độ trong suốt)\nVí dụ: 10,10 hoặc 10,10,black,50')
+                return False
+            try:
+                top_overlay = int(top_overlay.strip())
+            except:
+                top_overlay = 5
+            try:
+                bot_overlay = int(bot_overlay.strip())
+            except:
+                bot_overlay = 5
+                
+            transparent = float(transparent.strip()) / 100 if transparent.strip().isdigit else 1
+        except:
+            pass
+        return top_overlay, bot_overlay, color, transparent
 
     def fast_edit_video(self, input_video_path, upload_folder=None):
         speed_up = self.config.get('speed_up', '1')
@@ -1832,8 +1864,8 @@ class MainApp:
         vertical_watermark_position = self.config.get('vertical_watermark_position', 'center')
         watermark_scale = self.config.get('watermark_scale', '1,1')
         flip_horizontal = self.config.get('flip_video', False)
-        top_bot_overlay = self.config.get('top_bot_overlay', '2,2')
-        left_right_overlay = self.config.get('left_right_overlay', '2,2')
+        top_bot_overlay = self.config.get('top_bot_overlay', '2,2,black,100')
+        left_right_overlay = self.config.get('left_right_overlay', '2,2,black,100')
         pitch_factor = self.config.get('pitch_factor', "1")
         try:
             pitch = float(pitch_factor)
@@ -1853,25 +1885,8 @@ class MainApp:
         except:
             audio_volume = 1.0
 
-        try:
-            top_bot = top_bot_overlay.split(',')
-            top_overlay, bot_overlay = top_bot[0], top_bot[1]
-            if int(top_overlay) == 0:
-                top_overlay = 1
-            if int(bot_overlay) == 0:
-                bot_overlay = 1
-        except:
-            top_overlay = bot_overlay = 1
-
-        try:
-            left_right = left_right_overlay.split(',')
-            left_overlay, right_overlay = left_right[0], left_right[1]
-            if int(left_overlay) == 0:
-                left_overlay = 1
-            if int(right_overlay) == 0:
-                right_overlay = 1
-        except:
-            left_right = right_overlay = 1
+        top_overlay, bot_overlay, color_top_bot, transparent_t_b = self.get_overlay_demention(top_bot_overlay)
+        left_overlay, right_overlay, color_left_right, transparent_l_r = self.get_overlay_demention(left_right_overlay)
 
         try:
             output_folder, file_name = get_output_folder(input_video_path, output_folder_name='edited_videos')
@@ -1955,10 +1970,10 @@ class MainApp:
             if flip_horizontal:
                 flip_filter += ',hflip'
 
-            top_black_bar = f"drawbox=x=0:y=0:w=iw:h={top_overlay}:color=black:t=fill"
-            bottom_black_bar = f"drawbox=x=0:y=ih-{bot_overlay}:w=iw:h={bot_overlay}:color=black:t=fill"
-            left_black_bar = f"drawbox=x=0:y=0:w={left_overlay}:h=ih:color=black:t=fill"
-            right_black_bar = f"drawbox=x=iw-{right_overlay}:y=0:w={right_overlay}:h=ih:color=black:t=fill"
+            top_black_bar = f"drawbox=x=0:y=0:w=iw:h={top_overlay}:color={color_top_bot}@{transparent_t_b}:t=fill"
+            bottom_black_bar = f"drawbox=x=0:y=ih-{bot_overlay}:w=iw:h={bot_overlay}:color={color_top_bot}@{transparent_t_b}:t=fill"
+            left_black_bar = f"drawbox=x=0:y=0:w={left_overlay}:h=ih:color={color_left_right}@{transparent_l_r}:t=fill"
+            right_black_bar = f"drawbox=x=iw-{right_overlay}:y=0:w={right_overlay}:h=ih:color={color_left_right}@{transparent_l_r}:t=fill"
 
             zoom_filter = f"scale=iw*{zoom_size}:ih*{zoom_size},crop={int(video_width*0.999)}:{int(video_height*0.999)}:{zoom_x}:{zoom_y}{flip_filter}"
 
@@ -1970,9 +1985,9 @@ class MainApp:
                 except:
                     scale_w = 1
                     scale_h = 1
-                watermark_filter = f"[0:v]{zoom_filter},{top_black_bar},{bottom_black_bar},{left_black_bar},{right_black_bar},setpts=PTS/{speed_up}[v];[1:v]scale=iw*{scale_w}:ih*{scale_h},format=yuva420p[wm];[v][wm]overlay={watermark_x}:{watermark_y}[video]"
+                watermark_filter = f"[0:v]{zoom_filter},{left_black_bar},{right_black_bar},{top_black_bar},{bottom_black_bar},setpts=PTS/{speed_up}[v];[1:v]scale=iw*{scale_w}:ih*{scale_h},format=yuva420p[wm];[v][wm]overlay={watermark_x}:{watermark_y}[video]"
             else:
-                watermark_filter = f"[0:v]{zoom_filter},{top_black_bar},{bottom_black_bar},{left_black_bar},{right_black_bar},setpts=PTS/{speed_up}[video]"
+                watermark_filter = f"[0:v]{zoom_filter},{left_black_bar},{right_black_bar},{top_black_bar},{bottom_black_bar},setpts=PTS/{speed_up}[video]"
             combined_audio_path = os.path.join(output_folder, "combined_audio.wav")
             temp_audio_path = os.path.join(output_folder, "new_combined_audio.wav")
             if new_audio_path:
@@ -1980,34 +1995,18 @@ class MainApp:
                 audio_duration = float(audio_duration_info.get('duration', 0))
                 if audio_duration < video_duration:
                     repeat_count = int(video_duration / audio_duration) + 1
-                    loop_audio_command = [
-                        'ffmpeg',
-                        '-loglevel', 'quiet',
-                        '-stream_loop', str(repeat_count - 1),  # Lặp lại âm thanh
-                        '-i', new_audio_path,
-                        '-t', str(video_duration),  # Giới hạn thời gian phát lại âm thanh
-                        '-y', temp_audio_path
-                    ]
+                    loop_audio_command = [ 'ffmpeg', '-loglevel', 'quiet', '-stream_loop', str(repeat_count - 1), '-i', new_audio_path, '-t', str(video_duration), '-y', temp_audio_path ]
                     if not run_command_ffmpeg(loop_audio_command):
                         return
                     new_audio_path = temp_audio_path
                 combine_audio_command = [
-                    'ffmpeg',
-                    '-loglevel', 'quiet',
-                    '-i', input_video_path,   # Đầu vào video để lấy âm thanh gốc
-                    '-i', new_audio_path,     # Đầu vào âm thanh mới 
+                    'ffmpeg', '-loglevel', 'quiet', '-i', input_video_path, '-i', new_audio_path,
                     '-filter_complex', f'[0:a]volume=1[a1];[1:a]volume={audio_volume}[a2];[a1][a2]amerge=inputs=2[a]',
-                    '-map', '[a]',
-                    '-ac', '2',  # Đảm bảo đầu ra âm thanh có 2 kênh
-                    '-y', combined_audio_path
+                    '-map', '[a]', '-ac', '2', '-y', combined_audio_path
                 ]
                 run_command_ffmpeg(combine_audio_command)
 
-            command = [
-                'ffmpeg',
-                '-loglevel', 'quiet',
-                '-progress', 'pipe:1',
-            ]
+            command = [ 'ffmpeg', '-loglevel', 'quiet', '-progress', 'pipe:1', ]
             if first_cut > 0:
                 command.extend(['-ss', str(first_cut)])
             command.extend(['-i', input_video_path])
@@ -2025,34 +2024,14 @@ class MainApp:
             command.extend(['-filter_complex', watermark_filter])
             if new_audio_path:
                 if remove_original_audio:
-                    command.extend([
-                        '-map', '[video]',
-                        f'-map', f'{audio_index}:a',
-                        '-filter:a:0', f'volume={audio_volume}',
-                    ])
+                    command.extend([ '-map', '[video]', f'-map', f'{audio_index}:a', '-filter:a:0', f'volume={audio_volume}', ])
                 else:
-                    command.extend([
-                        '-map', '[video]',
-                        f'-map', f'{audio_index}:a',
-                        '-filter:a:0', f'volume=1,atempo={speed_up},rubberband=pitch={pitch}',
-                    ])
+                    command.extend([ '-map', '[video]', f'-map', f'{audio_index}:a', '-filter:a:0', f'volume=1,atempo={speed_up},rubberband=pitch={pitch}', ])
             elif not remove_original_audio:
-                command.extend([
-                    '-map', '[video]',
-                    '-map', '0:a',  # Âm thanh gốc
-                    '-filter:a', f'volume=1,atempo={speed_up},rubberband=pitch={pitch}',
-                ])
+                command.extend([ '-map', '[video]', '-map', '0:a', '-filter:a', f'volume=1,atempo={speed_up},rubberband=pitch={pitch}', ])
             else:
-                command.extend([
-                    '-map', '[video]',
-                    '-an' 
-                ])
-            command.extend([
-                '-vcodec', 'libx264', 
-                '-acodec', 'aac',
-                '-r', f'{video_fps + 1}',
-                '-y',
-            ])
+                command.extend([ '-map', '[video]', '-an' ])
+            command.extend([ '-vcodec', 'libx264', '-acodec', 'aac', '-r', f'{video_fps + 1}', '-y', ])
             if end_cut is not None:
                 duration = end_cut - first_cut
                 command.extend(['-to', str(duration)])
@@ -2090,11 +2069,7 @@ class MainApp:
             output_audio_path = temp_file.name
 
             try:
-                cmd = [
-                    'ffmpeg', '-i', input_audio_path, '-filter:a',
-                    f'volume=1,atempo=1,rubberband=pitch={pitch_factor}',
-                    '-y', output_audio_path
-                ]
+                cmd = [ 'ffmpeg', '-i', input_audio_path, '-filter:a', f'volume=1,atempo=1,rubberband=pitch={pitch_factor}', '-y', output_audio_path ]
                 run_command_ffmpeg(cmd, hide=False)
                 return output_audio_path
             except:
@@ -2228,7 +2203,6 @@ class MainApp:
         self.auto_upload_tiktok_var = self.create_settings_input("Tự động đăng video tiktok", "auto_upload_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
         self.is_auto_and_schedule_var = self.create_settings_input("Đăng tự động và lên lịch", "is_auto_and_schedule", values=["Yes", "No"], left=0.4, right=0.6)
         self.max_threads_var = self.create_settings_input("Số luồng đăng video tối đa", "max_threads", values=["1", "3", "5"], left=0.4, right=0.6)
-        self.max_threads_var.set("1")
         self.time_check_auto_upload_var = self.create_settings_input("Khoảng thời gian kiểm tra và tự động đăng video (phút)", "time_check_auto_upload", values=["0", "60"], left=0.4, right=0.6)
         self.time_check_status_video_var = self.create_settings_input("Khoảng cách mỗi lần kiểm tra trạng thái video (phút)", "time_check_status_video", values=["0", "60"], left=0.4, right=0.6)
         self.use_profile_facebook_var = self.create_settings_input("Sử dụng chrome profile cho facebook", "use_profile_facebook", values=["Yes", "No"], left=0.4, right=0.6)
@@ -2444,16 +2418,16 @@ class MainApp:
     def setting_window_size(self):
         if self.is_start_app:
             self.width = 500
-            self.height_window = 479
+            self.height_window = 527
             if height_element == 30:
-                self.height_window = 475
+                self.height_window = 520
         else:
             if self.is_start_window:
                 self.root.title("SSM App")
                 self.width = 500
-                self.height_window = 479
+                self.height_window = 527
                 if height_element == 30:
-                    self.height_window = 475
+                    self.height_window = 520
                 self.is_start_window = False
             elif self.is_add_new_channel:
                 self.root.title("Add New Channel")
@@ -2559,7 +2533,7 @@ class MainApp:
             elif self.is_interact_setting_window:
                 self.root.title("Tiktok Insteract Window")
                 self.width = 600
-                self.height_window = 550
+                self.height_window = 597
                 self.is_interact_setting_window = False
             elif self.is_sign_up_tiktok:
                 self.root.title("Sign Up Tiktok")

@@ -664,7 +664,8 @@ def get_driver(show=True, proxy=None):
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         options.add_experimental_option('useAutomationExtension', False)
         options.add_argument("--disable-popup-blocking")
-        options.add_argument("--remote-debugging-port=9222")
+        # debugging_port = random.randint(9000, 9999) 
+        # options.add_argument(f"--remote-debugging-port={debugging_port}")
         driver = webdriver.Chrome(service=service, options=options)
         driver.set_window_size(screen_width - 200, screen_height - 50)
         # driver.maximize_window()
@@ -1955,31 +1956,36 @@ def run_command_ffmpeg(command, hide=True):
             subprocess.run(command, check=True, text=True, encoding='utf-8', stdout=subprocess.DEVNULL)
         return True
     except:
+        getlog()
         return False
 
 def run_command_with_progress(command, duration):
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True,
-        encoding='utf-8',
-    )
+    try:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            encoding='utf-8',
+        )
 
-    current_time = 0.0
-    check=False
-    for line in process.stdout:
-        if 'out_time_ms=' in line:
-            match = re.search(r'out_time_ms=(\d+)', line)
-            if match:
-                out_time_ms = int(match.group(1))
-                current_time = out_time_ms / 1000000.0
-                percent_complete = (current_time / duration) * 100
-                sys.stdout.write(f'\rĐã xử lý: {percent_complete:.2f}%')
-                sys.stdout.flush()
-                check = True
-    process.wait()
-    return check
+        current_time = 0.0
+        check=False
+        for line in process.stdout:
+            if 'out_time_ms=' in line:
+                match = re.search(r'out_time_ms=(\d+)', line)
+                if match:
+                    out_time_ms = int(match.group(1))
+                    current_time = out_time_ms / 1000000.0
+                    percent_complete = (current_time / duration) * 100
+                    sys.stdout.write(f'\rĐã xử lý: {percent_complete:.2f}%')
+                    sys.stdout.flush()
+                    check = True
+        process.wait()
+        return check
+    except:
+        getlog()
+        return False
 
 def get_video_info(input_file):
     try:
