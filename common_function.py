@@ -9,12 +9,10 @@ from datetime import datetime, timedelta, timezone, time as dtime
 from time import sleep, time
 import threading
 import traceback
-import pyttsx3
 import winreg
-from moviepy.video.fx.all import resize, crop, mirror_x, speedx
-from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips, afx, vfx, CompositeVideoClip, ImageClip, ColorClip
+from moviepy.video.fx import Resize as resize, Crop as crop, MirrorX as mirror_x, MultiplySpeed, CrossFadeIn
+from moviepy import VideoFileClip, AudioFileClip, concatenate_videoclips, afx, vfx, CompositeVideoClip, ImageClip, ColorClip
 from moviepy.audio.AudioClip import CompositeAudioClip
-from pydub import AudioSegment
 import requests
 from unidecode import unidecode
 import yt_dlp
@@ -28,7 +26,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium_stealth import stealth
 import subprocess
-import ffmpeg
 import pickle
 import uuid
 import wmi
@@ -36,11 +33,6 @@ import platform
 from tkinter import messagebox, filedialog
 import customtkinter as ctk
 import ctypes
-import httplib2
-from googleapiclient.discovery import build
-from oauth2client.client import flow_from_clientsecrets
-from oauth2client.file import Storage
-from oauth2client.tools import run_flow
 from PIL import Image, ImageDraw
 import pystray
 from pystray import MenuItem as item
@@ -156,6 +148,7 @@ local_storage_path = os.path.join(current_dir, 'local_storage.pkl')
 facebook_cookies_path = os.path.join(current_dir, 'facebook_cookies.pkl')
 tiktok_cookies_path = os.path.join(current_dir, 'tiktok_cookies.pkl')
 ff_tiktok_cookies_path = os.path.join(current_dir, 'ff_tiktok_cookies.pkl')
+mobi_tiktok_cookies_path = os.path.join(current_dir, 'mobi_tiktok_cookies.pkl')
 youtube_cookies_path = os.path.join(current_dir, 'youtube_cookies.pkl')
 youtube_config_path = os.path.join(current_dir, 'youtube_config.pkl')
 tiktok_config_path = os.path.join(current_dir, 'tiktok_config.pkl')
@@ -201,15 +194,23 @@ def load_ffmpeg():
             base_dir = os.path.dirname(__file__)
         ffmpeg_dir = os.path.join(base_dir, "ffmpeg", "bin")
         return ffmpeg_dir
+
     def is_ffmpeg_available():
         try:
-            subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            return True
+            result = subprocess.run(["ffmpeg", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            return "ffmpeg version" in result.stdout.lower()  # Kiểm tra có chữ "ffmpeg version" không
         except FileNotFoundError:
             return False
+
+    ffmpeg_dir = get_ffmpeg_dir()
+    
     if not is_ffmpeg_available():
-        ffmpeg_dir = get_ffmpeg_dir()
-        os.environ["PATH"] += os.pathsep + ffmpeg_dir
+        os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ["PATH"]
+        os.environ["FFMPEG_BINARY"] = os.path.join(ffmpeg_dir, "ffmpeg.exe")  # Đặt biến môi trường FFMPEG_BINARY
+
+        # Kiểm tra lại sau khi thêm PATH
+        if not is_ffmpeg_available():
+            raise RuntimeError(f"Không tìm thấy FFmpeg tại {ffmpeg_dir}. Kiểm tra lại đường dẫn!")
 load_ffmpeg()
 
 def load_download_info():
@@ -533,7 +534,7 @@ def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_
         sleep(1)
         def get_profile_name_by_gmail():
             if not target_gmail:
-                return "Default"
+                target_gmail = "Default"
 
             def check_gmail_in_profile(profile_path):
                 preferences_file = os.path.join(profile_path, "Preferences")
@@ -629,7 +630,7 @@ def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_
         return None
 
 
-def get_driver(show=True, proxy=None):
+def get_driver(show=True, proxy=None, mode="web"):
     try:
         service = Service(chromedriver_path)
         options = webdriver.ChromeOptions()
@@ -638,7 +639,12 @@ def get_driver(show=True, proxy=None):
         proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
         if not proxy_country or proxy_country not in USER_AGENTS_WINDOWS:
             proxy_country = "Other"
-        user_agent = USER_AGENTS_WINDOWS[proxy_country]
+        if mode == "web":
+            user_agent = USER_AGENTS_WINDOWS[proxy_country]
+        else:
+            user_agent = "Mozilla/5.0 (Linux; Android 11; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36"
+
+        
         options.add_argument(f"--user-agent={user_agent}")
 
         if proxy_ip and proxy_port:
@@ -664,20 +670,40 @@ def get_driver(show=True, proxy=None):
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         options.add_experimental_option('useAutomationExtension', False)
         options.add_argument("--disable-popup-blocking")
+        options.add_argument("--disable-features=WebRTC")
+        if mode == "mobi":
+            mobile_emulation = {
+                # "deviceMetrics": {"width": 360, "height": 740, "pixelRatio": 3.0},
+                "userAgent": user_agent
+            }
+            options.add_experimental_option("mobileEmulation", mobile_emulation)
         # debugging_port = random.randint(9000, 9999) 
         # options.add_argument(f"--remote-debugging-port={debugging_port}")
         driver = webdriver.Chrome(service=service, options=options)
+        # if mode == 'web':
         driver.set_window_size(screen_width - 200, screen_height - 50)
-        # driver.maximize_window()
-
         # Xóa dấu hiệu bot bằng JavaScript
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        driver.execute_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+            Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 4 });
+        """)
+
+        # Fake WebGL + Canvas (tránh bị nhận diện qua fingerprint)
+        driver.execute_script("""
+            WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                if (parameter === 37445) return 'Intel Open Source Technology Center';
+                if (parameter === 37446) return 'Mesa DRI Intel(R) HD Graphics 620';
+                return WebGLRenderingContext.prototype.getParameter(parameter);
+            };
+        """)
 
         try:
             stealth(driver,
                     languages=["en-US", "en"],
                     vendor="Google Inc.",
-                    platform="Win32",
+                    platform="Win32" if mode == "web" else "Linux",
                     webgl_vendor="Intel Inc.",
                     renderer="Intel Iris OpenGL Engine",
                     fix_hairline=True
@@ -693,7 +719,7 @@ def get_driver(show=True, proxy=None):
             return None
         else:
             print(f"{tot} IP đang dùng: {browser_ip}")
-            
+        # if mode == 'web':
         driver.execute_script("window.open('');")
         driver.switch_to.window(driver.window_handles[-1])
         if len(driver.window_handles) > 1:
@@ -706,6 +732,83 @@ def get_driver(show=True, proxy=None):
     except Exception as e:
         getlog()
         return None
+# def get_driver(show=True, proxy=None):
+#     try:
+#         service = Service(chromedriver_path)
+#         options = webdriver.ChromeOptions()
+
+#         # Random hóa User-Agent để tránh bị Google theo dõi
+#         proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+#         if not proxy_country or proxy_country not in USER_AGENTS_WINDOWS:
+#             proxy_country = "Other"
+#         user_agent = USER_AGENTS_WINDOWS[proxy_country]
+#         options.add_argument(f"--user-agent={user_agent}")
+
+#         if proxy_ip and proxy_port:
+#             if proxy_user and proxy_pass:
+#                 pluginfile = create_chrome_proxy_extension(proxy_ip, proxy_port, proxy_user, proxy_pass)
+#                 options.add_extension(pluginfile)
+#                 # proxy_extension_path = create_proxy_extension_with_chrome_profile(proxy_ip, proxy_port, proxy_user, proxy_pass)
+#                 # options.add_argument(f"--load-extension={proxy_extension_path}")
+#             else:
+#                 proxy_url = f"http://{proxy_ip}:{proxy_port}"
+#                 options.add_argument(f'--proxy-server={proxy_url}')
+
+#         # Chạy ở chế độ headless nếu cần
+#         if not show:
+#             options.add_argument('--headless=new')
+#             options.add_argument("--no-sandbox")
+#             options.add_argument("--disable-dev-shm-usage")
+#         options.add_argument("--force-device-scale-factor=1")
+#         # Tắt tính năng tự động hóa để tránh bị phát hiện
+#         options.add_argument('--disable-blink-features=AutomationControlled')
+#         options.add_argument("--log-level=3")
+#         options.add_argument("--disable-logging")
+#         options.add_experimental_option('excludeSwitches', ['enable-automation'])
+#         options.add_experimental_option('useAutomationExtension', False)
+#         options.add_argument("--disable-popup-blocking")
+#         # debugging_port = random.randint(9000, 9999) 
+#         # options.add_argument(f"--remote-debugging-port={debugging_port}")
+#         driver = webdriver.Chrome(service=service, options=options)
+#         driver.set_window_size(screen_width - 200, screen_height - 50)
+#         # driver.maximize_window()
+
+#         # Xóa dấu hiệu bot bằng JavaScript
+#         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+#         try:
+#             stealth(driver,
+#                     languages=["en-US", "en"],
+#                     vendor="Google Inc.",
+#                     platform="Win32",
+#                     webgl_vendor="Intel Inc.",
+#                     renderer="Intel Iris OpenGL Engine",
+#                     fix_hairline=True
+#                     )
+#         except ImportError:
+#             pass
+
+#         # Kiểm tra IP sau khi mở trình duyệt
+#         browser_ip = get_browser_ip(driver)
+#         if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
+#             print("❌ Đổi IP không thành công!")
+#             driver.quit()
+#             return None
+#         else:
+#             print(f"{tot} IP đang dùng: {browser_ip}")
+            
+#         driver.execute_script("window.open('');")
+#         driver.switch_to.window(driver.window_handles[-1])
+#         if len(driver.window_handles) > 1:
+#             driver.switch_to.window(driver.window_handles[0])  
+#             driver.close()
+#         # Chuyển lại sang tab mới
+#         driver.switch_to.window(driver.window_handles[-1])
+#         sleep_random(1,2)
+#         return driver
+#     except Exception as e:
+#         getlog()
+#         return None
 
 
     
@@ -812,9 +915,9 @@ def input_char_by_char(ele, text):
     for char in text:
         ele.send_keys(char)
         if char == ' ':
-            sleep_random(0.1,0.4)
+            sleep_random(0.1,0.2)
         else:
-            sleep_random(0.05,0.1)
+            sleep_random(0.03,0.8)
 def get_element_by_text(driver, text, tag_name='*', timeout=6):
     try:
         # Tìm element chứa text thuộc thẻ xác định
@@ -1202,7 +1305,10 @@ def get_json_data(file_path=""):
             elif file_path.endswith('.pkl'):
                 with open(file_path, "rb") as file:
                     portalocker.lock(file, portalocker.LOCK_SH)
-                    p = pickle.load(file)
+                    try:
+                        p = pickle.load(file)
+                    except:
+                        return {}
                     portalocker.unlock(file)
             elif file_path.endswith('.txt'):
                 with open(file_path, "r", encoding="utf-8") as file:
@@ -2494,7 +2600,8 @@ def speed_up_clip(clip, speed):
     if speed < 0 or speed > 3:
         warning_message('invalid speed up')
         return None
-    sped_up_clip = clip.fx(speedx, factor=speed)
+    fff = MultiplySpeed(speed)
+    sped_up_clip = fff.apply(clip)
     return sped_up_clip
 
 def get_clip_ratio(clip, tolerance=0.02):  #Kiểm tra video thuộc tỷ lệ 16:9 hay 9:16
@@ -3126,24 +3233,29 @@ facebook_config = {
 
 def load_youtube_config():
     if os.path.exists(youtube_config_path):
-        config = get_json_data(youtube_config_path)
+        config = get_json_data(youtube_config_path) or {}
     else:
         config = youtube_config
     save_to_json_file(config, youtube_config_path)
     return config
 
 def load_tiktok_config():
-    if os.path.exists(tiktok_config_path):
-        config = get_json_data(tiktok_config_path)
-    else:
-        config = tiktok_config
-    if 'registered_other_name' not in config:
-        config['registered_other_name'] = []
-    return config
+    try:
+        if os.path.exists(tiktok_config_path):
+            config = get_json_data(tiktok_config_path) or {}
+        else:
+            config = tiktok_config
+        if 'registered_other_name' not in config:
+            config['registered_other_name'] = []
+        save_to_json_file(config, tiktok_config_path)
+        return config
+    except:
+        getlog()
+        pass
 
 def load_facebook_config():
     if os.path.exists(facebook_config_path):
-        config = get_json_data(facebook_config_path)
+        config = get_json_data(facebook_config_path) or {}
     else:
         config = facebook_config
     save_to_json_file(config, facebook_config_path)

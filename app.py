@@ -51,7 +51,7 @@ class MainApp:
             self.edit_audio_thread = threading.Thread()
             self.config = load_config()
             self.youtube_config = load_youtube_config()
-            self.tiktok_config = load_tiktok_config()
+            self.tiktok_config = self.get_tiktok_config()
             self.facebook_config = load_facebook_config()
             self.youtube = None
             self.is_youtube_window = False
@@ -59,11 +59,11 @@ class MainApp:
             self.tiktok = None
             self.is_tiktok_window = False
             self.is_interact_setting_window = False
+            self.is_auto_upload_tiktok_window = False
             self.is_sign_up_tiktok = False
             self.facebook = None
             self.is_sign_up_facebook = False
             self.is_facebook_window = False
-            self.engine = pyttsx3.init()
             remove_file("log.txt")
             self.thread_main = None
             self.max_threads = 1
@@ -94,9 +94,6 @@ class MainApp:
             self.is_editing_video = False
             self.is_add_new_channel = False
             self.is_remove_channel = False
-            self.pre_time_check_auto_upload_youtube = 0
-            self.pre_time_check_auto_upload_facebook = 0
-            self.pre_time_check_auto_upload_tiktok = 0
             self.pre_time_check_status_video_youtube = 0
             self.first_check_status_video = True
             self.first_check_upload_video_youtube = True
@@ -112,7 +109,7 @@ class MainApp:
             self.setting_window_size()
             self.create_icon()
             self.get_start_window()
-            self.start_main_check_thread()
+            # self.start_main_check_thread()
             if self.config["auto_start"]:
                 set_autostart()
             else:
@@ -243,43 +240,37 @@ class MainApp:
             getlog()
 
     def auto_upload_tiktok(self):  
-        """Hàm upload video TikTok đa luồng với hàng đợi, giới hạn số luồng tối đa chạy cùng lúc"""
         try:
-            time_check_cycle = get_time_check_cycle(self.config['time_check_auto_upload'])
-            if time_check_cycle == 0:
-                return
+            self.get_tiktok_config()
+            auto_tiktok_acc = [acc for acc in self.tiktok_config['template'].keys()]
+            print(f'Tổng số acc đã đăng ký: {len(auto_tiktok_acc)}')
+            is_auto_and_schedule = self.config['is_auto_and_schedule']
+            # Giới hạn số luồng tối đa chạy cùng lúc
+            try:
+                max_threads = int(self.config['max_threads'])
+            except:
+                max_threads = 1
             
-            if self.config['auto_upload_tiktok']:
-                if (self.first_check_upload_video_tiktok and time_check_cycle > 0) or (time() - self.pre_time_check_auto_upload_tiktok >= time_check_cycle):
-                    self.pre_time_check_auto_upload_tiktok = time()
-                    auto_tiktok_acc = [acc for acc in self.tiktok_config['template'].keys()]
-                    is_auto_and_schedule = self.config['is_auto_and_schedule']
-
-                    # Giới hạn số luồng tối đa chạy cùng lúc
-                    try:
-                        max_threads = int(self.config['max_threads'])
-                    except:
-                        max_threads = 1
-                    
-                    semaphore = threading.Semaphore(max_threads)
-                    account_queue = queue.Queue()
-
-                    # Đẩy tất cả tài khoản vào hàng đợi
-                    for account in auto_tiktok_acc:
-                        account_queue.put(account)
-
-                    # Tạo số luồng tối đa theo giới hạn
-                    self.upload_threads = []
-                    for _ in range(max_threads):
-                        thread = threading.Thread(target=self.worker_upload_task, args=(account_queue, semaphore, is_auto_and_schedule))
-                        thread.start()
-                        self.upload_threads.append(thread)
-
-                    # Chờ tất cả các luồng hoàn thành
-                    for thread in self.upload_threads:
-                        thread.join()
-
-                    self.first_check_upload_video_tiktok = False
+            semaphore = threading.Semaphore(max_threads)
+            account_queue = queue.Queue()
+            # Đẩy tất cả tài khoản vào hàng đợi
+            for account in auto_tiktok_acc:
+                videos_folder = self.tiktok_config['template'][account].get('upload_folder')
+                if not videos_folder or not os.path.isdir(videos_folder):
+                    print(f'Thư mục chứa video của {account}: {videos_folder}')
+                    continue
+                account_queue.put(account)
+            # Tạo số luồng tối đa theo giới hạn
+            self.upload_threads = []
+            for _ in range(max_threads):
+                thread = threading.Thread(target=self.worker_upload_task, args=(account_queue, semaphore, is_auto_and_schedule))
+                thread.start()
+                self.upload_threads.append(thread)
+                sleep_random(5,10)
+            # Chờ tất cả các luồng hoàn thành
+            for thread in self.upload_threads:
+                thread.join()
+            self.first_check_upload_video_tiktok = False
         except Exception as e:
             getlog()
             print(f"Lỗi trong auto_upload_tiktok: {e}")
@@ -292,7 +283,6 @@ class MainApp:
                 try:
                     if self.is_stop_upload:
                         return
-                    self.get_tiktok_config()
                     videos_folder = self.tiktok_config['template'][account].get('upload_folder')
                     videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)
                     if not videos:
@@ -302,7 +292,6 @@ class MainApp:
                     # Khởi tạo quá trình upload video
                     auto_tiktok = TikTokManager(account, tiktok_password, self.download_thread, None, is_auto_upload=True, is_auto_and_schedule=is_auto_and_schedule)
                     auto_tiktok.upload_video()
-                    sleep(5)
                 except:
                     getlog()
 
@@ -990,8 +979,29 @@ class MainApp:
         create_button(self.root, text="Mở cửa sổ quản lý kênh tiktok", command=self.start_tiktok_management)
         create_button(self.root, text="Đăng ký tài khoản tiktok mới", command=self.sign_up_tiktok_window)
         create_button(self.root, text="Xóa thông tin kênh tiktok", command=self.remove_tiktok_channel_window)
+        create_button(self.root, text="Thiết lập tự dộng đăng", command=self.auto_upload_tiktok_window)
         create_button(self.root, text="Thiết lập tương tác cho các kênh tiktok", command=self.interact_setting_window)
         create_button(self.root, text="Lùi lại", command=self.get_start_window, width=self.width)
+
+
+    def auto_upload_tiktok_window(self):
+        def start_auto_upload_tiktok_thread():
+            is_auto_and_schedule = self.is_auto_and_schedule_var.get() == 'Yes'
+            max_threads = self.max_threads_var.get().strip()
+            self.config['is_auto_and_schedule'] = is_auto_and_schedule
+            self.config['max_threads'] = max_threads
+            self.save_config()
+            auto_upload_thread = threading.Thread(target=self.auto_upload_tiktok)
+            auto_upload_thread.start()
+
+        self.reset()
+        self.is_auto_upload_tiktok_window = True
+        self.show_window()
+        self.setting_window_size()
+        self.is_auto_and_schedule_var = self.create_settings_input("Lên lịch", "is_auto_and_schedule", values=["Yes", "No"], left=0.4, right=0.6)
+        self.max_threads_var = self.create_settings_input("Số account đăng video tối đa", "max_threads", values=["1", "3", "5"], left=0.4, right=0.6)
+        create_button(self.root, text="Bắt đầu", command=start_auto_upload_tiktok_thread, width=self.width)
+        create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
 
 
     def interact_setting_window(self):
@@ -1076,6 +1086,18 @@ class MainApp:
                 tiktok_account = self.tiktok_config['registered_account_dic'][other_name]
                 if tiktok_account in self.tiktok_config['template'].keys():
                     self.tiktok_config['template'].pop(tiktok_account, None)
+                cookies_info_mobi = get_json_data(mobi_tiktok_cookies_path) or {}
+                if tiktok_account in cookies_info_mobi:
+                    cookies_info_ff.pop(tiktok_account)
+                    save_to_json_file(cookies_info_mobi, mobi_tiktok_cookies_path)
+                cookies_info_ff = get_json_data(ff_tiktok_cookies_path) or {}
+                if tiktok_account in cookies_info_ff:
+                    cookies_info_ff.pop(tiktok_account)
+                    save_to_json_file(cookies_info_ff, ff_tiktok_cookies_path)
+                cookies_info_chrome = get_json_data(tiktok_cookies_path) or {}
+                if tiktok_account in cookies_info_chrome:
+                    cookies_info_chrome.pop(tiktok_account)
+                    save_to_json_file(cookies_info_chrome, tiktok_cookies_path)
                 if other_name in self.tiktok_config['registered_account_dic']:
                     self.tiktok_config['registered_account_dic'].pop(other_name)
                 if other_name in self.tiktok_config['registered_other_name']:
@@ -1142,26 +1164,28 @@ class MainApp:
     
                     if tiktok_account not in self.tiktok_config['template']:
                         self.tiktok_config['template'][tiktok_account] = {}
+
+                        self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
+                        self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
+                        self.tiktok_config['template'][tiktok_account]['description'] = ""
+                        self.tiktok_config['template'][tiktok_account]['location'] = ""
+                        self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
+                        self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
+                        self.tiktok_config['template'][tiktok_account]['title'] = ""
+                        self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
+                        self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
+                        self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
+                        self.tiktok_config['template'][tiktok_account]['waiting_verify'] = True
+                        self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
+                        self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
+                        self.tiktok_config['template'][tiktok_account]['first_login'] = True
+                        self.tiktok_config['template'][tiktok_account]['video_number_interact_befor_upload'] = '3-6'
+                        self.tiktok_config['template'][tiktok_account]['auto_interact'] = True
+                        self.tiktok_config['template'][tiktok_account]['use_profile_type'] = "Không dùng"
                     self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
                     self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
                     self.tiktok_config['template'][tiktok_account]['other_name'] = other_name
                     self.tiktok_config['template'][tiktok_account]['proxy'] = proxy
-                    self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
-                    self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
-                    self.tiktok_config['template'][tiktok_account]['description'] = ""
-                    self.tiktok_config['template'][tiktok_account]['location'] = ""
-                    self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
-                    self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
-                    self.tiktok_config['template'][tiktok_account]['title'] = ""
-                    self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
-                    self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
-                    self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
-                    self.tiktok_config['template'][tiktok_account]['waiting_verify'] = False
-                    self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
-                    self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
-                    self.tiktok_config['template'][tiktok_account]['first_login'] = True
-                    self.tiktok_config['template'][tiktok_account]['video_number_interact_befor_upload'] = '3-6'
-                    self.tiktok_config['template'][tiktok_account]['auto_interact'] = True
                     
                     if 'registered_account_dic' not in self.tiktok_config:
                         self.tiktok_config['registered_account_dic'] = {}
@@ -1186,24 +1210,27 @@ class MainApp:
   
                 if tiktok_account not in self.tiktok_config['template']:
                     self.tiktok_config['template'][tiktok_account] = {}
+                    self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
+                    self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
+                    self.tiktok_config['template'][tiktok_account]['description'] = ""
+                    self.tiktok_config['template'][tiktok_account]['location'] = ""
+                    self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
+                    self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
+                    self.tiktok_config['template'][tiktok_account]['title'] = ""
+                    self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
+                    self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
+                    self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
+                    self.tiktok_config['template'][tiktok_account]['waiting_verify'] = False
+                    self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
+                    self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
+                    self.tiktok_config['template'][tiktok_account]['first_login'] = True
+                    self.tiktok_config['template'][tiktok_account]['video_number_interact_befor_upload'] = '3-6'
+                    self.tiktok_config['template'][tiktok_account]['auto_interact'] = True
+                    self.tiktok_config['template'][tiktok_account]['use_profile_type'] = "Không dùng"
                 self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
                 self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
                 self.tiktok_config['template'][tiktok_account]['other_name'] = other_name
                 self.tiktok_config['template'][tiktok_account]['proxy'] = proxy
-                self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
-                self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
-                self.tiktok_config['template'][tiktok_account]['description'] = ""
-                self.tiktok_config['template'][tiktok_account]['location'] = ""
-                self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
-                self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
-                self.tiktok_config['template'][tiktok_account]['title'] = ""
-                self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
-                self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
-                self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
-                self.tiktok_config['template'][tiktok_account]['waiting_verify'] = False
-                self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
-                self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
-                self.tiktok_config['template'][tiktok_account]['first_login'] = True
 
                 if 'registered_account_dic' not in self.tiktok_config:
                     self.tiktok_config['registered_account_dic'] = {}
@@ -1219,6 +1246,7 @@ class MainApp:
         self.other_name_var = create_frame_label_and_input(self.root, text="Tên hiển thị")
         self.tiktok_account_var = create_frame_label_and_input(self.root, text="Nhập tài khoản tiktok")
         self.tiktok_password_var = create_frame_label_and_input(self.root, text="Nhập mật khẩu", is_password=True)
+        self.proxy_var = create_frame_label_and_input(self.root, text="Nhập proxy")
         self.chose_account_txt_file_var = create_frame_button_and_input(self.root, "Lấy tài khoản từ file .txt", command=self.chose_account_txt_file, width=self.width, left=left, right=right)
         create_button(self.root, text="Đăng ký ngay", command=sign_up_tiktok)
         create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
@@ -1938,7 +1966,7 @@ class MainApp:
                 try:
                     zoom_size = float(zoom_size)
                 except:
-                    zoom_size = 1.01
+                    zoom_size = 1
 
             if horizontal_position == 'center':
                 zoom_x = int(video_width * (1 - 1 / zoom_size) / 2)
@@ -1975,7 +2003,7 @@ class MainApp:
             left_black_bar = f"drawbox=x=0:y=0:w={left_overlay}:h=ih:color={color_left_right}@{transparent_l_r}:t=fill"
             right_black_bar = f"drawbox=x=iw-{right_overlay}:y=0:w={right_overlay}:h=ih:color={color_left_right}@{transparent_l_r}:t=fill"
 
-            zoom_filter = f"scale=iw*{zoom_size}:ih*{zoom_size},crop={int(video_width*0.999)}:{int(video_height*0.999)}:{zoom_x}:{zoom_y}{flip_filter}"
+            zoom_filter = f"scale=iw*{zoom_size*0.98}:ih*{zoom_size*1.02},crop={int(video_width*0.998)}:{int(video_height*0.998)}:{zoom_x}:{zoom_y}{flip_filter}"
 
             if watermark:
                 try:
@@ -2031,7 +2059,7 @@ class MainApp:
                 command.extend([ '-map', '[video]', '-map', '0:a', '-filter:a', f'volume=1,atempo={speed_up},rubberband=pitch={pitch}', ])
             else:
                 command.extend([ '-map', '[video]', '-an' ])
-            command.extend([ '-vcodec', 'libx264', '-acodec', 'aac', '-r', f'{video_fps + 1}', '-y', ])
+            command.extend([ '-vcodec', 'libx264', '-acodec', 'aac', '-r', f'{video_fps + 2}', '-y', ])
             if end_cut is not None:
                 duration = end_cut - first_cut
                 command.extend(['-to', str(duration)])
@@ -2175,12 +2203,6 @@ class MainApp:
     def open_common_settings(self):
         def save_common_config():
             self.config["auto_start"] = self.auto_start_var.get() == "Yes"
-            self.config["auto_upload_youtube"] = self.auto_upload_youtube_var.get() == "Yes"
-            self.config["auto_upload_facebook"] = self.auto_upload_facebook_var.get() == "Yes"
-            self.config["auto_upload_tiktok"] = self.auto_upload_tiktok_var.get() == "Yes"
-            self.config["is_auto_and_schedule"] = self.is_auto_and_schedule_var.get() == "Yes"
-            self.config["max_threads"] = self.max_threads_var.get().strip()
-            self.config["time_check_auto_upload"] = self.time_check_auto_upload_var.get()
             self.config["time_check_status_video"] = self.time_check_status_video_var.get()
             self.config["is_delete_video"] = self.is_delete_video_var.get() == "Yes"
             self.config['is_move'] = self.is_move_video_var.get() == "Yes"
@@ -2198,12 +2220,6 @@ class MainApp:
         self.show_window()
         self.setting_window_size()
         self.auto_start_var = self.create_settings_input("Khởi động ứng dụng cùng window", "auto_start", values=["Yes", "No"], left=0.4, right=0.6)
-        self.auto_upload_youtube_var = self.create_settings_input("Tự động đăng video youtube", "auto_upload_youtube", values=["Yes", "No"], left=0.4, right=0.6)
-        self.auto_upload_facebook_var = self.create_settings_input("Tự động đăng video facebook", "auto_upload_facebook", values=["Yes", "No"], left=0.4, right=0.6)
-        self.auto_upload_tiktok_var = self.create_settings_input("Tự động đăng video tiktok", "auto_upload_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
-        self.is_auto_and_schedule_var = self.create_settings_input("Đăng tự động và lên lịch", "is_auto_and_schedule", values=["Yes", "No"], left=0.4, right=0.6)
-        self.max_threads_var = self.create_settings_input("Số luồng đăng video tối đa", "max_threads", values=["1", "3", "5"], left=0.4, right=0.6)
-        self.time_check_auto_upload_var = self.create_settings_input("Khoảng thời gian kiểm tra và tự động đăng video (phút)", "time_check_auto_upload", values=["0", "60"], left=0.4, right=0.6)
         self.time_check_status_video_var = self.create_settings_input("Khoảng cách mỗi lần kiểm tra trạng thái video (phút)", "time_check_status_video", values=["0", "60"], left=0.4, right=0.6)
         self.use_profile_facebook_var = self.create_settings_input("Sử dụng chrome profile cho facebook", "use_profile_facebook", values=["Yes", "No"], left=0.4, right=0.6)
         self.use_profile_tiktok_var = self.create_settings_input("Sử dụng profile cho tiktok", "use_profile_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
@@ -2282,6 +2298,7 @@ class MainApp:
         self.is_youtube_window = False
         self.is_tiktok_window = False
         self.is_interact_setting_window = False
+        self.is_auto_upload_tiktok_window = False
         self.is_facebook_window= False
         self.is_edit_video_window= False
         self.is_edit_video_window= False
@@ -2418,9 +2435,9 @@ class MainApp:
     def setting_window_size(self):
         if self.is_start_app:
             self.width = 500
-            self.height_window = 527
+            self.height_window = 523
             if height_element == 30:
-                self.height_window = 520
+                self.height_window = 516
         else:
             if self.is_start_window:
                 self.root.title("SSM App")
@@ -2441,9 +2458,9 @@ class MainApp:
             elif self.is_open_common_setting:
                 self.root.title("Common Setting")
                 self.width = 700
-                self.height_window = 740
+                self.height_window = 460
                 if height_element == 30:
-                    self.height_window = 725
+                    self.height_window = 450
                 self.is_open_common_setting = False
             elif self.is_edit_video_window:
                 self.root.title("Edit Videos")
@@ -2528,17 +2545,22 @@ class MainApp:
             elif self.is_tiktok_window:
                 self.root.title("Tiktok Window")
                 self.width = 500
-                self.height_window = 352
+                self.height_window = 397
                 self.is_tiktok_window = False
             elif self.is_interact_setting_window:
                 self.root.title("Tiktok Insteract Window")
                 self.width = 600
                 self.height_window = 597
                 self.is_interact_setting_window = False
+            elif self.is_auto_upload_tiktok_window:
+                self.root.title("Tiktok Auto Upload Window")
+                self.width = 600
+                self.height_window = 265
+                self.is_auto_upload_tiktok_window = False
             elif self.is_sign_up_tiktok:
                 self.root.title("Sign Up Tiktok")
                 self.width = 500
-                self.height_window = 360
+                self.height_window = 407
                 self.is_sign_up_tiktok = False
             elif self.is_rename_file_by_index_window:
                 self.root.title("Rename Files")
@@ -2673,61 +2695,7 @@ class MainApp:
         self.file_path_get_var.insert(0, file_path_get)
 
     def text_to_mp3(self, voice=None, speed=1):
-        convert_multiple_record = self.convert_multiple_record_var.get() == 'Yes'
-        file_path_get = self.file_path_get_var.get()
-        try:
-            speed_talk = float(self.speed_talk_var.get())
-        except:
-            print("định dạng tốc độ đọc không đúng, lấy mặc định là 1")
-            speed_talk = 1
-        temp_wav_file = None
-        if not file_path_get or '.txt' not in file_path_get:
-            self.noti(f"Hãy chọn file \".txt\" để lấy dữ liệu muốn convert")
-            return
-        curren_folder, base_name = get_current_folder_and_basename(file_path_get)
-        output_folder = os.path.join(curren_folder, 'convert_audio')
-        os.makedirs(output_folder, exist_ok=True)
-        file_path_save = os.path.join(output_folder, f"{base_name.split('.txt')[0]}.mp3")
-        try:
-            if not self.engine:
-                self.engine = pyttsx3.init()
-            if voice:
-                self.engine.setProperty('voice', voice)
-            self.engine.setProperty('rate', speed_talk * 140)
-            text = get_txt_data(file_path_get)
-            lines = text.split('\n')
-            
-            if convert_multiple_record:
-                index = 0
-                for line in lines:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    index += 1
-                    temp_file = f'temp_file_{index}.wav'
-                    self.engine.save_to_file(line, temp_file)
-                    self.engine.runAndWait()
-                    sound = AudioSegment.from_wav(temp_file)
-                    sound.export(f"{output_folder}\\{base_name.split('.txt')[0]}_{index}.mp3", format='mp3')
-                    os.remove(temp_file)
-                    if index == len(lines):
-                        break
-            else:
-                temp_wav_file = f"{current_dir}\\temp_output.wav"
-                text = text.strip()
-                self.engine.save_to_file(text, temp_wav_file)
-                self.engine.runAndWait()
-                sound = AudioSegment.from_wav(temp_wav_file)
-                sound.export(file_path_save, format="mp3")
-                os.remove(temp_wav_file)
-            print(f"File mp3 đã được lưu thành công tại thư mục: {output_folder}")
-        except:
-            getlog()
-            self.engine.stop()
-            if temp_wav_file:
-                if os.path.isfile(temp_wav_file):
-                    os.remove(temp_wav_file)
-        self.convert_multiple_record =False
+        print("Đã bỏ tính năng này!")
 
 app = MainApp()
 try:

@@ -1,9 +1,13 @@
 
 from common_function import *
-
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.force-ssl"]
-YOUTUBE_API_SERVICE_NAME = "youtube"
-YOUTUBE_API_VERSION = "v3"
+# import httplib2
+# from googleapiclient.discovery import build
+# from oauth2client.client import flow_from_clientsecrets
+# from oauth2client.file import Storage
+# from oauth2client.tools import run_flow
+# SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.force-ssl"]
+# YOUTUBE_API_SERVICE_NAME = "youtube"
+# YOUTUBE_API_VERSION = "v3"
 
 #-----------------------------------------------------------------------------------------------------------------
 class YouTubeManager():
@@ -660,17 +664,17 @@ class YouTubeManager():
             if not self.download_thread or not self.download_thread.is_alive():
                 self.is_stop_download = False
                 if save_download_settings():
-                    if self.download_by_selenium:
-                        self.download_thread = threading.Thread(target=self.download_videos_by_channel_id_selenium)
-                    else:
-                        if not self.youtube:
-                            get_chrome_driver_with_profile(self.gmail, show=False)
-                            self.youtube = self.get_authenticated_service()
-                            if not self.youtube:
-                                print(f"Xác thực với google không thành công. Hãy đảm bảo bạn đã đăng ký api trước đó.")
-                                return
-                        self.download_thread = threading.Thread(target=self.download_videos_by_channel_id_api)
-                    self.download_thread.start()
+                    # if self.download_by_selenium:
+                    self.download_thread = threading.Thread(target=self.download_videos_by_channel_id_selenium)
+                    # else:
+                    #     if not self.youtube:
+                    #         get_chrome_driver_with_profile(self.gmail, show=False)
+                    #         self.youtube = self.get_authenticated_service()
+                    #         if not self.youtube:
+                    #             print(f"Xác thực với google không thành công. Hãy đảm bảo bạn đã đăng ký api trước đó.")
+                    #             return
+                    #     self.download_thread = threading.Thread(target=self.download_videos_by_channel_id_api)
+                    # self.download_thread.start()
                 else:
                     return
 
@@ -834,29 +838,29 @@ class YouTubeManager():
     def open_dowload_video_from_channel_window(self):
         create_text_input(self.root)
 
-    def get_authenticated_service(self):
-        try:
-            if self.load_secret_info():
-                if not self.oauth_path:
-                    notification(self.root, f"Tài khoản gmail {self.gmail} chưa được đăng ký hoặc đã hết hạn.")
-                    return
-                try:
-                    flow = flow_from_clientsecrets(self.oauth_path, scope=SCOPES, message="xác minh thất bại")
-                    self.curent_oath_path = f"{sys.argv[0]}-{self.gmail}-{self.channel_name}.json"
-                    storage = Storage(self.curent_oath_path)
-                    credentials = storage.get()
-                except:
-                    getlog()
-                    credentials = None
-                if credentials is None or credentials.invalid:
-                    credentials = run_flow(flow, storage, None)
-                return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, http=credentials.authorize(httplib2.Http()))
-            else:
-                return None
-        except Exception as e:
-            error_message(f"Xác minh thất bại. Hãy đảm bảo bạn đang dùng gmail {self.gmail} để xác minh !!!")
-            getlog()
-            return None
+    # def get_authenticated_service(self):
+    #     try:
+    #         if self.load_secret_info():
+    #             if not self.oauth_path:
+    #                 notification(self.root, f"Tài khoản gmail {self.gmail} chưa được đăng ký hoặc đã hết hạn.")
+    #                 return
+    #             try:
+    #                 flow = flow_from_clientsecrets(self.oauth_path, scope=SCOPES, message="xác minh thất bại")
+    #                 self.curent_oath_path = f"{sys.argv[0]}-{self.gmail}-{self.channel_name}.json"
+    #                 storage = Storage(self.curent_oath_path)
+    #                 credentials = storage.get()
+    #             except:
+    #                 getlog()
+    #                 credentials = None
+    #             if credentials is None or credentials.invalid:
+    #                 credentials = run_flow(flow, storage, None)
+    #             return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, http=credentials.authorize(httplib2.Http()))
+    #         else:
+    #             return None
+    #     except Exception as e:
+    #         error_message(f"Xác minh thất bại. Hãy đảm bảo bạn đang dùng gmail {self.gmail} để xác minh !!!")
+    #         getlog()
+    #         return None
         
     def check_status_videos_by_selenium(self):
         try:
@@ -1321,36 +1325,36 @@ class YouTubeManager():
             if cnt_search > 200:
                 break
 
-    def download_videos_by_channel_id_api(self):
-        self.youtube_config['download_folder'] = self.download_folder_var.get()
-        self.list_videos_download_from_channel = []
-        video_ids = self.get_video_ids_by_channel_id()
-        self.get_video_details(video_ids)
-        if len(self.list_videos_detail) > 0:
-            print(f'Đã tìm thấy {len(self.list_videos_detail)} video. Bắt đầu lọc và tải xuống')
-            self.get_download_info()
+    # def download_videos_by_channel_id_api(self):
+    #     self.youtube_config['download_folder'] = self.download_folder_var.get()
+    #     self.list_videos_download_from_channel = []
+    #     video_ids = self.get_video_ids_by_channel_id()
+    #     self.get_video_details(video_ids)
+    #     if len(self.list_videos_detail) > 0:
+    #         print(f'Đã tìm thấy {len(self.list_videos_detail)} video. Bắt đầu lọc và tải xuống')
+    #         self.get_download_info()
 
-            for videos_detail in self.list_videos_detail:
-                self.check_videos_and_dowload(videos_detail)
-            cnt = len(self.list_videos_download_from_channel)
-            if cnt == 0:
-                notification(self.root, "Tải không thành công. Có thể điều kiện số lượt xem và thích không thỏa mãn!")
-            else:
-                notification(self.root, f"Tải thành công {cnt} video")
+    #         for videos_detail in self.list_videos_detail:
+    #             self.check_videos_and_dowload(videos_detail)
+    #         cnt = len(self.list_videos_download_from_channel)
+    #         if cnt == 0:
+    #             notification(self.root, "Tải không thành công. Có thể điều kiện số lượt xem và thích không thỏa mãn!")
+    #         else:
+    #             notification(self.root, f"Tải thành công {cnt} video")
 
-    def check_videos_and_dowload(self, video_details):
-        for video in video_details['items']:
-            statistics = video['statistics']
-            like_count = int(statistics.get('likeCount', 0))
-            view_count = int(statistics.get('viewCount', 0))
-            if like_count > int(self.youtube_config['filter_by_like']) and view_count > int(self.youtube_config['filter_by_views']):
-                video_id = video['id']
-                video_url = f'https://www.youtube.com/watch?v={video_id}'
-                if video_url in self.download_info['downloaded_urls']:
-                    print(f"video này đã tải trước đây rồi: {video_url}")
-                    continue
-                print(f"bắt đầu tải video: {video_url} với {like_count} lượt thích và {view_count} lượt xem")
-                self.download_video_youtube_by_url(video_url)
+    # def check_videos_and_dowload(self, video_details):
+    #     for video in video_details['items']:
+    #         statistics = video['statistics']
+    #         like_count = int(statistics.get('likeCount', 0))
+    #         view_count = int(statistics.get('viewCount', 0))
+    #         if like_count > int(self.youtube_config['filter_by_like']) and view_count > int(self.youtube_config['filter_by_views']):
+    #             video_id = video['id']
+    #             video_url = f'https://www.youtube.com/watch?v={video_id}'
+    #             if video_url in self.download_info['downloaded_urls']:
+    #                 print(f"video này đã tải trước đây rồi: {video_url}")
+    #                 continue
+    #             print(f"bắt đầu tải video: {video_url} với {like_count} lượt thích và {view_count} lượt xem")
+    #             self.download_video_youtube_by_url(video_url)
 
     def get_download_info(self):
         self.download_info = get_json_data(download_info_path)
