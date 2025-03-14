@@ -45,7 +45,8 @@ from selenium.webdriver.firefox.service import Service as ff_Service
 from selenium.webdriver.firefox.options import Options
 import zipfile
 from imageio import imwrite
-# from seleniumwire import webdriver as seleniumwire_webdriver
+import cv2
+import numpy as np
 
 serials = {
     '0025_38B2_21C3_22BE.YX04C6LZ':"2025-04-08",
@@ -141,24 +142,30 @@ geckodriver_path = os.path.join(current_dir, 'import\\geckodriver.exe')
 firefox_binary_path = "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
 config_path = os.path.join(current_dir, 'config.pkl')
 download_info_path = os.path.join(current_dir, 'download_info.pkl')
-youtube_config_path = os.path.join(current_dir, 'youtube_config.pkl')
 icon_path = os.path.join(current_dir, 'import' , 'icon.png')
 ico_path = os.path.join(current_dir, 'import' , 'icon.ico')
-local_storage_path = os.path.join(current_dir, 'local_storage.pkl')
-facebook_cookies_path = os.path.join(current_dir, 'facebook_cookies.pkl')
-tiktok_cookies_path = os.path.join(current_dir, 'tiktok_cookies.pkl')
-ff_tiktok_cookies_path = os.path.join(current_dir, 'ff_tiktok_cookies.pkl')
-mobi_tiktok_cookies_path = os.path.join(current_dir, 'mobi_tiktok_cookies.pkl')
-youtube_cookies_path = os.path.join(current_dir, 'youtube_cookies.pkl')
-youtube_config_path = os.path.join(current_dir, 'youtube_config.pkl')
-tiktok_config_path = os.path.join(current_dir, 'tiktok_config.pkl')
-facebook_config_path = os.path.join(current_dir, 'facebook_config.pkl')
 profile_folder = get_chrome_profile_folder()
 low_config_path = os.path.join(current_dir, '1.txt')
 padx = 5
 pady = 2
 default_percent = 1
 height_element = 40
+
+tiktok_config_folder = os.path.join(current_dir, 'tiktok_config')
+os.makedirs(tiktok_config_folder, exist_ok=True)
+tiktok_config_commond_path = os.path.join(current_dir, 'tiktok_config', 'tiktok_config_commond.pkl')
+
+youtube_config_folder = os.path.join(current_dir, 'youtube_config')
+os.makedirs(youtube_config_folder, exist_ok=True)
+youtube_config_commond_path = os.path.join(current_dir, 'youtube_config', 'youtube_config_commond.pkl')
+
+facebook_config_folder = os.path.join(current_dir, 'facebook_config')
+os.makedirs(facebook_config_folder, exist_ok=True)
+facebook_config_commond_path = os.path.join(current_dir, 'facebook_config', 'facebook_config_commond.pkl')
+
+
+
+
 if os.path.exists(low_config_path):
     height_element = 30
     default_percent = 0.78
@@ -227,228 +234,10 @@ def load_download_info():
 def save_download_info(data):
     save_to_json_file(data, download_info_path)
 
-# def get_driver(show=True, log_network=False):
-#     try:
-#         service = Service(chromedriver_path)
-#         options = webdriver.ChromeOptions()
-#         if not show:
-#             options.add_argument('--headless')
-#             options.add_argument("--no-sandbox")
-#             options.add_argument("--disable-dev-shm-usage")
-#         options.add_argument('--disable-gpu')
-#         options.add_argument('--disable-blink-features=AutomationControlled')
-#         options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
-#         options.add_argument("--log-level=3")
-#         options.add_argument("--disable-logging")
-#         options.add_experimental_option('excludeSwitches', ['enable-automation'])
-#         options.add_experimental_option('useAutomationExtension', False)
-
-#         if log_network:
-#             # Cấu hình log network
-#             from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-#             capabilities = DesiredCapabilities.CHROME.copy()
-#             capabilities["goog:loggingPrefs"] = {"performance": "ALL"}
-#             options.set_capability("goog:loggingPrefs", capabilities["goog:loggingPrefs"])
-
-#         driver = webdriver.Chrome(service=service, options=options)
-#         driver.set_window_size(screen_width - 200, screen_height - 50)
-#         # driver.maximize_window()
-#         stealth(driver,
-#                 languages=["en-US", "en"],
-#                 vendor="Google Inc.",
-#                 platform="Win32",
-#                 webgl_vendor="Intel Inc.",
-#                 renderer="Intel Iris OpenGL Engine",
-#                 fix_hairline=True
-#                 )
-#         sleep(1)
-#         return driver
-#     except Exception as e:
-#         print(f"Lỗi trong quá trình khởi tạo chromedriver: {e}")
-#         return None
 
 
-
-#firefox
-# def get_driver_with_firefox_profile(target_gmail=None, show=True):
-#     def get_firefox_profile_folder():
-#         """ Xác định thư mục profile của Firefox theo hệ điều hành """
-#         if platform.system() == "Windows":
-#             return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
-#         elif platform.system() == "Darwin":
-#             return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "Firefox", "Profiles")
-#         elif platform.system() == "Linux":
-#             return os.path.join(os.path.expanduser("~"), ".mozilla", "firefox")
-#         else:
-#             raise Exception("Hệ điều hành không được hỗ trợ.")
-
-#     def get_profile_name_by_gmail():
-#         if not target_gmail:
-#             return None
-#         profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
-#         for profile in profiles:
-#             if target_gmail in profile:
-#                 return profile
-#         print(f'Không tìm thấy profile cho email {target_gmail}. Hãy tạo mới profile và đăng nhập trước.')
-#         return None
-
-#     try:
-#         firefox_profile_folder = get_firefox_profile_folder()
-#         profile_name = get_profile_name_by_gmail()
-#         if not profile_name:
-#             return None
-        
-#         profile_path = os.path.join(firefox_profile_folder, profile_name)
-#         print(f"Profile đang dùng: {profile_path}")
-
-#         if not os.path.exists(profile_path):
-#             print(f"❌ Không tìm thấy profile tại: {profile_path}")
-#             return None
-#         options = Options()
-#         options.binary_location = firefox_binary_path
-        
-#         # 🔹 Quan trọng: Dùng `moz:firefoxOptions` để mở profile thực sự
-#         options.set_preference("browser.startup.homepage_override.mstone", "ignore")  
-#         options.set_preference("startup.homepage_welcome_url.additional", "about:blank")  
-#         options.set_preference("browser.sessionstore.resume_from_crash", True)  
-#         options.set_preference("browser.sessionstore.restore_on_demand", False)  
-#         options.set_preference("browser.cache.disk.enable", True)  
-#         options.set_preference("browser.cache.memory.enable", True)  
-#         options.set_preference("browser.cache.offline.enable", True)  
-#         options.set_preference("network.cookie.cookieBehavior", 0)  # Bật cookie
-#         # Chỉ định profile bằng đường dẫn
-#         options.add_argument(f"--profile")
-#         options.add_argument(profile_path)
-
-#         # 🔹 Tránh mở Firefox với profile mặc định
-#         options.add_argument("--no-remote")
-#         if not show:
-#             options.add_argument("--headless")  
-#         # Chỉ định đúng GeckoDriver
-#         service = Service(geckodriver_path)
-#         driver = webdriver.Firefox(service=service, options=options)
-#         print(f"✅ Đã mở Firefox với profile: {profile_path}")
-#         return driver
-#     except Exception as e:
-#         print(f"Lỗi: {e}")
-#         return None
-
-    
-# def get_driver_with_profile(target_gmail=None, show=True):
-#     try:
-#         os.system("taskkill /F /IM chrome.exe /T >nul 2>&1")
-#     except:
-#         pass
-#     sleep(1)
-#     def get_profile_name_by_gmail():
-#         if not target_gmail:
-#             return "Default"
-#         def check_gmail_in_profile(profile_path):
-#             preferences_file = os.path.join(profile_path, "Preferences")
-            
-#             if os.path.exists(preferences_file):
-#                 with open(preferences_file, 'r', encoding='utf-8') as f:
-#                     try:
-#                         preferences = json.load(f)
-#                         if 'account_info' in preferences:
-#                             for account in preferences['account_info']:
-#                                 if 'email' in account and account['email'] == target_gmail:
-#                                     return True
-#                         else:
-#                             print(f'Không thể lấy thông tin của profile {profile_path}')
-#                     except:
-#                         getlog()
-#                         print(f"Không thể đọc file Preferences trong profile {profile_path}.")
-#             return False
-        
-#         profiles = [name for name in os.listdir(profile_folder) if os.path.isdir(os.path.join(profile_folder, name)) and name.startswith("Profile")]
-#         if "Default" in os.listdir(profile_folder):
-#             profiles.append("Default")
-
-#         for profile_name in profiles:
-#             profile_path = os.path.join(profile_folder, profile_name)
-#             if os.path.exists(profile_path):
-#                 if check_gmail_in_profile(profile_path):
-#                     return profile_name
-#         print(f'Không tìm thấy profile cho email {target_gmail} --> sử dụng profile Default')
-#         return "Default"
-    
-#     profile_name = get_profile_name_by_gmail()
-#     if profile_name:
-#         print(f'Profile đang dùng là {profile_name}')
-#         options = webdriver.ChromeOptions()
-#         options.add_argument(f"user-data-dir={profile_folder}")
-#         options.add_argument(f"profile-directory={profile_name}")
-#         if not show:
-#             options.add_argument("--headless")
-#         options.add_argument('--disable-gpu')
-#         options.add_argument('--disable-blink-features=AutomationControlled')
-#         options.add_argument("--log-level=3")
-#         options.add_argument("--disable-logging")
-#         options.add_experimental_option('excludeSwitches', ['enable-automation'])
-#         options.add_experimental_option('useAutomationExtension', False)
-#         driver = webdriver.Chrome(options=options)
-#         driver.set_window_size(screen_width - 200, screen_height - 50)
-#         return driver
-#     else:
-#         print(f'Không tìm thấy profile cho tài khoản google {target_gmail}')
-#         print("--> Hãy dùng cookies để đăng nhập !")
-#         return None
-
-
-
-
-
-def create_firefox_proxy_extension(proxy_host, proxy_port, proxy_user, proxy_pass, extension_path="proxy_auth.xpi"):
-    """Tạo extension .xpi để Firefox tự động nhập user & pass proxy"""
-    
-    manifest_json = """
-    {
-        "manifest_version": 2,
-        "name": "Proxy Auth",
-        "version": "1.0",
-        "permissions": ["proxy", "storage", "webRequest", "webRequestBlocking"],
-        "background": {
-            "scripts": ["background.js"]
-        }
-    }
-    """
-    
-    background_js = f"""
-    browser.proxy.onRequest.addListener(
-        (requestInfo) => {{
-            return {{
-                type: "http",
-                host: "{proxy_host}",
-                port: {proxy_port}
-            }};
-        }},
-        {{urls: ["<all_urls>"]}}
-    );
-
-    browser.webRequest.onAuthRequired.addListener(
-        (details) => {{
-            return {{
-                authCredentials: {{
-                    username: "{proxy_user}",
-                    password: "{proxy_pass}"
-                }}
-            }};
-        }},
-        {{urls: ["<all_urls>"]}},
-        ["blocking"]
-    );
-    """
-
-    with zipfile.ZipFile(extension_path, 'w') as z:
-        z.writestr("manifest.json", manifest_json)
-        z.writestr("background.js", background_js)
-    
-    return extension_path
-
-
-def get_firefox_driver_with_profile(target_gmail=None, show=True, proxy=None):
-    """Mở Firefox với profile cụ thể & proxy có user:pass nếu có"""
+def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None):
+    """Mở Firefox với profile cụ thể"""
     
     def get_firefox_profile_folder():
         """Xác định thư mục profile của Firefox theo hệ điều hành"""
@@ -458,13 +247,14 @@ def get_firefox_driver_with_profile(target_gmail=None, show=True, proxy=None):
             raise Exception("Hệ điều hành không được hỗ trợ.")
 
     def get_profile_name_by_gmail():
-        if not target_gmail:
+        """Tìm profile theo email đăng nhập"""
+        if not target_email:
             return None
         profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
         for profile in profiles:
-            if target_gmail in profile:
+            if target_email in profile:
                 return profile
-        print(f'Không tìm thấy profile cho email {target_gmail}. Hãy tạo mới profile và đăng nhập trước.')
+        print(f'❌ Không tìm thấy profile cho email {target_email}. Hãy tạo mới profile và đăng nhập trước.')
         return None
 
     try:
@@ -474,7 +264,7 @@ def get_firefox_driver_with_profile(target_gmail=None, show=True, proxy=None):
             return None
         
         profile_path = os.path.join(firefox_profile_folder, profile_name)
-        print(f"Profile đang dùng: {profile_path}")
+        print(f"🔹 Profile đang dùng: {profile_path}")
 
         if not os.path.exists(profile_path):
             print(f"❌ Không tìm thấy profile tại: {profile_path}")
@@ -487,44 +277,31 @@ def get_firefox_driver_with_profile(target_gmail=None, show=True, proxy=None):
 
         if not show:
             options.add_argument("--headless")  
+        # ⚡ Chống phát hiện bot trên Firefox
+        options.set_preference("dom.webdriver.enabled", False)  # Ẩn WebDriver
+        options.set_preference("useAutomationExtension", False)
+        options.set_preference("general.useragent.override", 
+                               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/110.0")
+        options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
+        options.set_preference("privacy.resistFingerprinting", True)  # Chống lấy dấu vân tay trình duyệt
+        options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
 
-        # Nếu có proxy, thiết lập trực tiếp trong prefs.js
-        if proxy:
-            proxy_host, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
-            
-            prefs_js_path = os.path.join(profile_path, "prefs.js")
-            with open(prefs_js_path, "a", encoding="utf-8") as f:
-                f.write(f'\nuser_pref("network.proxy.type", 1);')
-                f.write(f'\nuser_pref("network.proxy.http", "{proxy_host}");')
-                f.write(f'\nuser_pref("network.proxy.http_port", {proxy_port});')
-                f.write(f'\nuser_pref("network.proxy.ssl", "{proxy_host}");')
-                f.write(f'\nuser_pref("network.proxy.ssl_port", {proxy_port});')
-                f.write(f'\nuser_pref("network.proxy.socks", "{proxy_host}");')
-                f.write(f'\nuser_pref("network.proxy.socks_port", {proxy_port});')
-                f.write(f'\nuser_pref("network.proxy.socks_version", 5);')
-                f.write(f'\nuser_pref("network.proxy.share_proxy_settings", true);')
-                f.write(f'\nuser_pref("network.proxy.no_proxies_on", "localhost, 127.0.0.1");')
-
+        # Tắt thông báo cảnh báo về tự động hóa
+        options.set_preference("webdriver.firefox.driver", "")
+        options.set_preference("webdriver.firefox.logfile", "/dev/null")
         service = Service(geckodriver_path)
         driver = webdriver.Firefox(service=service, options=options)
+
         print(f"✅ Đã mở Firefox với profile: {profile_path}")
         
-        browser_ip = get_browser_ip(driver)
-        if not browser_ip or (proxy_host and proxy_host != browser_ip):
-            print("❌ Đổi IP không thành công!")
-            driver.quit()
-            return None
-        else:
-            print(f"{tot} IP đang dùng: {browser_ip}")
-        print(f"✅ Đã mở Chrome với profile: {profile_name}")
         return driver
     except Exception as e:
-        getlog()
-        print(f"Lỗi: {e}")
+        print(f"🚨 Lỗi: {e}")
         return None
 
+
     
-def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_remove_proxy=False):
+def get_chrome_driver_with_profile(target_email=None, show=True, proxy=None, is_remove_proxy=False):
     try:
         # Tắt Chrome đang chạy (không ảnh hưởng tới session khác)
         try:
@@ -532,9 +309,9 @@ def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_
         except Exception as e:
             pass
         sleep(1)
-        def get_profile_name_by_gmail():
-            if not target_gmail:
-                target_gmail = "Default"
+        def get_profile_name_by_gmail(target_email=None):
+            if not target_email:
+                target_email = "Default"
 
             def check_gmail_in_profile(profile_path):
                 preferences_file = os.path.join(profile_path, "Preferences")
@@ -544,7 +321,7 @@ def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_
                             preferences = json.load(f)
                             if 'account_info' in preferences:
                                 for account in preferences['account_info']:
-                                    if 'email' in account and account['email'] == target_gmail:
+                                    if 'email' in account and account['email'] == target_email:
                                         return preferences_file
                     except:
                         getlog()
@@ -560,10 +337,10 @@ def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_
                 preferences_file = check_gmail_in_profile(profile_path)
                 if preferences_file:
                     return profile_name, preferences_file
-            print(f"{thatbai} Không tìm thấy profile cho email {target_gmail}")
+            print(f"{thatbai} Không tìm thấy profile cho email {target_email}")
             return None, None
 
-        profile_name, preferences_file = get_profile_name_by_gmail()
+        profile_name, preferences_file = get_profile_name_by_gmail(target_email)
         if profile_name and preferences_file:
             options = webdriver.ChromeOptions()
             options.add_argument(f"user-data-dir={profile_folder}")
@@ -614,23 +391,24 @@ def get_chrome_driver_with_profile(target_gmail=None, show=True, proxy=None, is_
             sleep_random(3,6)
             browser_ip = get_browser_ip(driver)
             if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
-                print("❌ Đổi IP không thành công!")
+                if target_email:
+                    print(f"❌ {target_email} Đổi IP không thành công!")
                 driver.quit()
                 return None
             else:
-                print(f"{tot} IP đang dùng: {browser_ip}")
+                print(f"{tot} {target_email} IP đang dùng: {browser_ip}")
 
             print(f"✅ Đã mở Chrome với profile: {profile_name}")
             return driver
         else:
-            print(f"❌ Không tìm thấy Chrome profile cho tài khoản: {target_gmail}")
+            print(f"❌ Không tìm thấy Chrome profile cho tài khoản: {target_email}")
             return None
     except Exception as e:
         print(f"❌ Lỗi khi khởi tạo trình duyệt: {e}")
         return None
 
 
-def get_driver(show=True, proxy=None, mode="web"):
+def get_driver(show=True, proxy=None, mode="web", target_email=None):
     try:
         service = Service(chromedriver_path)
         options = webdriver.ChromeOptions()
@@ -714,11 +492,13 @@ def get_driver(show=True, proxy=None, mode="web"):
         # Kiểm tra IP sau khi mở trình duyệt
         browser_ip = get_browser_ip(driver)
         if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
-            print("❌ Đổi IP không thành công!")
+            if target_email:
+                print(f"❌ {target_email} Đổi IP không thành công!")
             driver.quit()
             return None
         else:
-            print(f"{tot} IP đang dùng: {browser_ip}")
+            if target_email:
+                print(f"{tot} {target_email} IP đang dùng: {browser_ip}")
         # if mode == 'web':
         driver.execute_script("window.open('');")
         driver.switch_to.window(driver.window_handles[-1])
@@ -732,85 +512,6 @@ def get_driver(show=True, proxy=None, mode="web"):
     except Exception as e:
         getlog()
         return None
-# def get_driver(show=True, proxy=None):
-#     try:
-#         service = Service(chromedriver_path)
-#         options = webdriver.ChromeOptions()
-
-#         # Random hóa User-Agent để tránh bị Google theo dõi
-#         proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
-#         if not proxy_country or proxy_country not in USER_AGENTS_WINDOWS:
-#             proxy_country = "Other"
-#         user_agent = USER_AGENTS_WINDOWS[proxy_country]
-#         options.add_argument(f"--user-agent={user_agent}")
-
-#         if proxy_ip and proxy_port:
-#             if proxy_user and proxy_pass:
-#                 pluginfile = create_chrome_proxy_extension(proxy_ip, proxy_port, proxy_user, proxy_pass)
-#                 options.add_extension(pluginfile)
-#                 # proxy_extension_path = create_proxy_extension_with_chrome_profile(proxy_ip, proxy_port, proxy_user, proxy_pass)
-#                 # options.add_argument(f"--load-extension={proxy_extension_path}")
-#             else:
-#                 proxy_url = f"http://{proxy_ip}:{proxy_port}"
-#                 options.add_argument(f'--proxy-server={proxy_url}')
-
-#         # Chạy ở chế độ headless nếu cần
-#         if not show:
-#             options.add_argument('--headless=new')
-#             options.add_argument("--no-sandbox")
-#             options.add_argument("--disable-dev-shm-usage")
-#         options.add_argument("--force-device-scale-factor=1")
-#         # Tắt tính năng tự động hóa để tránh bị phát hiện
-#         options.add_argument('--disable-blink-features=AutomationControlled')
-#         options.add_argument("--log-level=3")
-#         options.add_argument("--disable-logging")
-#         options.add_experimental_option('excludeSwitches', ['enable-automation'])
-#         options.add_experimental_option('useAutomationExtension', False)
-#         options.add_argument("--disable-popup-blocking")
-#         # debugging_port = random.randint(9000, 9999) 
-#         # options.add_argument(f"--remote-debugging-port={debugging_port}")
-#         driver = webdriver.Chrome(service=service, options=options)
-#         driver.set_window_size(screen_width - 200, screen_height - 50)
-#         # driver.maximize_window()
-
-#         # Xóa dấu hiệu bot bằng JavaScript
-#         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-
-#         try:
-#             stealth(driver,
-#                     languages=["en-US", "en"],
-#                     vendor="Google Inc.",
-#                     platform="Win32",
-#                     webgl_vendor="Intel Inc.",
-#                     renderer="Intel Iris OpenGL Engine",
-#                     fix_hairline=True
-#                     )
-#         except ImportError:
-#             pass
-
-#         # Kiểm tra IP sau khi mở trình duyệt
-#         browser_ip = get_browser_ip(driver)
-#         if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
-#             print("❌ Đổi IP không thành công!")
-#             driver.quit()
-#             return None
-#         else:
-#             print(f"{tot} IP đang dùng: {browser_ip}")
-            
-#         driver.execute_script("window.open('');")
-#         driver.switch_to.window(driver.window_handles[-1])
-#         if len(driver.window_handles) > 1:
-#             driver.switch_to.window(driver.window_handles[0])  
-#             driver.close()
-#         # Chuyển lại sang tab mới
-#         driver.switch_to.window(driver.window_handles[-1])
-#         sleep_random(1,2)
-#         return driver
-#     except Exception as e:
-#         getlog()
-#         return None
-
-
     
 def disable_system_proxy():
     try:
@@ -1693,11 +1394,11 @@ def remove_char_in_file_name(folder_path, chars_want_to_remove, extension=None):
     except:
         pass
 
-def remove_or_move_file(input_video_path, is_delete=False, is_move=True, finish_folder_name='finished folder'):
+def remove_or_move_file(input_video_path, is_delete=False, finish_folder_name='finished folder'):
     try:
         if is_delete:
             os.remove(input_video_path)
-        elif is_move:
+        else:
             videos_folder = os.path.dirname(input_video_path)
             finish_folder = os.path.join(videos_folder, f'{finish_folder_name}')
             os.makedirs(finish_folder, exist_ok=True)
@@ -2423,7 +2124,7 @@ def merge_audio_use_ffmpeg(videos_folder, file_name=None, fast_combine=True):
         getlog()
     return False, "Có lỗi khi gộp audio"
 
-def merge_videos_use_moviepy(videos_folder, file_path=None, is_delete=False, is_move=True, videos_list=None, fps=30):
+def merge_videos_use_moviepy(videos_folder, file_path=None, is_delete=False, videos_list=None, fps=30):
     try:
         if videos_list:
             edit_videos = videos_list
@@ -2454,7 +2155,7 @@ def merge_videos_use_moviepy(videos_folder, file_path=None, is_delete=False, is_
             for clip in clips:
                 clip.close()
         for video_path in remove_videos:
-            remove_or_move_file(video_path, is_delete=is_delete, is_move=is_move)
+            remove_or_move_file(video_path, is_delete=is_delete)
     except:
         print(f"Có lỗi khi nối video !!!")
 
@@ -2786,7 +2487,7 @@ def add_image_watermark_into_video(clip, top_bot_overlay_height='2,2', left_righ
         print(f"Lỗi khi thêm watermark: {e}")
         return None
 
-def convert_video_169_to_916(input_video_path, zoom_size=None, resolution="1080x1920", is_delete=False, is_move=True):
+def convert_video_169_to_916(input_video_path, zoom_size=None, resolution="1080x1920", is_delete=False):
     try:
         output_folder, file_name = get_output_folder(input_video_path, output_folder_name='converted_videos')
         output_file_path = os.path.join(output_folder, file_name)
@@ -2809,13 +2510,13 @@ def convert_video_169_to_916(input_video_path, zoom_size=None, resolution="1080x
         final_video.close()
         zoomed_video.close()
         video.close()
-        remove_or_move_file(input_video_path, is_delete=is_delete, is_move=is_move)
+        remove_or_move_file(input_video_path, is_delete=is_delete)
         return True
     except Exception as e:
         getlog()
         return False
     
-def convert_video_916_to_169(input_video_path, resolution="1920x1080", is_delete=False, is_move=True):
+def convert_video_916_to_169(input_video_path, resolution="1920x1080", is_delete=False):
     try:
         if not resolution:
             resolution = '1920x1080'
@@ -2839,7 +2540,7 @@ def convert_video_916_to_169(input_video_path, resolution="1920x1080", is_delete
         resized_video.close()
         video.close()
         sleep(1)
-        remove_or_move_file(input_video_path, is_delete=is_delete, is_move=is_move)
+        remove_or_move_file(input_video_path, is_delete=is_delete)
         return True
     except:
         getlog()
@@ -3054,39 +2755,226 @@ def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video
 
 
 
+def process_video(input_path, wave_amplitude=3, wave_frequency=0.05, 
+                  line_spacing=10, line_thickness=5, line_opacity=0.7,
+                  text_top_input="TOP TEXT", text_bottom_input="BOTTOM TEXT"):
+    curr_folder = os.path.dirname(input_path)
+    out_path = os.path.join(curr_folder, 'temp.mp4')
+    
+    cap = cv2.VideoCapture(input_path)
+    if not cap.isOpened():
+        print("Không thể mở video!")
+        return None
+
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
+    print(f'{fps} - {width}x{height}')
+    scene_changes, total_frames = detect_scene_changes_and_total_frames(input_path)
+    new_scene_changes=[]
+    if scene_changes:  # Kiểm tra danh sách không rỗng
+        new_scene_changes.append(scene_changes[0])  # Giữ điểm đầu tiên
+
+    for i in range(1, len(scene_changes)):
+        if new_scene_changes and (scene_changes[i] - new_scene_changes[-1] > 5 * fps):
+            new_scene_changes.append(scene_changes[i])
+
+
+    print(f'{len(scene_changes)}')
+    print(f'Các điểm chuyển cảnh: {new_scene_changes}')
+    frame_idx = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        processed_frame = add_effects(frame, frame_idx, wave_amplitude, wave_frequency, 
+                                      line_spacing, line_thickness, line_opacity, 
+                                      text_top_input, text_bottom_input, new_scene_changes, total_frames)
+        out.write(processed_frame)
+        frame_idx += 1
+    
+    cap.release()
+    out.release()
+    print("Xử lý video hoàn tất!")
+    return out_path
+
+def draw_multiline_text(image, text, font, scale, color, thickness, start_x, start_y, line_spacing=70):
+    words, lines, current_line = text.split(), [], ""
+    
+    for word in words:
+        test_line = f"{current_line} {word}" if current_line else word
+        if cv2.getTextSize(test_line, font, scale, thickness)[0][0] < image.shape[1] - 100:
+            current_line = test_line
+        else:
+            lines.append(current_line)
+            current_line = word
+    
+    lines.append(current_line)
+    for i, line in enumerate(lines):
+        y = start_y + i * line_spacing
+        x = (image.shape[1] - cv2.getTextSize(line, font, scale, thickness)[0][0]) // 2
+        cv2.putText(image, line, (x, y), font, scale, color, thickness, cv2.LINE_AA)
+
+def add_effects(frame, frame_idx, wave_amplitude, wave_frequency, 
+                line_spacing, line_thickness, line_opacity, 
+                text_top_input, text_bottom_input, 
+                scene_changes, total_frames, transition_duration=3):
+    height, width, _ = frame.shape
+    transformed_frame = frame.copy()
+    
+    is_transition_frame = any(abs(frame_idx - sc) < transition_duration for sc in scene_changes)
+    fade_in_duration, fade_out_start = int(total_frames * 0.06), int(total_frames * 0.94)
+    
+    if frame_idx < fade_in_duration:
+        fade_factor = frame_idx / fade_in_duration
+    elif frame_idx > fade_out_start:
+        fade_factor = 1 - (frame_idx - fade_out_start) / fade_in_duration
+    else:
+        fade_factor = None
+    
+    if fade_factor is not None:
+        transformed_frame = cv2.addWeighted(frame, fade_factor, np.zeros_like(frame), 1 - fade_factor, 0)
+    
+    if is_transition_frame:
+        progress = (frame_idx % transition_duration) / transition_duration
+        zoom_factor = 1 + 0.02 * progress  # Zoom nhẹ dần
+        slide_offset = int(width * progress * 0.5)  # Dịch chuyển mượt hơn
+        
+        M = cv2.getRotationMatrix2D((width // 2, height // 2), 0, zoom_factor)
+        transformed_frame = cv2.warpAffine(transformed_frame, M, (width, height), borderMode=cv2.BORDER_REPLICATE)
+        transformed_frame[:, max(0, slide_offset):] = transformed_frame[:, :width - max(0, slide_offset)]
+    
+    # 2. Chỉnh độ sáng và độ tương phản (cố định)
+    alpha, beta = 1.06, 20
+    transformed_frame = cv2.convertScaleAbs(transformed_frame, alpha=alpha, beta=beta)
+    
+    # 3. Biến đổi màu sắc
+    hsv = cv2.cvtColor(transformed_frame, cv2.COLOR_BGR2HSV)
+    hsv[..., 1] = np.clip(hsv[..., 1] * 1.10, 0, 255)  # Bão hòa nhẹ hơn
+    transformed_frame = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    
+    # 4. Hiệu ứng gợn sóng (giảm biên độ)
+    for i in range(height):
+        offset = int(wave_amplitude * 0.5 * np.sin(2 * np.pi * wave_frequency * (i + frame_idx) / height))
+        transformed_frame[i] = np.roll(transformed_frame[i], offset, axis=0)
+    
+    # 5. Đường lưới máy ảnh
+    overlay = transformed_frame.copy()
+    grid_color = (255, 191, 0)
+    
+    for i in range(1, 5):
+        cv2.line(overlay, (0, i * height // 5), (width, i * height // 5), grid_color, line_thickness)
+    for i in range(1, 3):
+        cv2.line(overlay, (i * width // 3, 0), (i * width // 3, height), grid_color, line_thickness)
+    cv2.addWeighted(overlay, line_opacity, transformed_frame, 1 - line_opacity, 0, transformed_frame)
+    
+    # 6. Viền mềm mại hơn
+    border_thickness = max(1, int(min(width, height) * 0.005))
+    cv2.rectangle(transformed_frame, (border_thickness, border_thickness), 
+                  (width - border_thickness, height - border_thickness), 
+                  grid_color, border_thickness)
+    
+    return transformed_frame
+
+
+
+
+def detect_scene_changes_and_total_frames(video_path, threshold=30):
+    cap = cv2.VideoCapture(video_path)
+    prev_frame = None
+    scene_changes = []
+    frame_idx = 0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # Lấy tổng số khung hình
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # Chuyển sang ảnh xám
+        
+        if prev_frame is not None:
+            diff = cv2.absdiff(gray, prev_frame)  # Tính độ chênh lệch giữa 2 frame
+            mean_diff = np.mean(diff)  # Tính trung bình độ chênh lệch
+            if mean_diff > threshold:  # Nếu chênh lệch lớn hơn ngưỡng thì đánh dấu
+                scene_changes.append(frame_idx)
+        prev_frame = gray
+        frame_idx += 1
+    cap.release()
+    return scene_changes, total_frames
+
+
+def get_total_frames(video_path):
+    cap = cv2.VideoCapture(video_path)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+    return total_frames
+
+def get_text_top_or_bot(text_str=""):
+    text_top = ""
+    font_position = "0.1"
+    font_scale = "1.6"
+    text_list = text_str.split(',')
+    try:
+        if len(text_list) == 3:
+            text_top, font_position, font_scale = text_list
+        elif len(text_list) == 2:
+            text_top, font_position = text_list
+        else:
+            text_top = text_list[0]
+    except:
+        pass
+    return text_top.strip(), float(font_position.strip()), float(font_scale.strip())
+
+
+
+
+
+def apply_wave_effect(frame, frame_count, amplitude, frequency):
+    """ Tạo hiệu ứng gợn sóng động tùy chỉnh """
+    height, width, _ = frame.shape
+    wave_frame = np.zeros_like(frame)
+
+    for i in range(height):
+        shift_x = int(amplitude * np.sin(2 * np.pi * (i / 100) + frame_count * frequency))  
+        # Điều chỉnh biên độ và tần số
+        wave_frame[i] = np.roll(frame[i], shift_x, axis=0)
+
+    return wave_frame
+
+def merge_audio(video_path, original_video):
+    """ Ghép âm thanh từ video gốc vào video đã chỉnh sửa """
+    output_folder = os.path.join(os.path.dirname(video_path), 'end_videos')
+    os.makedirs(output_folder, exist_ok=True)
+    file_name = os.path.basename(original_video)
+    output_video = os.path.join(output_folder, file_name)
+    command = [
+        "ffmpeg", "-y",
+        "-i", video_path,    # Video đã chỉnh sửa
+        "-i", original_video, # Video gốc (chứa âm thanh)
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-strict", "experimental",
+        "-map", "0:v:0",  # Lấy video từ file đã chỉnh sửa
+        "-map", "1:a:0",  # Lấy âm thanh từ file gốc
+        output_video
+    ]
+    run_command_ffmpeg(command, False)
+
+
 
 #-----------------commond-------------------------------
+
 
 def load_config():
     if os.path.exists(config_path):
         config = get_json_data(config_path)
-        if 'is_auto_and_schedule' not in config:
-            config['is_auto_and_schedule'] = True
-        if 'max_threads' not in config:
-            config['max_threads'] = "1"
-        if 'insteract_now' not in config:
-            config['insteract_now'] = False
-        if 'video_number_interact' not in config:
-            config['video_number_interact'] = "10-40"
-        if 'watch_time' not in config:
-            config['watch_time'] = "5-30"
-        if 'watch_percent' not in config:
-            config['watch_percent'] = "60"
-        if 'like_percent' not in config:
-            config['like_percent'] = "40"
-        if 'comment_percent' not in config:
-            config['comment_percent'] = "20"
-        if 'follow_percent' not in config:
-            config['follow_percent'] = "30"
     else:
         config = {
             "download_folder":"",
             "auto_start": False,
-            "use_profile_facebook": False,
-            "use_profile_tiktok": False,
             "is_delete_video": False,
-            "is_move": False,
-            "show_browser": False,
+            "show_browser": True,
             "auto_upload_youtube": False,
             "auto_upload_facebook": False,
             "auto_upload_tiktok": False,
@@ -3094,14 +2982,10 @@ def load_config():
             "max_threads": "1",
             "time_check_auto_upload": "0",
             "time_check_status_video": "0",
-
-            "current_youtube_account": "",
             "current_tiktok_account": "",
-            "current_facebook_account": "",
             "current_channel": "",
             "current_page": "",
             "download_by_video_url": "",
-            "hashtags": "#trend #trending",
 
             "file_name": "",
             "start_index": "1",
@@ -3121,8 +3005,11 @@ def load_config():
             "watermark_scale": "1,1",
             "vertical_watermark_position": "50",
             "horizontal_watermark_position": "50",
-            "top_bot_overlay": "0,0",
-            "left_right_overlay": "0,0",
+            "top_bot_overlay": "0,0,black,1",
+            "left_right_overlay": "0,0,black,1",
+            "top_text": "",
+            "bot_text": "",
+            "edit_level_2": True,
 
             "audios_edit_folder": "",
             "audio_speed": "1", 
@@ -3187,9 +3074,9 @@ youtube_category = {
     "Trailers": "44"
 }
 
-youtube_config = {
-   "registered_account":['dxthien2@gmail.com'],
-   "current_youtube_account": "",
+youtube_config_commond = {
+   "registered_account": [],
+   "registered_account_dic": {},
    "current_channel": "",
    "download_folder": "",
    "download_url": "",
@@ -3197,72 +3084,185 @@ youtube_config = {
    "filter_by_views": "0",
    "quantity_download": "2000",
    "use_cookies": True,
-   "show_browser": False,
-   "template": {}
+   "show_browser": True
    }
 
-tiktok_config = {
+tiktok_config_commond = {
    "registered_account": [],
-   "registered_other_name": [],
-   "registered_account_dic": {},
    "output_folder": "",
-   "show_browser": False,
-   "use_profile_tiktok": False,
+   "show_browser": True,
    "download_url": "",
    "download_folder": "",
-   "is_move": False,
    "is_delete_after_upload": False,
    "filter_by_like": "0",
    "filter_by_views": "0",
-   "quantity_download": "2000",
-   "template": {}
+   "quantity_download": "2000"
 }
 
-facebook_config = {
-   "show_browser": False,
+facebook_config_commond = {
+   "registered_account": [],
+   "show_browser": True,
    "use_profile_facebook": False,
    "download_url": "",
    "download_folder": "",
    "filter_by_views": "0",
    "filter_by_like": "0",
-   "quantity_download": "2000",
-   "registered_account": [],
-   "template": {}
+   "quantity_download": "2000"
 }
 
 
-def load_youtube_config():
-    if os.path.exists(youtube_config_path):
-        config = get_json_data(youtube_config_path) or {}
-    else:
-        config = youtube_config
-    save_to_json_file(config, youtube_config_path)
-    return config
 
-def load_tiktok_config():
+
+
+
+def load_tiktok_config(acc=None):
     try:
-        if os.path.exists(tiktok_config_path):
-            config = get_json_data(tiktok_config_path) or {}
+        if acc:
+            acc_config_path = os.path.join(tiktok_config_folder, f'{acc}.pkl')
+            config = get_json_data(acc_config_path) or {}
+            if not config:
+                config = {
+                    "email":"",
+                    "password":"",
+                    "proxy":"",
+                    "driver_type":"web",
+                    "thumbnail_folder":"",
+                    "upload_folder":"",
+                    "description":"",
+                    "hashtags":"#trendding,#fyp,#news",
+                    "location":"",
+                    "publish_times":"19:00",
+                    "cnt_upload_in_day":0,
+                    "title":"",
+                    "is_title_plus_video_name":False,
+                    "upload_date":datetime.now().strftime('%Y-%m-%d'),
+                    "is_delete_after_upload":False,
+                    "waiting_verify":True,
+                    "number_of_days":"1",
+                    "day_gap":"1",
+                    "first_login":True,
+                    "video_number_interact_befor_upload":"không tương tác",
+                    "auto_interact":True,
+                    "use_profile_type":"Không dùng",
+    
+                    "chrome_cookies":{},
+                    "firefox_cookies":{},
+                    "mobi_cookies":{}
+                }
+                save_tiktok_config(acc, config)
         else:
-            config = tiktok_config
-        if 'registered_other_name' not in config:
-            config['registered_other_name'] = []
-        save_to_json_file(config, tiktok_config_path)
+            if os.path.exists(tiktok_config_commond_path):
+                config = get_json_data(tiktok_config_commond_path) or {}
+            else:
+                config = tiktok_config_commond
+                save_to_json_file(config, tiktok_config_commond_path)
         return config
     except:
         getlog()
-        pass
 
-def load_facebook_config():
-    if os.path.exists(facebook_config_path):
-        config = get_json_data(facebook_config_path) or {}
+def save_tiktok_config(acc=None, data=None):
+    if not data:
+        return
+    if acc:
+        acc_config_path = os.path.join(tiktok_config_folder, f'{acc}.pkl')
+        save_to_json_file(data, acc_config_path)
     else:
-        config = facebook_config
-    save_to_json_file(config, facebook_config_path)
-    return config
+        save_to_json_file(data, tiktok_config_commond_path)
 
 
+def load_youtube_config(acc=None):
+    try:
+        if acc:
+            acc_config_path = os.path.join(youtube_config_folder, f'{acc}.pkl')
+            config = get_json_data(acc_config_path) or {}
+            if not config:
+                config = {
+                    "email":"",
+                    "title":"",
+                    "is_title_plus_video_name":True,
+                    "description":"",
+                    "curent_playlist":"",
+                    "playlist":"",
+                    "altered_content":False,
+                    "upload_date":datetime.now().strftime('%Y-%m-%d'),
+                    "publish_times":"19:00",
+                    "cnt_upload_in_day":0,
+                    "thumbnail_folder":"",
+                    "upload_folder":"",
+                    "is_delete_after_upload":False,
+                    "number_of_days":"1",
+                    "day_gap":"1",
+    
+                    "chrome_cookies":{},
+                    "firefox_cookies":{},
+                    "mobi_cookies":{}
+                }
+                save_tiktok_config(acc, config)
+        else:
+            if os.path.exists(youtube_config_commond_path):
+                config = get_json_data(youtube_config_commond_path) or {}
+            else:
+                config = youtube_config_commond
+                save_to_json_file(config, youtube_config_commond_path)
+        return config
+    except:
+        getlog()
 
+def save_youtube_config(acc=None, data=None):
+    if not data:
+        return
+    if acc:
+        acc_config_path = os.path.join(youtube_config_folder, f'{acc}.pkl')
+        save_to_json_file(data, acc_config_path)
+    else:
+        save_to_json_file(data, youtube_config_commond_path)
+
+def load_facebook_config(acc=None):
+    try:
+        if acc:
+            acc_config_path = os.path.join(facebook_config_folder, f'{acc}.pkl')
+            config = get_json_data(acc_config_path) or {}
+            if not config:
+                config = {
+                    "email":"",
+                    "password":"",
+                    "upload_folder":"",
+                    "description":"",
+                    "publish_times":"19:00",
+                    "cnt_upload_in_day":0,
+                    "title":"",
+                    "is_title_plus_video_name":False,
+                    "upload_date":datetime.now().strftime('%Y-%m-%d'),
+                    "is_delete_after_upload":False,
+                    "number_of_days":"1",
+                    "day_gap":"1",
+                    "is_reel_video":True,
+                    "waiting_verify":"",
+
+                    "chrome_cookies":[],
+                    "firefox_cookies":[],
+                    "mobi_cookies":[],
+                    "local_storage":{}
+                }
+                save_tiktok_config(acc, config)
+        else:
+            if os.path.exists(facebook_config_commond_path):
+                config = get_json_data(facebook_config_commond_path) or {}
+            else:
+                config = facebook_config_commond
+                save_to_json_file(config, facebook_config_commond_path)
+        return config
+    except:
+        getlog()
+
+def save_facebook_config(acc=None,data=None):
+    if not data:
+        return
+    if acc:
+        acc_config_path = os.path.join(facebook_config_folder, f'{acc}.pkl')
+        save_to_json_file(data, acc_config_path)
+    else:
+        save_to_json_file(data, facebook_config_commond_path)
 
 
 

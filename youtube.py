@@ -11,19 +11,19 @@ from common_function import *
 
 #-----------------------------------------------------------------------------------------------------------------
 class YouTubeManager():
-    def __init__(self, gmail, channel_name=None, is_auto_upload=False, download_thread=None, upload_thread=None):
+    def __init__(self, channel_name=None, is_auto_upload=False, download_thread=None, upload_thread=None):
         self.is_auto_upload = is_auto_upload
+        self.download_thread = download_thread
+        self.upload_thread = upload_thread
+        self.channel_name = channel_name
+        self.get_youtube_config()
+        self.email = self.acc_config['email']
         if not is_auto_upload:
             self.root = ctk.CTk()
-            self.title = self.root.title(gmail)
+            self.title = self.root.title(channel_name)
             self.root.protocol("WM_DELETE_WINDOW", self.on_close)
             self.width = width_window
             self.is_start_youtube = True
-        self.download_thread = download_thread
-        self.upload_thread = upload_thread
-        self.gmail = gmail
-        self.channel_name = channel_name
-        self.get_youtube_config()
         self.youtube = None
         self.pre_time_check_status = 0
 
@@ -65,7 +65,7 @@ class YouTubeManager():
                     press_esc_key(2, self.driver)
                     account_menu, language = self.get_account_menu()
             else:
-                self.driver = get_chrome_driver_with_profile(target_gmail=self.gmail, show=show)
+                self.driver = get_chrome_driver_with_profile(target_email=self.email, show=show)
                 if not self.driver:
                     return
                 print(f'--> Đang sử dụng chrome profile để đăng nhập ...')
@@ -93,9 +93,8 @@ class YouTubeManager():
         self.driver.get(url)
         sleep(1)
         try:
-            youtube_cookies = get_json_data(youtube_cookies_path)
-            cookies = youtube_cookies[self.gmail]
-            for cookie in cookies:
+            youtube_cookies = self.acc_config['chrome_cookies'] or []
+            for cookie in youtube_cookies:
                 if "sameSite" in cookie:
                     if cookie["sameSite"] not in ["Strict", "Lax", "None"]:
                         cookie["sameSite"] = "None"
@@ -105,9 +104,9 @@ class YouTubeManager():
                     self.driver.add_cookie(cookie)
                 except:
                     getlog()
-            sleep(1)
+            sleep(1.5)
             self.driver.refresh()
-            sleep(3)
+            sleep_random(3,5)
         except:
             getlog()
 
@@ -280,7 +279,7 @@ class YouTubeManager():
                 ele.click()
                 sleep(0.3)
             except:
-                print(f'Có lỗi trong quá trình đăng video. Có thể tải khoản {self.gmail} đã đạt giới hạn đăng video trong ngày !!!')
+                print(f'Có lỗi trong quá trình đăng video. Có thể tải khoản {self.email} đã đạt giới hạn đăng video trong ngày !!!')
                 self.is_stop_upload = True
 
     def click_show_more(self):
@@ -588,36 +587,36 @@ class YouTubeManager():
 #--------------------------------------Selenium--------------------------end
 
     def get_youtube_config(self):
-        self.youtube_config = get_json_data(youtube_config_path)
+        self.youtube_config = load_youtube_config()
+        self.acc_config = load_youtube_config(self.channel_name)
 
     def save_youtube_config(self):
-        save_to_json_file(self.youtube_config, youtube_config_path)
+        save_facebook_config(self.channel_name, self.acc_config)
 
-    def load_secret_info(self):
-        try:
-            if not os.path.exists(secret_path):
-                return False
-            self.secret_data = get_json_data(secret_path)
-            self.secret_info={}
-            gmails = [gmail for gmail in self.secret_data.keys()]
-            if not gmails:
-                print(f"Tài khoản {self.gmail} chưa được đăng ký API !!!")
-                return False
-            if self.gmail not in gmails:
-                notification(self.root, f"Tài khoản {self.gmail} chưa được đăng ký API !!!")
-                return False
-            else:
-                oauth = self.secret_data[self.gmail]['oauth']
-                self.api_key = self.secret_data[self.gmail]['api']
-                self.oauth_path = f'{current_dir}\\oauth\\{self.gmail}.json'
-                save_to_json_file(oauth, self.oauth_path)
-                return True
-        except:
-            getlog()
-            return False
+    # def load_secret_info(self):
+    #     try:
+    #         if not os.path.exists(secret_path):
+    #             return False
+    #         self.secret_data = get_json_data(secret_path)
+    #         self.secret_info={}
+    #         emails = [email for email in self.secret_data.keys()]
+    #         if not emails:
+    #             print(f"Tài khoản {self.email} chưa được đăng ký API !!!")
+    #             return False
+    #         if self.email not in emails:
+    #             notification(self.root, f"Tài khoản {self.email} chưa được đăng ký API !!!")
+    #             return False
+    #         else:
+    #             oauth = self.secret_data[self.email]['oauth']
+    #             self.api_key = self.secret_data[self.email]['api']
+    #             self.oauth_path = f'{current_dir}\\oauth\\{self.email}.json'
+    #             save_to_json_file(oauth, self.oauth_path)
+    #             return True
+    #     except:
+    #         getlog()
+    #         return False
 
     def get_start_youtube(self):
-        self.get_youtube_config()
         if not self.is_first_start:
             self.reset()
         else:
@@ -668,7 +667,7 @@ class YouTubeManager():
                     self.download_thread = threading.Thread(target=self.download_videos_by_channel_id_selenium)
                     # else:
                     #     if not self.youtube:
-                    #         get_chrome_driver_with_profile(self.gmail, show=False)
+                    #         get_chrome_driver_with_profile(self.email, show=False)
                     #         self.youtube = self.get_authenticated_service()
                     #         if not self.youtube:
                     #             print(f"Xác thực với google không thành công. Hãy đảm bảo bạn đã đăng ký api trước đó.")
@@ -712,9 +711,8 @@ class YouTubeManager():
                 self.thumbnail_folder_var.insert(0, folder_path)
 
         def load_template():
-            self.get_youtube_config()
             template_name = self.load_template_combobox.get()
-            template = self.youtube_config['template'][template_name]
+            template = load_youtube_config(template_name)
 
             self.title_var.delete(0, ctk.END)
             self.description_var.delete("1.0", ctk.END)
@@ -726,7 +724,7 @@ class YouTubeManager():
             self.day_gap_var.delete(0, ctk.END)
 
             self.title_var.insert(0, template.get("title", ""))
-            self.is_title_plus_video_name_var.set(convert_boolean_to_Yes_No(self.youtube_config['template'][self.channel_name]['is_title_plus_video_name']))
+            self.is_title_plus_video_name_var.set(convert_boolean_to_Yes_No(self.acc_config['is_title_plus_video_name']))
             self.description_var.delete("1.0", ctk.END)
             self.description_var.insert(ctk.END, template.get("description", ""))
             self.upload_date_var.insert(0, template.get("upload_date", ""))
@@ -739,7 +737,7 @@ class YouTubeManager():
             self.altered_content_var.set(convert_boolean_to_Yes_No(template.get("altered_content", False)))
             self.upload_folder_var.insert(0, template.get("upload_folder", ""))
             self.thumbnail_folder_var.insert(0, template.get("thumbnail_folder", ""))
-            self.is_delete_after_upload_var.set(convert_boolean_to_Yes_No(self.youtube_config['template'][self.channel_name]['is_delete_after_upload']))
+            self.is_delete_after_upload_var.set(convert_boolean_to_Yes_No(self.acc_config['is_delete_after_upload']))
             self.number_of_days_var.insert(0, template.get("number_of_days", "1"))
             self.day_gap_var.insert(0, template.get("day_gap", "1"))
 
@@ -748,23 +746,23 @@ class YouTubeManager():
         self.description_var = self.create_settings_input("Mô tả", "description", is_textbox=True, left=left, right=right)
         self.upload_date_var = self.create_settings_input("Ngày bắt đầu đăng video (yyyy-mm-dd)", "upload_date", left=left, right=right)
         self.day_gap_var, self.number_of_days_var = create_frame_label_input_input(self.root,text="Số ngày đăng/Khoảng cách ngày đăng", width=self.width, left=left, mid=0.33, right=0.37)
-        self.number_of_days_var.insert(0, self.youtube_config['template'][self.channel_name]['number_of_days'])
-        self.day_gap_var.insert(0, self.youtube_config['template'][self.channel_name]['day_gap'])
+        self.number_of_days_var.insert(0, self.acc_config['number_of_days'])
+        self.day_gap_var.insert(0, self.acc_config['day_gap'])
         self.publish_times_var = self.create_settings_input("Giờ đăng(vd: 20:30)", "publish_times", left=left, right=right)
         self.altered_content_var = self.create_settings_input(text="Nội dung đã bị chỉnh sửa", config_key="altered_content", values=['Yes', 'No'], left=left, right=right)
-        self.playlist_var = self.create_settings_input("Chọn Playlist", "curent_playlist", values=self.youtube_config['template'][self.channel_name]["playlist"], left=left, right=right)
+        self.playlist_var = self.create_settings_input("Chọn Playlist", "curent_playlist", values=self.acc_config["playlist"], left=left, right=right)
         try:
-            self.playlist_var.set(self.youtube_config['template'][self.channel_name]["curent_playlist"])
+            self.playlist_var.set(self.acc_config["curent_playlist"])
         except:
-            self.playlist_var.insert(0, self.youtube_config['template'][self.channel_name]["curent_playlist"])
+            self.playlist_var.insert(0, self.acc_config["curent_playlist"])
         self.show_browser_var = self.create_settings_input(text="Hiển thị trình duyệt", config_key="show_browser", values=['Yes', 'No'], left=left, right=right, is_data_in_template=False)
         self.is_delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", "is_delete_after_upload", values=["Yes", "No"], left=left, right=right)
         self.cookies_var = create_frame_label_and_input(self.root, text="Đăng nhập bằng cookies", width=self.width, left=left, right=right)
         self.thumbnail_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa thumbnail", command=set_thumbnail_folder, width=self.width)
-        self.thumbnail_folder_var.insert(0, self.youtube_config['template'][self.channel_name]['thumbnail_folder'])
+        self.thumbnail_folder_var.insert(0, self.acc_config['thumbnail_folder'])
         self.upload_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa video", command=set_upload_folder, width=self.width)
-        self.upload_folder_var.insert(0, self.youtube_config['template'][self.channel_name]['upload_folder'])
-        self.load_template_combobox = create_frame_button_and_combobox(self.root,text="Tải mẫu có sẵn", width=self.width, command=load_template, values=list(self.youtube_config['template'].keys()))
+        self.upload_folder_var.insert(0, self.acc_config['upload_folder'])
+        self.load_template_combobox = create_frame_button_and_combobox(self.root,text="Tải mẫu có sẵn", width=self.width, command=load_template, values=list(self.acc_config.keys()))
         self.load_template_combobox.set(self.channel_name)
         create_frame_button_and_button(self.root,text1="Đăng video ngay", width=self.width, command1=self.start_upload_videos_now, text2="Lên lịch đăng video", command2=self.start_upload_videos_with_schedule, left=0.5, right=0.5)
         create_button(self.root, text="Lùi lại", command=self.get_start_youtube, width=self.width)
@@ -772,30 +770,30 @@ class YouTubeManager():
 
     def save_upload_setting(self):
         try:
-            self.youtube_config['template'][self.channel_name]["title"] = self.title_var.get()
-            self.youtube_config['template'][self.channel_name]["is_title_plus_video_name"] = self.is_title_plus_video_name_var.get() == "Yes"
-            self.youtube_config['template'][self.channel_name]["description"] = self.description_var.get("1.0", ctk.END).strip()
+            self.acc_config["title"] = self.title_var.get()
+            self.acc_config["is_title_plus_video_name"] = self.is_title_plus_video_name_var.get() == "Yes"
+            self.acc_config["description"] = self.description_var.get("1.0", ctk.END).strip()
             playlist_name = self.playlist_var.get()
-            self.youtube_config['template'][self.channel_name]["curent_playlist"] = playlist_name
-            if playlist_name not in self.youtube_config['template'][self.channel_name]["playlist"]:
-                self.youtube_config['template'][self.channel_name]["playlist"].append(playlist_name)
-            self.youtube_config['template'][self.channel_name]['altered_content'] = self.altered_content_var.get() == 'Yes'
+            self.acc_config["curent_playlist"] = playlist_name
+            if playlist_name not in self.acc_config["playlist"]:
+                self.acc_config["playlist"].append(playlist_name)
+            self.acc_config['altered_content'] = self.altered_content_var.get() == 'Yes'
             self.youtube_config['show_browser'] = self.show_browser_var.get() == 'Yes'
-            self.youtube_config['template'][self.channel_name]["upload_date"] = self.upload_date_var.get()
-            self.youtube_config['template'][self.channel_name]["number_of_days"] = self.number_of_days_var.get()
-            self.youtube_config['template'][self.channel_name]["day_gap"] = self.day_gap_var.get()
-            self.youtube_config['template'][self.channel_name]["publish_times"] = self.publish_times_var.get()
-            self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] = 0
-            self.youtube_config['template'][self.channel_name]["thumbnail_folder"] = self.thumbnail_folder_var.get()
-            self.youtube_config['template'][self.channel_name]["upload_folder"] = self.upload_folder_var.get()
-            self.youtube_config['template'][self.channel_name]['gmail'] = self.gmail
-            self.youtube_config['template'][self.channel_name]['is_delete_after_upload'] = self.is_delete_after_upload_var.get() == 'Yes'
+            self.acc_config["upload_date"] = self.upload_date_var.get()
+            self.acc_config["number_of_days"] = self.number_of_days_var.get()
+            self.acc_config["day_gap"] = self.day_gap_var.get()
+            self.acc_config["publish_times"] = self.publish_times_var.get()
+            self.acc_config['cnt_upload_in_day'] = 0
+            self.acc_config["thumbnail_folder"] = self.thumbnail_folder_var.get()
+            self.acc_config["upload_folder"] = self.upload_folder_var.get()
+            self.acc_config['email'] = self.email
+            self.acc_config['is_delete_after_upload'] = self.is_delete_after_upload_var.get() == 'Yes'
             validate_message = ""
-            if len(self.youtube_config['template'][self.channel_name]["title"]) > 100:
+            if len(self.acc_config["title"]) > 100:
                 validate_message += "Tiêu đề có tối đa 100 ký tự.\n"
-            if len(self.youtube_config['template'][self.channel_name]["description"]) > 5000:
+            if len(self.acc_config["description"]) > 5000:
                 validate_message += "Mô tả có tối đa 5000 ký tự.\n"
-            if not self.youtube_config['template'][self.channel_name]["upload_folder"]:
+            if not self.acc_config["upload_folder"]:
                 validate_message += "Chưa chọn thư mục chứa video.\n"
             if validate_message:
                 notification(self.root, validate_message)
@@ -828,11 +826,11 @@ class YouTubeManager():
         cookies = self.cookies_var.get().strip()
         if cookies:
             cookie_data = json.loads(cookies)
-            youtube_cookies = get_json_data(youtube_cookies_path)
+            youtube_cookies = self.acc_config['chrome_cookies'] or []
             if not youtube_cookies:
                 youtube_cookies = {}
-            youtube_cookies[self.gmail] = cookie_data
-            save_to_json_file(youtube_cookies, youtube_cookies_path)
+            youtube_cookies[self.email] = cookie_data
+            self.save_youtube_config()
         self.schedule_videos_by_selenium()
 
     def open_dowload_video_from_channel_window(self):
@@ -842,11 +840,11 @@ class YouTubeManager():
     #     try:
     #         if self.load_secret_info():
     #             if not self.oauth_path:
-    #                 notification(self.root, f"Tài khoản gmail {self.gmail} chưa được đăng ký hoặc đã hết hạn.")
+    #                 notification(self.root, f"Tài khoản email {self.email} chưa được đăng ký hoặc đã hết hạn.")
     #                 return
     #             try:
     #                 flow = flow_from_clientsecrets(self.oauth_path, scope=SCOPES, message="xác minh thất bại")
-    #                 self.curent_oath_path = f"{sys.argv[0]}-{self.gmail}-{self.channel_name}.json"
+    #                 self.curent_oath_path = f"{sys.argv[0]}-{self.email}-{self.channel_name}.json"
     #                 storage = Storage(self.curent_oath_path)
     #                 credentials = storage.get()
     #             except:
@@ -858,7 +856,7 @@ class YouTubeManager():
     #         else:
     #             return None
     #     except Exception as e:
-    #         error_message(f"Xác minh thất bại. Hãy đảm bảo bạn đang dùng gmail {self.gmail} để xác minh !!!")
+    #         error_message(f"Xác minh thất bại. Hãy đảm bảo bạn đang dùng email {self.email} để xác minh !!!")
     #         getlog()
     #         return None
         
@@ -956,43 +954,45 @@ class YouTubeManager():
             self.close_driver()
 
 
-    def schedule_videos_by_selenium(self, folder=None, day_delta=60):
+    def schedule_videos_by_selenium(self, videos_folder=None, day_delta=60):
         try:
-            thumbnail_folder = self.youtube_config['template'][self.channel_name]['thumbnail_folder']
-            if folder:
-                videos_folder = folder
+            if not videos_folder:
+                videos_folder = self.acc_config['upload_folder']
+                thumbnail_folder = self.acc_config['thumbnail_folder']
             else:
-                videos_folder = self.youtube_config['template'][self.channel_name]['upload_folder']
+                thumbnail_folder = os.path.join(videos_folder, 'images')
+                os.makedirs(thumbnail_folder, exist_ok=True)
+
             if not check_folder(videos_folder):
                 return False
             videos = get_file_in_folder_by_type(videos_folder, ".mp4") or []
             if not videos or len(videos) == 0:
                 print(f"Không tìm thấy video trong thư mục {videos_folder}")
                 return False
-            if 'cnt_upload_in_day' not in self.youtube_config['template'][self.channel_name]:
-                self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] = 0
+            if 'cnt_upload_in_day' not in self.acc_config:
+                self.acc_config['cnt_upload_in_day'] = 0
             current_day = convert_datetime_to_string(datetime.now().date())
             tomorow_str = convert_datetime_to_string(datetime.now() + timedelta(days=1))
-            number_of_days = get_number_of_days(self.youtube_config['template'][self.channel_name]['number_of_days'])
+            number_of_days = get_number_of_days(self.acc_config['number_of_days'])
             if self.is_schedule:
-                day_gap = get_day_gap(self.youtube_config['template'][self.channel_name]['day_gap'])
-                old_upload_date_str = self.youtube_config['template'][self.channel_name]['upload_date']
+                day_gap = get_day_gap(self.acc_config['day_gap'])
+                old_upload_date_str = self.acc_config['upload_date']
                 if not old_upload_date_str:
                     return False
-                publish_times = self.youtube_config['template'][self.channel_name]['publish_times'].split(',')
+                publish_times = self.acc_config['publish_times'].split(',')
                 if not publish_times:
                     return False
                 upload_date = get_upload_date(old_upload_date_str)
                 upload_date_str = convert_datetime_to_string(upload_date)
                 if upload_date_str != old_upload_date_str:
-                    self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] = 0
+                    self.acc_config['cnt_upload_in_day'] = 0
                 if self.is_auto_upload:
                     number_of_days = 100
-                    if self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] == 0 or self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] >= len(publish_times):
+                    if self.acc_config['cnt_upload_in_day'] == 0 or self.acc_config['cnt_upload_in_day'] >= len(publish_times):
                         upload_date_str = add_date_into_string(upload_date_str, day_gap)
-                        self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] = 0
+                        self.acc_config['cnt_upload_in_day'] = 0
                     self.youtube_config['show_browser'] = False
-                    if folder:
+                    if videos_folder:
                         self.youtube_config['show_browser'] = True
             else:
                 upload_date_str = current_day
@@ -1009,7 +1009,7 @@ class YouTubeManager():
                     print(f"Ngày đăng {upload_date_str} vượt quá {day_delta} ngày so với ngày hiện tại. Không thể tiếp tục đăng video.")
                     break
                 if self.is_schedule:
-                    cnt_upload_in_day = self.youtube_config['template'][self.channel_name]['cnt_upload_in_day']
+                    cnt_upload_in_day = self.acc_config['cnt_upload_in_day']
                     while True:
                         publish_time = publish_times[cnt_upload_in_day % len(publish_times)].strip()
                         publish_time = get_pushlish_time_hh_mm(publish_time)
@@ -1019,14 +1019,14 @@ class YouTubeManager():
                             cnt_upload_in_day += 1
                             if cnt_upload_in_day % len(publish_times) == 0:
                                 upload_date_str = add_date_into_string(upload_date_str, day_gap)
-                                self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] = 0
+                                self.acc_config['cnt_upload_in_day'] = 0
                         else:
                             break
                 if self.is_stop_upload:
                     break
                 video_name = os.path.splitext(video_file)[0]
-                title = self.youtube_config['template'][self.channel_name]['title']
-                if self.youtube_config['template'][self.channel_name]['is_title_plus_video_name']:
+                title = self.acc_config['title']
+                if self.acc_config['is_title_plus_video_name']:
                     full_title = f"{title} {video_name}"
                 else:
                     full_title = title
@@ -1045,8 +1045,8 @@ class YouTubeManager():
                     break
                 if full_title:
                     self.input_title(title=full_title)
-                if self.youtube_config['template'][self.channel_name]['description']:
-                    self.input_description(description=self.youtube_config['template'][self.channel_name]['description'])
+                if self.acc_config['description']:
+                    self.input_description(description=self.acc_config['description'])
                 self.check_daily_update_limit()
                 if self.is_stop_upload:
                     break
@@ -1057,14 +1057,14 @@ class YouTubeManager():
                     thumnail_path = os.path.join(thumbnail_folder, f'{video_name}.jpg')
                     if os.path.exists(thumnail_path):
                         self.input_thumbnail(thumbnail_path=thumnail_path)
-                if self.youtube_config['template'][self.channel_name]['curent_playlist']:
-                    self.choose_playlist(self.youtube_config['template'][self.channel_name]['curent_playlist'])
+                if self.acc_config['curent_playlist']:
+                    self.choose_playlist(self.acc_config['curent_playlist'])
                     
                 self.click_not_make_for_kid()
                 if self.is_stop_upload:
                     break
                 if self.click_show_more():
-                    self.click_altered_content(self.youtube_config['template'][self.channel_name]['altered_content'])
+                    self.click_altered_content(self.acc_config['altered_content'])
                 self.click_next_button()
                 if self.is_schedule:
                     self.click_schedule_option()
@@ -1079,15 +1079,15 @@ class YouTubeManager():
                     self.click_schedule_now()
                     upload_count += 1
                     cnt_upload_in_day += 1
-                    self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] = cnt_upload_in_day
-                    if self.youtube_config['template'][self.channel_name]['upload_date'] != upload_date_str:
-                        self.youtube_config['template'][self.channel_name]['upload_date'] = upload_date_str
-                    remove_or_move_file(video_path, self.youtube_config['template'][self.channel_name]['is_delete_after_upload'], finish_folder_name='youtube_upload_finished')
+                    self.acc_config['cnt_upload_in_day'] = cnt_upload_in_day
+                    if self.acc_config['upload_date'] != upload_date_str:
+                        self.acc_config['upload_date'] = upload_date_str
+                    remove_or_move_file(video_path, self.acc_config['is_delete_after_upload'], finish_folder_name='youtube_upload_finished')
                     print(f'--> Đăng thành công video: {video_file}')
                     if (cnt_upload_in_day) % len(publish_times) == 0:
                         upload_date_str = add_date_into_string(upload_date_str, day_gap)
                         date_cnt += 1
-                        self.youtube_config['template'][self.channel_name]['cnt_upload_in_day'] = 0
+                        self.acc_config['cnt_upload_in_day'] = 0
                     self.save_youtube_config()
                     if date_cnt == number_of_days:
                         break
@@ -1096,11 +1096,11 @@ class YouTubeManager():
                     if self.is_stop_upload:
                         break
                     self.click_public_now()
-                    if self.youtube_config['template'][self.channel_name]['upload_date'] != upload_date_str:
-                        self.youtube_config['template'][self.channel_name]['upload_date'] = upload_date_str
+                    if self.acc_config['upload_date'] != upload_date_str:
+                        self.acc_config['upload_date'] = upload_date_str
                         self.save_youtube_config()
                     upload_count += 1
-                    remove_or_move_file(video_path, self.youtube_config['template'][self.channel_name]['is_delete_after_upload'], finish_folder_name='youtube_upload_finished')
+                    remove_or_move_file(video_path, self.acc_config['is_delete_after_upload'], finish_folder_name='youtube_upload_finished')
                     print(f'--> Đăng thành công video: {video_file}')
                     if upload_count == number_of_days:
                         break
@@ -1387,7 +1387,7 @@ class YouTubeManager():
 
     def setting_window_size(self):
         if self.is_start_youtube:
-            self.root.title(f"Youtube: {self.gmail}: {self.channel_name}")
+            self.root.title(f"Youtube: {self.email}: {self.channel_name}")
             self.width = 500
             self.height_window = 170
             if height_element == 30:
@@ -1436,7 +1436,7 @@ class YouTubeManager():
 
     def create_settings_input(self, text, config_key, values=None, is_textbox = False, left=0.5, right=0.5, is_data_in_template=True):
         if is_data_in_template:
-            config = config=self.youtube_config['template'][self.channel_name]
+            config = config=self.acc_config
         else:
             config = self.youtube_config
         frame = create_frame(self.root)

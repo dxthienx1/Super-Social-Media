@@ -32,8 +32,6 @@ class MainApp:
                 self.serial.insert(0, serial)
                 return
             print(f'Ngày hết hạn sử dụng: {serials[serial]}')
-            # if not is_date_greater_than_current_day(serials[serial], 3):
-            #     print(f'Gói đăng ký sắp đến ngày hết hạn')
 
             if not os.path.exists(ico_path):
                 if os.path.exists(icon_path):
@@ -50,8 +48,8 @@ class MainApp:
             self.edit_thread = threading.Thread()
             self.edit_audio_thread = threading.Thread()
             self.config = load_config()
+            self.tiktok_config = load_tiktok_config()
             self.youtube_config = load_youtube_config()
-            self.tiktok_config = self.get_tiktok_config()
             self.facebook_config = load_facebook_config()
             self.youtube = None
             self.is_youtube_window = False
@@ -148,55 +146,46 @@ class MainApp:
 
     def auto_upload_youtube(self):
         try:
-            time_check_cycle = get_time_check_cycle(self.config['time_check_auto_upload'])
-            if time_check_cycle == 0:
-                return
-            if self.config['auto_upload_youtube']:
-                if (self.first_check_upload_video_youtube and time_check_cycle > 0) or (time() - self.pre_time_check_auto_upload_youtube >= time_check_cycle):
-                    self.pre_time_check_auto_upload_youtube = time()
-                    auto_channel_name = [channel for channel in self.youtube_config['template'].keys()]
-                    for channel_name in auto_channel_name:
-                        try:
-                            if self.is_stop_upload:
-                                return
-                            self.get_youtube_config()
-                            gmail = self.youtube_config['template'][channel_name].get('gmail', None)
-                            videos_folder = self.youtube_config['template'][channel_name].get('upload_folder')
-                            videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)   
-                            if not videos:
-                                return
-                            print(f"đang thực hiện đăng video tự động cho kênh {channel_name} ...")
-                            if self.is_stop_upload:
-                                return
-                            auto_youtube= YouTubeManager(gmail, channel_name, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
-                            auto_youtube.schedule_videos_by_selenium()
-                        except:
-                            getlog()
-                            print(f"Có lỗi trong quá trình đăng video tự động cho kênh {channel_name} !!!")
-                        sleep(2)
-                    self.first_check_upload_video_youtube = False
+            auto_channel_name = self.youtube_config['registered_account']
+            for channel_name in auto_channel_name:
+                try:
+                    acc_config = load_youtube_config(channel_name)
+                    if self.is_stop_upload:
+                        return
+                    videos_folder = acc_config.get('upload_folder')
+                    videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)   
+                    if not videos:
+                        return
+                    print(f"đang thực hiện đăng video tự động cho kênh {channel_name} ...")
+                    if self.is_stop_upload:
+                        return
+                    self.youtube= YouTubeManager(channel_name, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
+                    self.youtube.schedule_videos_by_selenium()
+                except:
+                    getlog()
+                    print(f"Có lỗi trong quá trình đăng video tự động cho kênh {channel_name} !!!")
+                sleep(2)
 
         except:
             getlog()
 
     def auto_check_status_video_youtube(self):
+        print(f'Đang tạm dừng...')
+        return
         try:
             time_check_cycle = get_time_check_cycle(self.config['time_check_status_video'])
             if time_check_cycle == 0:
                 return
             if (self.first_check_status_video and time_check_cycle > 0) or (time() - self.pre_time_check_status_video_youtube >= time_check_cycle):
                 self.pre_time_check_status_video_youtube = time()
-                auto_channel_name = [channel for channel in self.youtube_config['template'].keys()]
+                auto_channel_name = []
                 for channel_name in auto_channel_name:
                     try:
                         time_check_cycle = get_time_check_cycle(self.config['time_check_status_video'])
                         if time_check_cycle == 0:
                             return
-                        self.get_youtube_config()
-                        gmail = self.youtube_config['template'][channel_name].get('gmail', None)
-
                         print(f"đang thực hiện kiểm tra tình trạng video cho kênh {channel_name} ...")
-                        auto_youtube= YouTubeManager(gmail, channel_name, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
+                        auto_youtube= YouTubeManager(channel_name, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
                         auto_youtube.check_status_videos_by_selenium()
                     except:
                         getlog()
@@ -214,22 +203,20 @@ class MainApp:
             if self.config['auto_upload_facebook']:
                 if (self.first_check_upload_video_facebook and time_check_cycle > 0) or (time() - self.pre_time_check_auto_upload_facebook >= time_check_cycle):
                     self.pre_time_check_auto_upload_facebook = time()
-                    auto_page_name = [page for page in self.facebook_config['template'].keys()]
+                    auto_page_name = [page for page in self.facebook_config['registered_account']]
                     for page_name in auto_page_name:
                         try:
                             if self.is_stop_upload:
                                 return
-                            self.get_facebook_config()
-                            videos_folder = self.facebook_config['template'][page_name].get('upload_folder')
+                            acc_config = load_facebook_config(page_name)
+                            videos_folder = acc_config.get('upload_folder')
                             videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)   
                             if not videos:
                                 return
                             print(f"đang thực hiện đăng video tự động cho trang {page_name} ...")
-                            facebook_account = self.facebook_config['template'][page_name].get('account')
-                            facebook_password = self.facebook_config['template'][page_name].get('password')
                             if self.is_stop_upload:
                                 return
-                            auto_facebook= FacebookManager(facebook_account, facebook_password, page_name, self.download_thread, self.upload_thread, is_auto_upload=True)
+                            auto_facebook= FacebookManager(page_name, self.download_thread, self.upload_thread, is_auto_upload=True)
                             auto_facebook.upload_video()
                         except:
                             getlog()
@@ -241,9 +228,9 @@ class MainApp:
 
     def auto_upload_tiktok(self):  
         try:
-            self.get_tiktok_config()
-            auto_tiktok_acc = [acc for acc in self.tiktok_config['template'].keys()]
-            print(f'Tổng số acc đã đăng ký: {len(auto_tiktok_acc)}')
+            
+            auto_tiktok_othernames = self.tiktok_config['registered_account']
+            print(f'Tổng số acc đã đăng ký: {len(auto_tiktok_othernames)}')
             is_auto_and_schedule = self.config['is_auto_and_schedule']
             # Giới hạn số luồng tối đa chạy cùng lúc
             try:
@@ -254,12 +241,8 @@ class MainApp:
             semaphore = threading.Semaphore(max_threads)
             account_queue = queue.Queue()
             # Đẩy tất cả tài khoản vào hàng đợi
-            for account in auto_tiktok_acc:
-                videos_folder = self.tiktok_config['template'][account].get('upload_folder')
-                if not videos_folder or not os.path.isdir(videos_folder):
-                    print(f'Thư mục chứa video của {account}: {videos_folder}')
-                    continue
-                account_queue.put(account)
+            for other_name in auto_tiktok_othernames:
+                account_queue.put(other_name)
             # Tạo số luồng tối đa theo giới hạn
             self.upload_threads = []
             for _ in range(max_threads):
@@ -273,25 +256,30 @@ class MainApp:
             self.first_check_upload_video_tiktok = False
         except Exception as e:
             getlog()
-            print(f"Lỗi trong auto_upload_tiktok: {e}")
+            print(f"{other_name} Lỗi trong auto_upload_tiktok: {e}")
 
     def worker_upload_task(self, account_queue, semaphore, is_auto_and_schedule):
         """Luồng xử lý upload video từ hàng đợi, chạy đến khi hàng đợi hết tài khoản"""
         while not account_queue.empty():
-            account = account_queue.get()  # Lấy tài khoản từ hàng đợi
+            other_name = account_queue.get()  # Lấy tài khoản từ hàng đợi
             with semaphore:  # Giới hạn số luồng tối đa
                 try:
                     if self.is_stop_upload:
                         return
-                    videos_folder = self.tiktok_config['template'][account].get('upload_folder')
+                    acc_config = load_tiktok_config(other_name)
+                    videos_folder = acc_config.get('upload_folder')
+                    if not videos_folder or not os.path.isdir(videos_folder):
+                        videos_folder = self.videos_edit_folder_var.get().strip()
+                        if not videos_folder or not os.path.isdir(videos_folder):
+                            print(f'{thatbai} {other_name} Không tìm thấy thư mục chứa video!')
+                            return
                     videos = get_file_in_folder_by_type(videos_folder, ".mp4", False)
                     if not videos:
                         return  # Không có video thì bỏ qua
-                    print(f"Đang thực hiện đăng video tự động cho tài khoản TikTok {account} ...")
-                    tiktok_password = self.tiktok_config['template'][account].get('password')
+                    print(f"Đang thực hiện đăng video tự động cho tài khoản TikTok {other_name} ...")
                     # Khởi tạo quá trình upload video
-                    auto_tiktok = TikTokManager(account, tiktok_password, self.download_thread, None, is_auto_upload=True, is_auto_and_schedule=is_auto_and_schedule)
-                    auto_tiktok.upload_video()
+                    auto_tiktok = TikTokManager(other_name, self.download_thread, None, is_auto_upload=True, is_auto_and_schedule=is_auto_and_schedule)
+                    auto_tiktok.upload_video(videos_folder)
                 except:
                     getlog()
 
@@ -307,9 +295,6 @@ class MainApp:
             self.setting_window_size()
         else:
             self.show_window()
-        self.get_youtube_config()
-        self.get_tiktok_config()
-        self.get_facebook_config()
         create_button(frame=self.root, text="Quản lý Youtube", command=self.open_youtube_window)
         create_button(frame=self.root, text="Quản lý Tiktok", command=self.open_tiktok_window)
         create_button(frame=self.root, text="Quản lý Facebook", command=self.open_facebook_window)
@@ -330,7 +315,6 @@ class MainApp:
         def start_thread_auto_process():
             auto_thread = threading.Thread(target=self.start_auto_process)
             auto_thread.start()
-
         self.download_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục lưu video", command=self.choose_folder_to_save, width=self.width, left=left, right=right)
         self.download_video_from_url_var = create_frame_label_and_input(self.root, text="Link tải hàng loạt video", width=self.width, left=left, right=right)
         self.quantity_download_var = self.create_settings_input("Số video muốn tải", values=["20", "50", "100"], left=left, right=right)
@@ -338,11 +322,11 @@ class MainApp:
         self.edit_video_var = self.create_settings_input("Chỉnh sửa video", values=['Yes', 'No'], left=left, right=right)
         self.index_file_name_var, self.file_name_var = create_frame_label_input_input(self.root, text="Đổi tên video - Số thứ tự", place_holder2="Nhập tên có chứa chuỗi \"<index>\" là vị trí số thứ tự", place_holder1="Số TT", width=self.width, left=left, mid=0.1, right=0.6)
         self.image_position_var = create_frame_label_and_input(self.root, text="Trích xuất ảnh làm thumbnail", width=self.width, left=left, right=right, place_holder='Vd: 5(5 giây cuối) hoặc 00:01:30(giây thứ 90)')
-        youtube_channels = [key for key in self.youtube_config['template'].keys()]
+        youtube_channels = [key for key in self.youtube_config['registered_account']]
         self.youtube_channel_var = self.create_settings_input("Đăng lên youtube", values=youtube_channels, left=left, right=right)
-        tiktok_channels = [key for key in self.tiktok_config['template'].keys()]
+        tiktok_channels = [key for key in self.tiktok_config['registered_account']]
         self.tiktok_channel_var = self.create_settings_input("Đăng lên tiktok", values=tiktok_channels, left=left, right=right)
-        facebook_channels = [key for key in self.facebook_config['template'].keys()]
+        facebook_channels = [key for key in self.facebook_config['registered_account']]
         self.facebook_channel_var = self.create_settings_input("Đăng lên facebook", values=facebook_channels, left=left, right=right)
         self.delete_after_edit_var = self.create_settings_input("Xóa video gốc sau khi chỉnh sửa", values=['Yes', 'No'], left=left, right=right)
         self.delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", values=['Yes', 'No'], left=left, right=right)
@@ -384,10 +368,9 @@ class MainApp:
                     self.youtube_config['filter_by_views'] = filter_by_views
                     self.youtube_config['quantity_download'] = quantity_download
                     self.youtube_config['show_browser'] = False
-                    self.save_youtube_config()
-                    gmail_download = self.config['current_youtube_account']
-                    youtube = YouTubeManager(gmail_download, self.config['current_channel'], is_auto_upload=False, upload_thread=self.upload_thread, download_thread=self.download_thread)
-                    self.download_thread = threading.Thread(target=youtube.download_videos_by_channel_id_selenium)
+                    save_youtube_config(youtube_channel, self.youtube_config)
+                    self.youtube = YouTubeManager(self.config['current_channel'], is_auto_upload=False, upload_thread=self.upload_thread, download_thread=self.download_thread)
+                    self.download_thread = threading.Thread(target=self.youtube.download_videos_by_channel_id_selenium)
                     self.download_thread.start()
                 elif download_from == 'tiktok':
                     self.tiktok_config['download_folder'] = download_folder
@@ -395,10 +378,9 @@ class MainApp:
                     self.tiktok_config['filter_by_views'] = filter_by_views
                     self.tiktok_config['quantity_download'] = quantity_download
                     self.tiktok_config['show_browser'] = True
-                    self.save_tiktok_config()
                     account_download = self.config['current_tiktok_account']
-                    tiktok_password = self.tiktok_config['template'][account_download]['password']
-                    tiktok = TikTokManager(account_download, tiktok_password, self.download_thread, self.upload_thread)
+                    save_tiktok_config(account_download, self.tiktok_config)
+                    tiktok = TikTokManager(account_download, self.download_thread, self.upload_thread)
                     self.download_thread = threading.Thread(target=tiktok.get_tiktok_videos_by_channel_url)
                     self.download_thread.start()
                 elif download_from == 'facebook':
@@ -407,11 +389,9 @@ class MainApp:
                     self.facebook_config['filter_by_views'] = filter_by_views
                     self.facebook_config['quantity_download'] = quantity_download
                     self.facebook_config['show_browser'] = True
-                    self.save_facebook_config()
                     page_name = self.config['current_page']
-                    facebook_account = self.facebook_config['template'][page_name]['account']
-                    facebook_password = self.facebook_config['template'][page_name]['password']
-                    facebook = FacebookManager(facebook_account, facebook_password, page_name, self.download_thread, self.upload_thread)
+                    save_facebook_config(page_name, self.facebook_config)
+                    facebook = FacebookManager(page_name, self.download_thread, self.upload_thread)
                     self.download_thread = threading.Thread(target=facebook.download_page_videos_now)
                     self.download_thread.start()
                 else:
@@ -425,18 +405,6 @@ class MainApp:
             def start_edit_videos():
                 if thumbnail:
                     extract_folder = upload_folder
-                    images_folder = os.path.join(extract_folder, 'images')
-                    if youtube_channel:
-                        self.youtube_config['template'][youtube_channel]['thumbnail_folder'] = images_folder
-                        self.save_youtube_config()
-                    if tiktok_channel:
-                        self.tiktok_config['template'][tiktok_channel]['thumbnail_folder'] = images_folder
-                        self.save_tiktok_config()
-                if self.delete_after_edit_var.get() == "Yes":
-                    self.config['is_delete_video'] = True
-                else:
-                    self.config['is_move'] = True
-                    self.config['is_delete_video'] = False
                 cnt_err_edit = 0
                 err_video_folder = os.path.join(download_folder, 'error_videos')
                 os.makedirs(err_video_folder, exist_ok=True)
@@ -459,7 +427,6 @@ class MainApp:
                                     
                         if (not self.download_thread or not self.download_thread.is_alive()) and len(edit_videos) == 0:
                             print("Thoát quá trình chỉnh sửa video tự động")
-                            self.config['is_move'] = False
                             self.config['is_delete_video'] = False
                             break
                     except:
@@ -477,18 +444,12 @@ class MainApp:
                 if youtube_channel:
                     youtube_folder = upload_folder
                     upload_folder = os.path.join(youtube_folder, 'youtube_upload_finished')
-                    self.youtube_config['template'][youtube_channel]['cnt_upload_in_day'] = 0
-                    self.save_youtube_config()
                 if tiktok_channel:
                     tiktok_folder = upload_folder
                     upload_folder = os.path.join(tiktok_folder, 'tiktok_upload_finished')
-                    self.tiktok_config['template'][tiktok_channel]['cnt_upload_in_day'] = 0
-                    self.save_tiktok_config()
                 if facebook_page:
                     face_folder = upload_folder
                     upload_folder = os.path.join(face_folder, 'facebook_upload_finished')
-                    self.facebook_config['template'][facebook_page]['cnt_upload_in_day'] = 0
-                    self.save_facebook_config()
                 cnt_err_upload = 0
                 cnt = 0
                 is_stop = False
@@ -499,17 +460,15 @@ class MainApp:
                             youtube_videos = get_file_in_folder_by_type(youtube_folder, ".mp4") or []
                             if len(youtube_videos) > 0:
                                 print(f"Đang kiểm tra và đăng video cho kênh youtube: {youtube_channel}...")
-                                gmail = self.youtube_config['template'][youtube_channel]['gmail']
-                                youtube = YouTubeManager(gmail, youtube_channel, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
-                                if not youtube.schedule_videos_by_selenium(youtube_folder):
+                                self.youtube = YouTubeManager(youtube_channel, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
+                                if not self.youtube.schedule_videos_by_selenium(youtube_folder):
                                     is_ok = False
                                     cnt += 1
                         if tiktok_channel and not is_stop:
                             tiktok_videos = get_file_in_folder_by_type(tiktok_folder, ".mp4") or []
                             if len(tiktok_videos) > 0:
                                 print(f"Đang kiểm tra và đăng video cho kênh tiktok: {tiktok_channel}...")
-                                tiktok_password = self.tiktok_config['template'][tiktok_channel]['password']
-                                auto_tiktok= TikTokManager(tiktok_channel, tiktok_password, self.download_thread, self.upload_thread, is_auto_upload=True)
+                                auto_tiktok= TikTokManager(tiktok_channel, self.download_thread, self.upload_thread, is_auto_upload=True)
                                 status, is_stop = auto_tiktok.upload_video(tiktok_folder)
                                 if not status:
                                     if is_stop:
@@ -525,9 +484,7 @@ class MainApp:
                             face_videos = get_file_in_folder_by_type(face_folder, ".mp4") or []
                             if len(face_videos) > 0:
                                 print(f"Đang kiểm tra và đăng video cho trang facebook: {facebook_page}...")
-                                account = self.facebook_config['template'][facebook_page]['account']
-                                password = self.facebook_config['template'][facebook_page]['password']
-                                auto_facebook= FacebookManager(account, password, facebook_page, self.download_thread, self.upload_thread, is_auto_upload=True)
+                                auto_facebook= FacebookManager(facebook_page, self.download_thread, self.upload_thread, is_auto_upload=True)
                                 if not auto_facebook.upload_video(face_folder):
                                     is_ok = False
                                     cnt += 1
@@ -857,25 +814,15 @@ class MainApp:
         self.is_youtube_window = True
         self.show_window()
         self.setting_window_size()
-        values = list(set([self.youtube_config['template'][key]['gmail'] for key in self.youtube_config['template'].keys()])) or ['-------------------------']
-        self.input_gmail = self.create_settings_input("Chọn tài khoản Youtube", "current_youtube_account" ,values=values, left=0.4, right=0.6, add_button=True, text_btn='Tìm channel', command=self.choose_a_youtube_channel)
-        self.input_gmail.set(self.youtube_config['current_youtube_account'])
-        values = [k for k,v in self.youtube_config['template'].items() if v.get('gmail') == self.youtube_config['current_youtube_account']] or ['-------------------------']
+        values = self.youtube_config['registered_account']
+        if not values:
+            values = ['--------------------']
         self.input_current_channel_name = self.create_settings_input("Chọn tên kênh", "current_channel" ,values=values, left=0.4, right=0.6)
-        self.input_current_channel_name.set(self.youtube_config['current_channel'])
+        self.input_current_channel_name.set(self.config['current_channel'])
         create_button(self.root, text="Mở cửa sổ quản lý kênh Youtube", command=self.start_youtube_management)
         create_button(self.root, text="Đăng ký kênh youtube mới", command=self.add_new_channel)
         create_button(self.root, text="Xóa thông tin kênh youtube", command=self.remove_youtube_channel_window)
         create_button(self.root, text="Lùi lại", command=self.get_start_window, width=self.width)
-    
-    def choose_a_youtube_channel(self):
-        current_youtube_account = self.input_gmail.get()
-        channels_of_gmail = [k for k,v in self.youtube_config['template'].items() if v.get('gmail') == current_youtube_account]
-        if len(channels_of_gmail) == 0:
-            self.noti(f"Gmail {current_youtube_account} chưa được đăng ký hoặc hết hạn.")
-            return
-        self.input_current_channel_name.configure(values=channels_of_gmail)
-        self.input_current_channel_name.set(channels_of_gmail[0])
 
     def remove_youtube_channel_window(self):
         def remove_channel_now():
@@ -884,10 +831,9 @@ class MainApp:
                 if not channel_name:
                     self.noti("Hãy chọn channel muốn xóa.")
                     return
-                self.get_youtube_config()
-                if channel_name in self.youtube_config['template'].keys():
-                    removed_channel = self.youtube_config['template'].pop(channel_name, None)
-                    self.save_youtube_config()
+                if channel_name in self.youtube_config['registered_account']:
+                    self.youtube_config['registered_account'].remove(channel_name)
+                    save_youtube_config(data=self.youtube_config)
                     self.noti(f'Xóa kênh [{channel_name}] thành công.')
                     self.remove_youtube_channel_window()
                 else:
@@ -899,7 +845,7 @@ class MainApp:
         self.is_remove_channel = True
         self.setting_window_size()
         self.show_window()
-        self.channel_remove_var = self.create_settings_input(text="Nhập tên kênh youtube", config_key='current_channel', values=[key for key in self.youtube_config['template'].keys()], left=left, right=right)
+        self.channel_remove_var = self.create_settings_input(text="Nhập tên kênh youtube", config_key='current_channel', values=self.youtube_config['registered_account'], left=left, right=right)
         create_button(frame=self.root, text="Bắt đầu xóa thông tin kênh youtube", command=remove_channel_now)
         create_button(self.root, text="Lùi lại", command=self.open_youtube_window, width=self.width)
 
@@ -908,74 +854,59 @@ class MainApp:
         self.is_add_new_channel = True
         self.setting_window_size()
         self.show_window()
-        self.input_gmail = self.create_settings_input(text="Tài khoản youtube", config_key='current_youtube_account', values=self.youtube_config['registered_account'], left=left, right=right)
+        self.input_email = self.create_settings_input(text="Tài khoản gmail", values=self.youtube_config['registered_account'], left=left, right=right)
         self.input_current_channel_name = create_frame_label_and_input(self.root, text="Nhập tên kênh")
         create_button(frame=self.root, text="Đăng ký ngay", command=self.sign_up_youtube_channel)
         create_button(self.root, text="Lùi lại", command=self.open_youtube_window, width=self.width)
     
     def sign_up_youtube_channel(self):
         self.is_add_new_channel = True
-        gmail = self.input_gmail.get().strip()
+        email = self.input_email.get().strip()
         channel_name = self.input_current_channel_name.get().strip()
-        if not gmail or not channel_name:
+        if not email or not channel_name:
             self.noti("Hãy nhập đầy đủ thông tin!")
             return
-        if '@gmail.com' not in gmail:
-            self.noti("Không đúng định dạng gmail.")
+        if '@gmail.com' not in email:
+            self.noti("Định dạng email là abc@gmail.com.")
             return
-            
-        if channel_name not in self.youtube_config['template']:
-            self.youtube_config['template'][channel_name] = {}
-        self.youtube_config['template'][channel_name]['gmail'] = gmail
-        self.youtube_config['template'][channel_name]['title'] = ""
-        self.youtube_config['template'][channel_name]['is_title_plus_video_name'] = True
-        self.youtube_config['template'][channel_name]['description'] = ""
-        self.youtube_config['template'][channel_name]['curent_playlist'] = ""
-        self.youtube_config['template'][channel_name]['playlist'] = [" "]
-        self.youtube_config['template'][channel_name]['altered_content'] = False
-        self.youtube_config['template'][channel_name]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
-        self.youtube_config['template'][channel_name]['publish_times'] = ""
-        self.youtube_config['template'][channel_name]['cnt_upload_in_day'] = 0
-        self.youtube_config['template'][channel_name]['thumbnail_folder'] = ""
-        self.youtube_config['template'][channel_name]['upload_folder'] = ""
-        self.youtube_config['template'][channel_name]['is_delete_after_upload'] = False
-        self.youtube_config['template'][channel_name]['number_of_days'] = "1"
-        self.youtube_config['template'][channel_name]['day_gap'] = "1"
+        acc_config = load_youtube_config(channel_name)
+        acc_config['email'] = email
+        if channel_name not in self.youtube_config['registered_account']:
+            self.youtube_config['registered_account'].append(channel_name)
+        self.config['current_channel'] = channel_name
+        save_youtube_config(channel_name, acc_config)
+        save_youtube_config(data=self.youtube_config)
+        self.save_config()
         self.start_youtube_management(channel_name)
 
     def start_youtube_management(self, channel_name=None):
         if self.is_add_new_channel:
-            gmail = self.youtube_config['template'][channel_name]['gmail']
             self.is_add_new_channel = False
+            if channel_name not in self.youtube_config['registered_account']:
+                self.youtube_config['registered_account'].append(channel_name)
         else:
-            gmail = self.input_gmail.get().strip()
             channel_name = self.input_current_channel_name.get().strip()
-            if not gmail or not channel_name:
-                self.noti("Hãy nhập đủ thông tin!")
+            if not channel_name:
+                self.noti("Hãy chọn kênh!")
                 return
-            if channel_name not in self.youtube_config['template'].keys():
-                self.noti(f"kênh {channel_name} chưa được đăng ký!")
+            if channel_name not in self.youtube_config['registered_account']: 
+                self.noti(f"tài khoản email {channel_name} chưa được đăng ký!")
                 return
-            if gmail not in self.youtube_config['registered_account']: 
-                self.noti(f"tài khoản gmail {gmail} chưa được đăng ký!")
-                return
-        self.youtube = YouTubeManager(gmail, channel_name, is_auto_upload=False, download_thread=self.download_thread, upload_thread=self.upload_thread)
+        self.youtube = YouTubeManager(channel_name, is_auto_upload=False, download_thread=self.download_thread, upload_thread=self.upload_thread)
         self.reset()
-        self.youtube_config['current_youtube_account'] = gmail
-        self.youtube_config['current_channel'] = channel_name
-        if gmail not in self.youtube_config['registered_account']:
-            self.youtube_config['registered_account'].append(gmail)
+        self.config['current_channel'] = channel_name
         self.save_config()
-        self.save_youtube_config()
+        save_youtube_config(data=self.youtube_config)
         self.youtube.get_start_youtube()
 
-    def open_tiktok_window(self):
-        self.get_tiktok_config()
+    def open_tiktok_window(self, other_name=None):
         self.reset()
         self.is_tiktok_window = True
         self.show_window()
         self.setting_window_size()
-        self.tiktok_account_var = self.create_settings_input(text="Chọn tài khoản", config_key="current_tiktok_account", values=self.tiktok_config['registered_other_name'])
+        self.tiktok_account_var = self.create_settings_input(text="Chọn tài khoản", config_key="current_tiktok_account", values=self.tiktok_config['registered_account'])
+        if other_name:
+            self.tiktok_account_var.set(other_name)
         create_button(self.root, text="Mở cửa sổ quản lý kênh tiktok", command=self.start_tiktok_management)
         create_button(self.root, text="Đăng ký tài khoản tiktok mới", command=self.sign_up_tiktok_window)
         create_button(self.root, text="Xóa thông tin kênh tiktok", command=self.remove_tiktok_channel_window)
@@ -1000,6 +931,7 @@ class MainApp:
         self.setting_window_size()
         self.is_auto_and_schedule_var = self.create_settings_input("Lên lịch", "is_auto_and_schedule", values=["Yes", "No"], left=0.4, right=0.6)
         self.max_threads_var = self.create_settings_input("Số account đăng video tối đa", "max_threads", values=["1", "3", "5"], left=0.4, right=0.6)
+        self.videos_edit_folder_var = create_frame_button_and_input(self.root,text="Chọn Thư Mục Chứa Video", command= self.choose_videos_edit_folder, left=0.4, right=0.6, width=self.width)
         create_button(self.root, text="Bắt đầu", command=start_auto_upload_tiktok_thread, width=self.width)
         create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
 
@@ -1027,21 +959,18 @@ class MainApp:
             max_threads = int(self.config['max_threads'])
         except:
             max_threads = 1
-        tiktok_account_othernames = self.tiktok_config['registered_other_name']
-        for othername in tiktok_account_othernames:
-            tiktok_account = self.tiktok_config['registered_account_dic'][othername]
-            if 'auto_interact' not in self.tiktok_config['template'][tiktok_account]:
-                self.tiktok_config['template'][tiktok_account]['auto_interact'] = True
-            if self.tiktok_config['template'][tiktok_account]['auto_interact']:
+        othernames = self.tiktok_config['registered_account']
+        for othername in othernames:
+            acc_config = load_tiktok_config(othername)
+            if acc_config['auto_interact']:
                 while len(active_threads) >= max_threads:
                     # Nếu đã đạt giới hạn, chờ một chút trước khi kiểm tra lại
                     active_threads = [t for t in active_threads if t.is_alive()]
-                    sleep(10)
+                    sleep_random(5,10)
 
-                print(f'Bắt đầu tương tác cho kênh {othername}: {tiktok_account}')
-                password = self.tiktok_config['template'][tiktok_account]['password']
-                Tiktok = TikTokManager(tiktok_account, password, is_auto_upload=True)
-                Tiktok.tiktok_config['template'][tiktok_account]['use_profile_type'] = "Không dùng"
+                print(f'Bắt đầu tương tác cho kênh {othername} ...')
+                Tiktok = TikTokManager(othername, is_auto_upload=True)
+                Tiktok.acc_config['use_profile_type'] = "Không dùng"
                 # Tạo và lưu thread vào danh sách
                 thread = threading.Thread(target=Tiktok.interact_with_tiktok, args=(self.config['video_number_interact'],))
                 thread.start()
@@ -1079,33 +1008,17 @@ class MainApp:
                 if not other_name:
                     self.noti("Hãy chọn channel muốn xóa.")
                     return
-                self.get_tiktok_config()
-                if other_name not in self.tiktok_config['registered_other_name'] or other_name not in self.tiktok_config['registered_account_dic']:
+                acc_config = load_tiktok_config(other_name)
+                if other_name not in self.tiktok_config['registered_account']:
                     self.noti(f"Kênh {other_name} không tồn tại")
                     return
-                tiktok_account = self.tiktok_config['registered_account_dic'][other_name]
-                if tiktok_account in self.tiktok_config['template'].keys():
-                    self.tiktok_config['template'].pop(tiktok_account, None)
-                cookies_info_mobi = get_json_data(mobi_tiktok_cookies_path) or {}
-                if tiktok_account in cookies_info_mobi:
-                    cookies_info_ff.pop(tiktok_account)
-                    save_to_json_file(cookies_info_mobi, mobi_tiktok_cookies_path)
-                cookies_info_ff = get_json_data(ff_tiktok_cookies_path) or {}
-                if tiktok_account in cookies_info_ff:
-                    cookies_info_ff.pop(tiktok_account)
-                    save_to_json_file(cookies_info_ff, ff_tiktok_cookies_path)
-                cookies_info_chrome = get_json_data(tiktok_cookies_path) or {}
-                if tiktok_account in cookies_info_chrome:
-                    cookies_info_chrome.pop(tiktok_account)
-                    save_to_json_file(cookies_info_chrome, tiktok_cookies_path)
-                if other_name in self.tiktok_config['registered_account_dic']:
-                    self.tiktok_config['registered_account_dic'].pop(other_name)
-                if other_name in self.tiktok_config['registered_other_name']:
-                    self.tiktok_config['registered_other_name'].remove(other_name)
+                if other_name in self.tiktok_config['registered_account']:
+                    self.tiktok_config['registered_account'].remove(other_name)
                 if self.config['current_tiktok_account'] == other_name:
                     self.config['current_tiktok_account'] = ""
-                    self.save_config()
-                self.save_tiktok_config()
+                self.save_config()
+                save_tiktok_config(other_name, acc_config)
+                save_tiktok_config(data=self.tiktok_config)
                 self.noti(f'Xóa kênh [{other_name}] thành công.')
                 self.remove_tiktok_channel_window()
 
@@ -1115,7 +1028,7 @@ class MainApp:
         self.is_remove_channel = True
         self.setting_window_size()
         self.show_window()
-        self.tiktok_channel_remove_var = self.create_settings_input(text="Nhập tên kênh tiktok", config_key='current_tiktok_account', values=self.tiktok_config['registered_other_name'], left=left, right=right)
+        self.tiktok_channel_remove_var = self.create_settings_input(text="Nhập tên kênh tiktok", config_key='current_tiktok_account', values=self.tiktok_config['registered_account'], left=left, right=right)
         create_button(frame=self.root, text="Bắt đầu xóa thông tin kênh tiktok", command=remove_channel_now)
         create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
 
@@ -1126,7 +1039,6 @@ class MainApp:
         self.setting_window_size()
         def sign_up_tiktok():
             self.is_sign_up_tiktok = True
-            self.get_tiktok_config()
             account_txt_path = self.chose_account_txt_file_var.get().strip()
             if account_txt_path:
                 acc_data = get_json_data(account_txt_path)
@@ -1149,52 +1061,26 @@ class MainApp:
                         else:
                             print(f'{thatbai} Tài khoản phải có ít nhất 2 thông tin account,password: \n<{line}>')
                             continue
-
                         if not other_name or other_name == 'none':
                             other_name = tiktok_account
                     except:
                         print(f'{thatbai} Tài khoản phải có ít nhất 2 thông tin account,password: \n<{line}>')
                         continue
-  
                     if not tiktok_account or not tiktok_password or not other_name:
                         self.noti("Hãy nhập đầy đủ thông tin!")
                         continue
-                    if 'registered_other_name' not in self.tiktok_config:
-                        self.tiktok_config['registered_other_name'] = []
-    
-                    if tiktok_account not in self.tiktok_config['template']:
-                        self.tiktok_config['template'][tiktok_account] = {}
-
-                        self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
-                        self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
-                        self.tiktok_config['template'][tiktok_account]['description'] = ""
-                        self.tiktok_config['template'][tiktok_account]['location'] = ""
-                        self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
-                        self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
-                        self.tiktok_config['template'][tiktok_account]['title'] = ""
-                        self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
-                        self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
-                        self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
-                        self.tiktok_config['template'][tiktok_account]['waiting_verify'] = True
-                        self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
-                        self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
-                        self.tiktok_config['template'][tiktok_account]['first_login'] = True
-                        self.tiktok_config['template'][tiktok_account]['video_number_interact_befor_upload'] = '3-6'
-                        self.tiktok_config['template'][tiktok_account]['auto_interact'] = True
-                        self.tiktok_config['template'][tiktok_account]['use_profile_type'] = "Không dùng"
-                    self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
-                    self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
-                    self.tiktok_config['template'][tiktok_account]['other_name'] = other_name
-                    self.tiktok_config['template'][tiktok_account]['proxy'] = proxy
+                    acc_config = load_tiktok_config(other_name)
+                    acc_config['email'] = tiktok_account
+                    acc_config['password'] = tiktok_password
+                    acc_config['proxy'] = proxy
                     
-                    if 'registered_account_dic' not in self.tiktok_config:
-                        self.tiktok_config['registered_account_dic'] = {}
-                    self.tiktok_config['registered_account_dic'][other_name] = tiktok_account
-                    if other_name not in self.tiktok_config['registered_other_name']:
-                        self.tiktok_config['registered_other_name'].append(other_name)
+                    if other_name not in self.tiktok_config['registered_account']:
+                        self.tiktok_config['registered_account'].append(other_name)
                         print(f'{thanhcong} Đăng ký tài khoản <{other_name}> thành công')
                     else:
                         print(f'{thanhcong} Cập nhật thành công cho tài khoản: <{line}>')
+                    save_tiktok_config(other_name, acc_config)
+                    save_tiktok_config(data=self.tiktok_config)
             else:
                 other_name = self.other_name_var.get().strip()
                 tiktok_account = self.tiktok_account_var.get().strip()
@@ -1205,43 +1091,20 @@ class MainApp:
                     return
                 if not other_name or other_name == 'none':
                     other_name = tiktok_account
-                if 'registered_other_name' not in self.tiktok_config:
-                    self.tiktok_config['registered_other_name'] = []
-  
-                if tiktok_account not in self.tiktok_config['template']:
-                    self.tiktok_config['template'][tiktok_account] = {}
-                    self.tiktok_config['template'][tiktok_account]['thumbnail_folder'] = ""
-                    self.tiktok_config['template'][tiktok_account]['upload_folder'] = ""
-                    self.tiktok_config['template'][tiktok_account]['description'] = ""
-                    self.tiktok_config['template'][tiktok_account]['location'] = ""
-                    self.tiktok_config['template'][tiktok_account]['publish_times'] = ""
-                    self.tiktok_config['template'][tiktok_account]['cnt_upload_in_day'] = 0
-                    self.tiktok_config['template'][tiktok_account]['title'] = ""
-                    self.tiktok_config['template'][tiktok_account]['is_title_plus_video_name'] = False
-                    self.tiktok_config['template'][tiktok_account]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
-                    self.tiktok_config['template'][tiktok_account]['is_delete_after_upload'] = False
-                    self.tiktok_config['template'][tiktok_account]['waiting_verify'] = False
-                    self.tiktok_config['template'][tiktok_account]['number_of_days'] = "1"
-                    self.tiktok_config['template'][tiktok_account]['day_gap'] = "1"
-                    self.tiktok_config['template'][tiktok_account]['first_login'] = True
-                    self.tiktok_config['template'][tiktok_account]['video_number_interact_befor_upload'] = '3-6'
-                    self.tiktok_config['template'][tiktok_account]['auto_interact'] = True
-                    self.tiktok_config['template'][tiktok_account]['use_profile_type'] = "Không dùng"
-                self.tiktok_config['template'][tiktok_account]['account'] = tiktok_account
-                self.tiktok_config['template'][tiktok_account]['password'] = tiktok_password
-                self.tiktok_config['template'][tiktok_account]['other_name'] = other_name
-                self.tiktok_config['template'][tiktok_account]['proxy'] = proxy
 
-                if 'registered_account_dic' not in self.tiktok_config:
-                    self.tiktok_config['registered_account_dic'] = {}
-                self.tiktok_config['registered_account_dic'][other_name] = tiktok_account
-                if other_name not in self.tiktok_config['registered_other_name']:
-                    self.tiktok_config['registered_other_name'].append(other_name)
+                acc_config = load_tiktok_config(other_name)
+                acc_config['email'] = tiktok_account
+                acc_config['password'] = tiktok_password
+                acc_config['proxy'] = proxy
+
+                if other_name not in self.tiktok_config['registered_account']:
+                    self.tiktok_config['registered_account'].append(other_name)
                     print(f'{thanhcong} Đăng ký tài khoản <{other_name}> thành công')
                 else:
                     print(f'{thanhcong} Cập nhật thành công cho tài khoản: <{other_name}>')
-            save_to_json_file(self.tiktok_config, tiktok_config_path)
-            self.start_tiktok_management()
+                save_tiktok_config(other_name, acc_config)
+                save_tiktok_config(data=self.tiktok_config)
+            self.open_tiktok_window(other_name)
 
         self.other_name_var = create_frame_label_and_input(self.root, text="Tên hiển thị")
         self.tiktok_account_var = create_frame_label_and_input(self.root, text="Nhập tài khoản tiktok")
@@ -1251,36 +1114,33 @@ class MainApp:
         create_button(self.root, text="Đăng ký ngay", command=sign_up_tiktok)
         create_button(self.root, text="Lùi lại", command=self.open_tiktok_window, width=self.width)
 
-    def start_tiktok_management(self):
+    def start_tiktok_management(self, other_name=None):
         if self.is_sign_up_tiktok:
-            other_name = self.other_name_var.get()
+            if not other_name:
+                other_name = self.other_name_var.get()
         else:
             other_name = self.tiktok_account_var.get()
         if not other_name:
             return
         if not self.is_sign_up_tiktok:
-            if other_name not in self.tiktok_config['registered_other_name']:
+            if other_name not in self.tiktok_config['registered_account']:
                 self.noti(f"tài khoản {other_name} chưa được đăng ký")
                 return
-        tiktok_account = self.tiktok_config['registered_account_dic'][other_name]
         self.config['current_tiktok_account'] = other_name
-        self.tiktok_password = self.tiktok_config['template'][tiktok_account]['password']
         self.save_config()
         self.reset()
         self.setting_window_size()
-        self.tiktok = TikTokManager(tiktok_account, self.tiktok_password)
+        self.tiktok = TikTokManager(other_name)
         self.tiktok.get_start_tiktok()
 
 
 
     def open_facebook_window(self):
-        self.get_facebook_config()
         self.reset()
         self.is_facebook_window = True
         self.show_window()
         self.setting_window_size()
-        self.facebook_account_var = self.create_settings_input(text="Chọn tài khoản facebook", config_key="current_facebook_account", values=self.facebook_config['registered_account'])
-        self.facebook_page_name_var = self.create_settings_input(text="Chọn trang facebook", config_key="current_page", values=[key for key in self.facebook_config['template'].keys()])
+        self.facebook_page_name_var = self.create_settings_input(text="Chọn trang facebook", config_key="current_page", values=self.facebook_config['registered_account'])
         create_button(self.root, text="Mở cửa sổ quản lý trang facebook", command=self.start_facebook_management)
         create_button(self.root, text="Đăng ký trang facebook mới", command=self.sign_up_facebook_window)
         create_button(self.root, text="Xóa thông tin trang facebook", command=self.remove_facebook_page_window)
@@ -1292,36 +1152,24 @@ class MainApp:
         self.show_window()
         self.setting_window_size()
         def sign_up_facebook():
-            self.is_sign_up_facebook = True
-            self.facebook_account = self.facebook_account_var.get()
-            self.facebook_password = self.facebook_password_var.get()
-            self.facebook_page_name = self.facebook_page_name_var.get()
-            if not self.facebook_account or not self.facebook_password or not self.facebook_page_name:
+            facebook_account = self.facebook_account_var.get().strip()
+            facebook_password = self.facebook_password_var.get().strip()
+            facebook_page_name = self.facebook_page_name_var.get().strip()
+            if not facebook_account or not facebook_password or not facebook_page_name:
                 self.noti("Hãy nhập đầy đủ thông tin!")
                 return
-            if self.facebook_page_name not in self.facebook_config['template']:
-                self.facebook_config['template'][self.facebook_page_name] = {}
-            self.config['current_page'] = self.facebook_page_name
-            self.facebook_config['template'][self.facebook_page_name]['account'] = self.facebook_account
-            self.facebook_config['template'][self.facebook_page_name]['password'] = self.facebook_password
-            self.facebook_config['template'][self.facebook_page_name]['upload_folder'] = ""
-            self.facebook_config['template'][self.facebook_page_name]['description'] = ""
-            self.facebook_config['template'][self.facebook_page_name]['publish_times'] = ""
-            self.facebook_config['template'][self.facebook_page_name]['cnt_upload_in_day'] = 0
-            self.facebook_config['template'][self.facebook_page_name]['title'] = ""
-            self.facebook_config['template'][self.facebook_page_name]['is_title_plus_video_name'] = False
-            self.facebook_config['template'][self.facebook_page_name]['upload_date'] = datetime.now().strftime('%Y-%m-%d')
-            self.facebook_config['template'][self.facebook_page_name]['is_delete_after_upload'] = False
-            self.facebook_config['template'][self.facebook_page_name]['number_of_days'] = "1"
-            self.facebook_config['template'][self.facebook_page_name]['day_gap'] = "1"
-            self.facebook_config['template'][self.facebook_page_name]['is_reel_video'] = False
-            self.facebook_config['template'][self.facebook_page_name]['waiting_verify'] = False
-            if self.facebook_account not in self.facebook_config['registered_account']:
-                self.facebook_config['registered_account'].append(self.facebook_account)
-            save_to_json_file(self.facebook_config, facebook_config_path)
-            self.start_facebook_management()
+            acc_config = load_facebook_config(facebook_page_name)
 
-        self.facebook_account_var = self.create_settings_input(text="Tài khoản Facebook", config_key='current_facebook_account', values=self.facebook_config['registered_account'], left=left, right=right)
+            acc_config['email'] = facebook_account
+            acc_config['password'] = facebook_password
+
+            self.config['current_page'] = facebook_page_name
+            self.facebook_config['registered_account'].append(facebook_page_name)
+            save_facebook_config(data=self.facebook_config)
+            save_facebook_config(facebook_page_name, acc_config)
+            self.start_facebook_management(facebook_page_name)
+
+        self.facebook_account_var = self.create_settings_input(text="Tài khoản Facebook", values=self.facebook_config['registered_account'], left=left, right=right)
         self.facebook_password_var = create_frame_label_and_input(self.root, text="Nhập mật khẩu", is_password=True)
         self.facebook_page_name_var = create_frame_label_and_input(self.root, text="Nhập tên trang")
         create_button(self.root, text="Đăng ký ngay", command=sign_up_facebook)
@@ -1334,11 +1182,10 @@ class MainApp:
                 if not page_name:
                     self.noti("Hãy chọn trang facebook muốn xóa.")
                     return
-                self.get_youtube_config()
-                if page_name in self.facebook_config['template'].keys():
-                    removed_page = self.facebook_config['template'].pop(page_name, None)
-                    self.save_facebook_config()
+                if page_name in self.facebook_config['registered_account']:
+                    self.facebook_config['registered_account'].remove(page_name)
                     self.noti(f'Xóa trang [{page_name}] thành công.')
+                    save_facebook_config(data=self.facebook_config)
                     self.remove_facebook_page_window()
                 else:
                     self.noti(f"Trang {page_name} không tồn tại trong cơ sở dữ liệu")
@@ -1349,29 +1196,24 @@ class MainApp:
         self.is_remove_channel = True
         self.setting_window_size()
         self.show_window()
-        self.page_remove_var = self.create_settings_input(text="Nhập tên kênh youtube", config_key='current_facebook_account', values=[key for key in self.facebook_config['template'].keys()], left=left, right=right)
+        self.page_remove_var = self.create_settings_input(text="Nhập tên trang facebook", config_key='current_page', values=self.facebook_config['registered_account'], left=left, right=right)
         create_button(frame=self.root, text="Bắt đầu xóa thông tin trang facebook", command=remove_channel_now)
         create_button(self.root, text="Lùi lại", command=self.open_facebook_window, width=self.width)
 
-    def start_facebook_management(self):
-        self.facebook_page_name = self.facebook_page_name_var.get()
-        self.facebook_account = self.facebook_account_var.get()
-        if not self.is_sign_up_facebook:
-            if not self.facebook_page_name or not self.facebook_account:
-                self.noti("Hãy nhập đầy đủ thông tin!")
+    def start_facebook_management(self, facebook_page_name=None):
+        if not facebook_page_name:
+            facebook_page_name = self.facebook_page_name_var.get()
+            if not facebook_page_name:
+                self.noti("Hãy chọn trang facebook!")
                 return
-            if self.facebook_page_name not in self.facebook_config['template']:
-                self.noti(f"Trang {self.facebook_page_name} chưa được đăng ký!")
+            if facebook_page_name not in self.facebook_config['registered_account']:
+                self.noti(f"Trang {facebook_page_name} chưa được đăng ký!")
                 return
-            if self.facebook_account != self.facebook_config['template'][self.facebook_page_name]['account']:
-                self.noti(f"Tài khoản {self.facebook_account} chưa được đăng ký!")
-                return
-        self.config['current_facebook_account'] = self.facebook_account
-        self.config['current_page'] = self.facebook_page_name
-        self.save_config()
+            self.config['current_page'] = facebook_page_name
+            self.save_config()
         self.reset()
-        self.facebook_password = self.facebook_config['template'][self.facebook_page_name]['password']
-        self.facebook = FacebookManager(self.facebook_account, self.facebook_password, self.facebook_page_name, self.download_thread, self.upload_thread)
+
+        self.facebook = FacebookManager(facebook_page_name, self.download_thread, self.upload_thread)
         self.facebook.get_start_facebook()
 
 #---------------------------------------------edit audio-------------------------------------------
@@ -1682,7 +1524,7 @@ class MainApp:
                     clip.close()
             try:
                 for video_path in remove_videos:
-                    remove_or_move_file(video_path, is_delete=self.config['is_delete_video'], is_move=self.config['is_move'])
+                    remove_or_move_file(video_path, is_delete=self.config['is_delete_video'])
             except:
                 getlog()
             self.noti(f"Gộp thành công {len(edit_videos)} vào file: {file_path}")
@@ -1704,7 +1546,7 @@ class MainApp:
                 video_path = f'{videos_folder}\\{video_file}'
                 outpath_video = os.path.join(output_folder, video_file)
                 if increase_video_quality(video_path, outpath_video):
-                    remove_or_move_file(video_path, is_delete=self.config['is_delete_video'], is_move=self.config['is_move'])
+                    remove_or_move_file(video_path, is_delete=self.config['is_delete_video'])
         except:
             getlog()
 
@@ -1727,9 +1569,9 @@ class MainApp:
                     return
                 video_path = f'{videos_folder}\\{video_file}'
                 if self.is_169_to_916:
-                    is_edit_ok = convert_video_169_to_916(video_path, zoom_size=zoom_size, is_delete=self.config['is_delete_video'], is_move=self.config['is_move'])
+                    is_edit_ok = convert_video_169_to_916(video_path, zoom_size=zoom_size, is_delete=self.config['is_delete_video'])
                 else:
-                    is_edit_ok = convert_video_916_to_169(video_path, is_delete=self.config['is_delete_video'], is_move=self.config['is_move'])
+                    is_edit_ok = convert_video_916_to_169(video_path, is_delete=self.config['is_delete_video'])
                 if is_edit_ok:
                     list_edit_finished.append(video_file)
             cnt = len(list_edit_finished)
@@ -1749,9 +1591,6 @@ class MainApp:
         self.flip_video_var = self.create_settings_input("Lật ngang video", "flip_video", values=["Yes", "No"])
         self.speed_up_var = self.create_settings_input("Tăng tốc", "speed_up", values=["0.8", "0.9", "1", "1.1", "1.2"])
         self.max_zoom_size_var = self.create_settings_input("Tỷ lệ Zoom", "max_zoom_size", values=["1", "1.1", "1.2", "1.3", "1.4"])
-        self.is_random_zoom_var = self.create_settings_input("Zoom ngẫu nhiên (xử lý chậm)", "is_random_zoom")
-        self.is_random_zoom_var.delete(0, ctk.END)
-        self.is_random_zoom_var.insert(0, "3-5")
         self.horizontal_position_var = self.create_settings_input("Vị trí zoom theo chiều ngang", "horizontal_position", values=["left", "center", "right"])
         self.vertical_position_var = self.create_settings_input("Vị trí zoom theo chiều dọc", "vertical_position", values=["top", "center", "bottom"])
         self.top_bot_overlay_var = self.create_settings_input("Lớp phủ trên, dưới(vd: 10,10,black,100)", "top_bot_overlay", values=["10,10,black,100", "10,10,white,100", "10,10,red,100", "10,10,green,100", "10,10,blue,100", "10,10,yellow,100", "10,10,gray,100", "10,10,orange,100", "10,10,purple,100", "10,10,pink,100"])
@@ -1766,18 +1605,19 @@ class MainApp:
         self.horizontal_watermark_position_var.insert(0, self.config['horizontal_watermark_position'])
         self.vertical_watermark_position_var.insert(0, self.config['vertical_watermark_position'])
         self.watermark_scale_var = self.create_settings_input("Chỉnh kích thước Watermark (ngang - dọc)", config_key='watermark_scale')
+        self.edit_level_2_var = self.create_settings_input("Thêm nhiễu - Gợn sóng", 'edit_level_2', values=["Yes", "No"], left=0.4, right=0.6)
+        if not self.edit_level_2_var.get().strip():
+            self.edit_level_2_var.set('Yes')
+        self.top_text_var, self.bot_text_var = create_frame_label_input_input(self.root, text="Chữ ở đầu/cuối video", place_holder1='bot text,0.9,1', place_holder2='top text,0.1,1.2', width=self.width, left=0.4, mid=0.28, right=0.32)
+        self.top_text_var.insert(0, self.config['top_text'])
+        self.bot_text_var.insert(0, self.config['bot_text'])
         self.videos_edit_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa video", command= self.choose_videos_edit_folder, left=0.4, right=0.6, width=self.width)
         self.water_path_var.insert(0, self.config['water_path'])
         self.videos_edit_folder_var.insert(0, self.config['videos_edit_folder'])
-        create_frame_button_and_button(self.root, text1="Xử lý video", text2="Xử lý video nhanh", command1=self.start_edit_video_slow, command2=self.start_edit_video_fast, width=self.width, left=0.5, right=0.5)
+        create_button(self.root, text="Xử lý video", command=self.create_thread_edit_video, width=self.width)
         create_button(self.root, text="Lùi lại", command=self.open_edit_video_menu, width=self.width)
 
-    def start_edit_video_slow(self):
-        self.is_fast_edit = False
-        self.create_thread_edit_video()
-    def start_edit_video_fast(self):
-        self.is_fast_edit = True
-        self.create_thread_edit_video()
+
     def create_thread_edit_video(self):
         if not self.edit_thread or not self.edit_thread.is_alive():
             self.is_stop_edit = False
@@ -1809,11 +1649,13 @@ class MainApp:
             self.config['flip_video'] = self.flip_video_var.get() == "Yes"
             self.config['speed_up'] = self.speed_up_var.get()
             self.config['max_zoom_size'] = self.max_zoom_size_var.get()
-            self.config['is_random_zoom'] = self.is_random_zoom_var.get()
             self.config['vertical_position'] = self.vertical_position_var.get()
             self.config['horizontal_position'] = self.horizontal_position_var.get()
             self.config['water_path'] = self.water_path_var.get()
             self.config['vertical_watermark_position'] = self.vertical_watermark_position_var.get()
+            self.config['edit_level_2'] = self.edit_level_2_var.get() == 'Yes'
+            self.config['top_text'] = self.top_text_var.get().strip().upper()
+            self.config['bot_text'] = self.bot_text_var.get().strip().upper()
             self.config['horizontal_watermark_position'] = self.horizontal_watermark_position_var.get()
             self.config['watermark_scale'] = self.watermark_scale_var.get()
             if not self.config['watermark_scale']:
@@ -1843,13 +1685,26 @@ class MainApp:
                 continue
             print(f'Bắt đầu xử lý video: {video_file}')
             video_path = f'{videos_folder}\\{video_file}'
-            if self.is_fast_edit:
-                is_edit_ok = self.fast_edit_video(video_path)
-            else:
-                is_edit_ok = self.edit_video_by_moviepy(video_path)
-            if is_edit_ok:
-                list_edit_finished.append(video_file)
-                print(f"  --> Xử lý thành công video: {video_file}")
+            output_video_path = self.fast_edit_video(video_path)
+            if not output_video_path:
+                print(f'{thatbai} Chỉnh sửa video {video_file} thất bại!!!')
+                continue
+            if self.config['edit_level_2']:
+                print(f'\nXử lý thêm hiệu ứng, viền, chữ vào video...')
+                temp_video = process_video(
+                            output_video_path,
+                            wave_amplitude=1.2,    # Biên độ gợn sóng (càng cao, sóng càng mạnh)
+                            wave_frequency=0.1, # Tần suất gợn sóng
+                            line_spacing=10,     # Khoảng cách giữa các đường gạch ngang
+                            line_thickness=1,    # Độ dày của đường gạch ngang
+                            line_opacity=0.1,     # Độ mờ của đường gạch ngang (0.0 - 1.0)
+                            text_top_input=self.config['top_text'],
+                            text_bottom_input=self.config['bot_text']
+                        )
+                if temp_video:
+                    merge_audio(temp_video, output_video_path)
+                    remove_file(temp_video)
+
         cnt = len(list_edit_finished)
         if cnt > 0:
             self.noti(f"Chỉnh sửa thành công {cnt} video")
@@ -1905,7 +1760,7 @@ class MainApp:
             new_audio_path = get_random_audio_path(new_audio_folder)
             if not new_audio_path or not os.path.exists(new_audio_path):
                 print(f"Không có file .mp3 nào trong thư mục {new_audio_folder}")
-                return
+                return None
         background_music_volume = self.config.get('background_music_volume', '100')
         remove_original_audio = self.config.get('is_delete_original_audio', False)
         try:
@@ -1930,13 +1785,15 @@ class MainApp:
             video_info = get_video_info(input_video_path)
             if not video_info:
                 print(f"Không lấy được thông tin từ video {input_video_path}, hãy đảm bảo rằng video không bị hỏng.")
-                return
+                return None
             video_width = video_info['width']
             video_height = video_info['height']
             video_duration = float(video_info.get('duration', None))
             if not video_duration:
-                return
-            video_fps = video_info['fps']
+                print(f'Không lấy được thời lượng video!')
+                return None
+            video_fps = 30 if video_info['fps'] == 25 or video_info['fps'] == 24 else 25
+            
             if speed_up:
                 try:
                     speed_up = float(speed_up)
@@ -1957,10 +1814,10 @@ class MainApp:
                     watermark_x, watermark_y = add_watermark_by_ffmpeg(video_width, video_height, horizontal_watermark_position, vertical_watermark_position)
                     if watermark_x is None or watermark_y is None:
                         print("Có lỗi trong khi lấy vị trí watermark. Hãy đảm bảo thông số đầu vào chính xác!")
-                        return
+                        return None
                 else:
                     print("Đường dẫn watermark không hợp lệ")
-                    return
+                    return None
 
             if zoom_size:
                 try:
@@ -2003,7 +1860,7 @@ class MainApp:
             left_black_bar = f"drawbox=x=0:y=0:w={left_overlay}:h=ih:color={color_left_right}@{transparent_l_r}:t=fill"
             right_black_bar = f"drawbox=x=iw-{right_overlay}:y=0:w={right_overlay}:h=ih:color={color_left_right}@{transparent_l_r}:t=fill"
 
-            zoom_filter = f"scale=iw*{zoom_size*0.98}:ih*{zoom_size*1.02},crop={int(video_width*0.998)}:{int(video_height*0.998)}:{zoom_x}:{zoom_y}{flip_filter}"
+            zoom_filter = f"scale=iw*{zoom_size*1.04}:ih*{zoom_size*0.96},crop={int(video_width*0.998)}:{int(video_height*0.999)}:{zoom_x}:{zoom_y}{flip_filter}"
 
             if watermark:
                 try:
@@ -2025,7 +1882,7 @@ class MainApp:
                     repeat_count = int(video_duration / audio_duration) + 1
                     loop_audio_command = [ 'ffmpeg', '-loglevel', 'quiet', '-stream_loop', str(repeat_count - 1), '-i', new_audio_path, '-t', str(video_duration), '-y', temp_audio_path ]
                     if not run_command_ffmpeg(loop_audio_command):
-                        return
+                        return None
                     new_audio_path = temp_audio_path
                 combine_audio_command = [
                     'ffmpeg', '-loglevel', 'quiet', '-i', input_video_path, '-i', new_audio_path,
@@ -2059,7 +1916,7 @@ class MainApp:
                 command.extend([ '-map', '[video]', '-map', '0:a', '-filter:a', f'volume=1,atempo={speed_up},rubberband=pitch={pitch}', ])
             else:
                 command.extend([ '-map', '[video]', '-an' ])
-            command.extend([ '-vcodec', 'libx264', '-acodec', 'aac', '-r', f'{video_fps + 2}', '-y', ])
+            command.extend([ '-vcodec', 'libx264', '-acodec', 'aac', '-r', str(video_fps), '-y', ])
             if end_cut is not None:
                 duration = end_cut - first_cut
                 command.extend(['-to', str(duration)])
@@ -2067,7 +1924,7 @@ class MainApp:
             if not run_command_with_progress(command, duration):
                 if not run_command_ffmpeg(command):
                     print(f"Video lỗi !!!")
-                    return False
+                    return None
 
             if upload_folder:
                 if not os.path.exists(upload_folder):
@@ -2076,12 +1933,12 @@ class MainApp:
                 shutil.move(output_file, new_file_path)
             remove_file(combined_audio_path)
             remove_file(temp_audio_path)
-            remove_or_move_file(input_video_path, is_delete=self.config['is_delete_video'], is_move=self.config['is_move'], finish_folder_name='Finished Edit')
-            return True
+            remove_or_move_file(input_video_path, is_delete=self.config['is_delete_video'], finish_folder_name='Finished Edit')
+            return output_file
         except:
             print(f"Có lỗi trong quá trình xử lý video {input_video_path}")
             getlog()
-            return False
+            return None
 
 
     def edit_video_by_moviepy(self, input_video_path):
@@ -2169,7 +2026,7 @@ class MainApp:
             sleep(1)
             if os.path.exists(temp_audio_path):
                 remove_file(temp_audio_path)
-            remove_or_move_file(input_video_path, is_delete=self.config['is_delete_video'], is_move=self.config['is_move'])
+            remove_or_move_file(input_video_path, is_delete=self.config['is_delete_video'])
             return True
         except:
             getlog()
@@ -2184,36 +2041,13 @@ class MainApp:
             self.download_info['downloaded_urls'] = []
         save_to_json_file(self.download_info, download_info_path)
 
-    def get_youtube_config(self):
-        self.youtube_config = load_youtube_config()
-
-    def get_tiktok_config(self):
-        self.tiktok_config = load_tiktok_config()
-
-    def get_facebook_config(self):
-        self.facebook_config = load_facebook_config()
-
-    def save_youtube_config(self):
-        save_to_json_file(self.youtube_config, youtube_config_path)
-    def save_tiktok_config(self):
-        save_to_json_file(self.tiktok_config, tiktok_config_path)
-    def save_facebook_config(self):
-        save_to_json_file(self.facebook_config, facebook_config_path)
 
     def open_common_settings(self):
         def save_common_config():
             self.config["auto_start"] = self.auto_start_var.get() == "Yes"
             self.config["time_check_status_video"] = self.time_check_status_video_var.get()
             self.config["is_delete_video"] = self.is_delete_video_var.get() == "Yes"
-            self.config['is_move'] = self.is_move_video_var.get() == "Yes"
-            self.config['use_profile_facebook'] = self.use_profile_facebook_var.get() == "Yes"
-            self.config['use_profile_tiktok'] = self.use_profile_tiktok_var.get() == "Yes"
-            self.tiktok_config['use_profile_tiktok'] = self.use_profile_tiktok_var.get() == "Yes"
-            self.facebook_config['use_profile_facebook'] = self.use_profile_facebook_var.get() == "Yes"
             self.save_config()
-            self.save_youtube_config()
-            self.save_tiktok_config()
-            self.save_facebook_config()
             self.get_start_window()
         self.reset()
         self.is_open_common_setting = True
@@ -2221,10 +2055,7 @@ class MainApp:
         self.setting_window_size()
         self.auto_start_var = self.create_settings_input("Khởi động ứng dụng cùng window", "auto_start", values=["Yes", "No"], left=0.4, right=0.6)
         self.time_check_status_video_var = self.create_settings_input("Khoảng cách mỗi lần kiểm tra trạng thái video (phút)", "time_check_status_video", values=["0", "60"], left=0.4, right=0.6)
-        self.use_profile_facebook_var = self.create_settings_input("Sử dụng chrome profile cho facebook", "use_profile_facebook", values=["Yes", "No"], left=0.4, right=0.6)
-        self.use_profile_tiktok_var = self.create_settings_input("Sử dụng profile cho tiktok", "use_profile_tiktok", values=["Yes", "No"], left=0.4, right=0.6)
         self.is_delete_video_var = self.create_settings_input("Xóa video gốc sau chỉnh sửa", "is_delete_video", values=["Yes", "No"], left=0.4, right=0.6)
-        self.is_move_video_var = self.create_settings_input("Di chuyển video gốc sau chỉnh sửa", "is_move", values=["Yes", "No"], left=0.4, right=0.6)
         create_button(self.root, text="Lưu cài đặt", command=save_common_config, width=self.width)
         create_button(self.root, text="Lùi lại", command=self.get_start_window, width=self.width)
         
@@ -2457,17 +2288,17 @@ class MainApp:
                 self.is_remove_channel = False
             elif self.is_open_common_setting:
                 self.root.title("Common Setting")
-                self.width = 700
-                self.height_window = 460
+                self.width = 310
+                self.height_window = 300
                 if height_element == 30:
                     self.height_window = 450
                 self.is_open_common_setting = False
             elif self.is_edit_video_window:
                 self.root.title("Edit Videos")
                 self.width = 700
-                self.height_window = 943
+                self.height_window = 990
                 if height_element == 30:
-                    self.height_window = 890
+                    self.height_window = 940
                 self.is_edit_video_window = False
             elif self.is_open_edit_video_menu:
                 self.root.title("Edit Video Window")
@@ -2550,12 +2381,12 @@ class MainApp:
             elif self.is_interact_setting_window:
                 self.root.title("Tiktok Insteract Window")
                 self.width = 600
-                self.height_window = 597
+                self.height_window = 600
                 self.is_interact_setting_window = False
             elif self.is_auto_upload_tiktok_window:
                 self.root.title("Tiktok Auto Upload Window")
                 self.width = 600
-                self.height_window = 265
+                self.height_window = 307
                 self.is_auto_upload_tiktok_window = False
             elif self.is_sign_up_tiktok:
                 self.root.title("Sign Up Tiktok")
