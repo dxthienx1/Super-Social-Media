@@ -226,6 +226,7 @@ class TikTokManager:
                 if not self.driver:
                     return False
                 self.load_session(trang_chu_tiktok)
+
                 return True
             elif self.acc_config['use_profile_type'] == 'Chrome':
                 self.driver = get_chrome_driver_with_profile(target_email=self.account, show=show, proxy=proxy)
@@ -285,9 +286,9 @@ class TikTokManager:
             password_input = get_element_by_xpath(self.driver, pass_xpath)
             if password_input:
                 password_input.send_keys(self.password)
-                sleep(1)
+                sleep_random(1,2)
                 password_input.send_keys(Keys.RETURN)
-                sleep(5)
+                sleep_random(3,5)
                 self.waiting_for_capcha_verify()
                 return True
         except:

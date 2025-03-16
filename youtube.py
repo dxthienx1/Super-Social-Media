@@ -833,9 +833,6 @@ class YouTubeManager():
             self.save_youtube_config()
         self.schedule_videos_by_selenium()
 
-    def open_dowload_video_from_channel_window(self):
-        create_text_input(self.root)
-
     # def get_authenticated_service(self):
     #     try:
     #         if self.load_secret_info():
@@ -1188,7 +1185,7 @@ class YouTubeManager():
                     if 'contentRating' in content_details and 'youtubereportabuse' in content_details['contentRating']:
                         self.list_video_ids_delete.append(item['id'])
                     
-    def download_videos_by_channel_id_selenium(self):
+    def download_videos_by_channel_id_selenium(self, download_folder=None):
         try:
             self.download_info = load_download_info()
             video_urls = []
@@ -1218,7 +1215,7 @@ class YouTubeManager():
                         url = link_video.get_attribute('href')
                         if url and url not in video_urls:
                             if url in self.download_info['downloaded_urls']:
-                                print(f"video {url} đã tải trước đó ...")
+                                print(f"video {url} đã tải trước đó --> Bỏ qua ...")
                             else:
                                 video_urls.append(url)
                     
@@ -1229,20 +1226,21 @@ class YouTubeManager():
                         view_count = get_views_from_video(div_content, short)
                         if view_count >= view_cnt:
                             get_link_video(div_content)
-
-            download_folder = self.youtube_config['download_folder']
             self.driver = get_driver(show=False)
             channel_url = self.youtube_config['download_url']
             filter_by_views = self.youtube_config['filter_by_views']
-            if 'quantity_download' not in self.youtube_config:
-                self.youtube_config['quantity_download'] = "2000"
             quantity_download = int(self.youtube_config['quantity_download'])
+            if not download_folder:
+                download_folder = self.youtube_config['download_folder']
+                quantity_download = 10
+                filter_by_views = "0"
             self.driver.get(channel_url)
             t=time()
             if channel_url.endswith('/videos'):
                 print(f"Bắt đầu tìm video dài trong kênh {channel_url} ...")
                 sleep(3)
-                self.scroll_page()
+                if not download_folder:
+                    self.scroll_page()
                 get_videos(filter_by_views, short=False)
             elif channel_url.endswith('/shorts'):
                 print(f"Bắt đầu tìm video ngắn trong kênh {channel_url} ...")
@@ -1253,11 +1251,13 @@ class YouTubeManager():
                 print(f"Bắt đầu tìm video trong kênh {channel_url} ...")
                 short_video_url = f'{channel_url}/shorts'
                 self.driver.get(short_video_url)
-                self.scroll_page()
+                if not download_folder:
+                    self.scroll_page()
                 get_videos(filter_by_views, short=True)
                 long_video_url = f'{channel_url}/videos'
                 self.driver.get(long_video_url)
-                self.scroll_page()
+                if not download_folder:
+                    self.scroll_page()
                 get_videos(filter_by_views, short=False)
             self.close_driver()
             print(f"--> Tổng thời gian tìm video là {int((time() - t)/60)} phút {int(time() - t)%60} giây")
@@ -1286,7 +1286,7 @@ class YouTubeManager():
                     print(f"Tải không thành công {url}")
             
             if cnt_download > 0:
-                notification(self.root, f"Đã tải thành công {cnt_download} video.")
+                print(f"Đã tải thành công {cnt_download} video.")
             else:
                 download_video_by_bravedown(video_urls, download_folder)
         except:
