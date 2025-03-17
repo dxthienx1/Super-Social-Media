@@ -72,7 +72,7 @@ class FacebookManager:
             self.show_browser_var.set(convert_boolean_to_Yes_No(self.facebook_config['show_browser']))
             self.is_delete_after_upload_var.set(convert_boolean_to_Yes_No(temppale['is_delete_after_upload']))
             self.is_reel_video_var.set(convert_boolean_to_Yes_No(temppale['is_reel_video']))
-            self.waiting_verify_var.set(convert_boolean_to_Yes_No(temppale['waiting_verify']))
+            self.waiting_verify_var.set(temppale['waiting_verify'])
             self.upload_folder_var.delete(0, ctk.END)
             self.upload_folder_var.insert(0, temppale['upload_folder'])
             self.number_of_days_var.delete(0, ctk.END)
@@ -94,7 +94,7 @@ class FacebookManager:
         self.day_gap_var = self.create_settings_input("Khoảng cách giữa các ngày đăng", "day_gap", left=left, right=right)
         self.is_delete_after_upload_var = self.create_settings_input("Xóa video sau khi đăng", "is_delete_after_upload", values=["Yes", "No"], left=left, right=right)
         self.is_reel_video_var = self.create_settings_input("Đây là thước phim?", "is_reel_video", values=["Yes", "No"], left=left, right=right)
-        self.waiting_verify_var = self.create_settings_input("Thêm thời gian chờ xác minh", "waiting_verify", values=["Yes", "No"], left=left, right=right)
+        self.waiting_verify_var = self.create_settings_input("Thêm thời gian chờ xác minh (s)", "waiting_verify", values=["0", "30", "60"], left=left, right=right)
         self.show_browser_var = self.create_settings_input(text="Hiển thị trình duyệt", config_key="show_browser", values=['Yes', 'No'], left=left, right=right, is_data_in_template=False)
         self.upload_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa video", command=choose_folder_upload, width=self.width, left=left, right=right)
         self.upload_folder_var.insert(0, self.acc_config['upload_folder'])
@@ -154,7 +154,7 @@ class FacebookManager:
             self.acc_config["upload_folder"] = self.upload_folder_var.get()
             self.acc_config["is_delete_after_upload"] = self.is_delete_after_upload_var.get() == 'Yes'
             self.acc_config["is_reel_video"] = self.is_reel_video_var.get() == 'Yes'
-            self.acc_config["waiting_verify"] = self.waiting_verify_var.get() == 'Yes'
+            self.acc_config["waiting_verify"] = self.waiting_verify_var.get().strip()
             self.acc_config["number_of_days"] = self.number_of_days_var.get()
             self.acc_config["day_gap"] = self.day_gap_var.get()
             self.facebook_config['show_browser'] = self.show_browser_var.get() == "Yes"
@@ -340,14 +340,19 @@ class FacebookManager:
     def save_session(self):
         self.acc_config['chrome_cookies'] = self.driver.get_cookies()
         self.acc_config['local_storage'] = self.driver.execute_script("return {...window.localStorage};")
-        self.acc_config['waiting_verify'] = False
+        self.acc_config['waiting_verify'] = "0"
         save_facebook_config(self.page_name, self.acc_config)
 
-    def waiting_for_capcha_verify(self):
-        sleep(2)
-        if self.acc_config['waiting_verify']:
-            sleep(28)
-        
+    def waiting_for_capcha_verify(self, time_wait=None):
+        try:
+            if not time_wait:
+                time_wait = self.acc_config['waiting_verify']
+            time_wait = int(time_wait)
+        except:
+            print(f"{self.page_name} Thời gian chờ không hợp lệ: {self.acc_config['waiting_verify']} --> Bỏ qua chờ xác minh")
+            time_wait = 1
+        sleep_random(time_wait, time_wait + 2)
+
 
     def login(self, show=False):
         try:
@@ -835,7 +840,7 @@ class FacebookManager:
 
             if not self.login(self.facebook_config['show_browser']):
                 return
-            if not self.is_schedule and self.acc_config['waiting_verify']:
+            if not self.is_schedule:
                 if not self.change_page():
                     print(f"Gặp lỗi khi chuyển trang {self.page_name}")
                     return

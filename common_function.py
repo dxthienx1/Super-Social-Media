@@ -49,7 +49,17 @@ import cv2
 import numpy as np
 
 serials = {
-    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-04-08",
+    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-04-08", #thai
+    "0026_B768_407B_68E5.BSS-0123456789":"2025-03-25", #ban thai 1
+    "0000_0000_0000_0001_00A0_7519_257D_4E36.L415NRCV003LRHMB":"2025-03-25", #ban thai 2
+    "gggg":"2025-01-28",
+    "gggg":"2025-01-28",
+    "gggg":"2025-01-28",
+    "gggg":"2025-01-28",
+    "gggg":"2025-01-28",
+    "gggg":"2025-01-28",
+    "gggg":"2025-01-28",
+    "gggg":"2025-01-28",
     "gggg":"2025-01-28",
     "0000_0000_0000_0000_0026_B738_363E_5915./2XW1YR3/CNCMC0028S04C2/":"2026-01-01",
     "0025_38D2_1104_730B.WZ14MC006S":"2030-01-01",
@@ -220,6 +230,54 @@ def load_ffmpeg():
             raise RuntimeError(f"Không tìm thấy FFmpeg tại {ffmpeg_dir}. Kiểm tra lại đường dẫn!")
 load_ffmpeg()
 
+
+def add_firefox_to_path():
+    try:
+        # Kiểm tra Firefox đã có trong PATH chưa
+        result = subprocess.run(["where", "firefox"], capture_output=True, text=True, shell=True)
+        if result.returncode == 0:
+            return
+
+        print("⚠️ Firefox chưa có trong PATH. Đang tìm thư mục Firefox...")
+
+        # Danh sách các thư mục có thể chứa Firefox
+        possible_paths = [
+            r"C:\Program Files\Mozilla Firefox",
+            r"C:\Program Files (x86)\Mozilla Firefox"
+        ]
+
+        firefox_path = None
+        for path in possible_paths:
+            if os.path.exists(os.path.join(path, "firefox.exe")):
+                firefox_path = path
+                break
+        
+        if not firefox_path:
+            print("❌ Không tìm thấy Firefox trên máy.")
+            return
+        
+        print(f"🔍 Tìm thấy Firefox tại: {firefox_path}")
+
+        # Thêm vào PATH tạm thời
+        os.environ["PATH"] += os.pathsep + firefox_path
+
+        # Thêm vào PATH vĩnh viễn trong Registry
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Session Manager\Environment", 0, winreg.KEY_ALL_ACCESS)
+        path_value, _ = winreg.QueryValueEx(key, "Path")
+        
+        if firefox_path not in path_value:
+            new_path = path_value + os.pathsep + firefox_path
+            winreg.SetValueEx(key, "Path", 0, winreg.REG_EXPAND_SZ, new_path)
+            print("✅ Đã thêm Firefox vào PATH vĩnh viễn. Vui lòng khởi động lại terminal để áp dụng.")
+
+        winreg.CloseKey(key)
+
+    except Exception as e:
+        print("❌ Lỗi khi thêm Firefox vào PATH:", e)
+# Gọi hàm
+add_firefox_to_path()
+
+
 def load_download_info():
     download_info = {
          "downloaded_urls": []
@@ -237,80 +295,8 @@ def save_download_info(data):
 
 
 
-def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, is_first=True):
-    """Mở Firefox với profile cụ thể hoặc tạo mới nếu chưa tồn tại"""
-    
-    def get_firefox_profile_folder():
-        """Xác định thư mục profile của Firefox theo hệ điều hành"""
-        if platform.system() == "Windows":
-            return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
-        else:
-            raise Exception("Hệ điều hành không được hỗ trợ.")
-    
-    def get_profile_name_by_gmail():
-        """Tìm profile theo email đăng nhập hoặc tạo mới nếu chưa có"""
-        if not target_email:
-            return None
-        profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
-        for profile in profiles:
-            if target_email in profile:
-                return profile
-        print(f'{canhbao}  Không tìm thấy profile cho email {target_email}. Đang tạo mới...')
-        
-        subprocess.run(["firefox", "-CreateProfile", f"{target_email}"], check=True)
-        sleep(5)
-        profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
-        for profile in profiles:
-            if target_email in profile:
-                print(f'✅ Đã tạo profile: {profile}')
-                return profile
-        return None
-    
-
-    try:
-        firefox_profile_folder = get_firefox_profile_folder()
-        profile_name = get_profile_name_by_gmail()
-        if not profile_name:
-            return None
-        
-        profile_path = os.path.join(firefox_profile_folder, profile_name)
-
-        if not os.path.exists(profile_path):
-            print(f"❌ Không tìm thấy profile tại: {profile_path}")
-            return None
-        
-        options = Options()
-        options.add_argument(f"--profile")
-        options.add_argument(profile_path)
-        options.add_argument("--no-remote")
-        options.add_argument("--disable-dev-shm-usage")  # Bỏ qua startup delay
-
-        if not show:
-            options.add_argument("--headless")  
-
-        # ⚡ Chống phát hiện bot trên Firefox
-        options.set_preference("dom.webdriver.enabled", False)
-        options.set_preference("useAutomationExtension", False)
-        options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/110.0")
-        options.set_preference("media.peerconnection.enabled", False)
-        options.set_preference("privacy.resistFingerprinting", True)
-        options.set_preference("network.http.referer.spoofSource", True)
-
-        service = Service(geckodriver_path)  # Đặt đường dẫn thích hợp cho geckodriver
-        driver = webdriver.Firefox(service=service, options=options)
-
-        print(f"✅ {target_email} Đã mở Firefox với profile: {profile_path}")
-        
-        return driver
-    except Exception as e:
-        print(f"🚨 Lỗi: {e}")
-        return None
-
-
-
-
-# def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, is_first=True):
-#     """Mở Firefox với profile cụ thể"""
+# def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None):
+#     """Mở Firefox với profile cụ thể hoặc tạo mới nếu chưa tồn tại"""
     
 #     def get_firefox_profile_folder():
 #         """Xác định thư mục profile của Firefox theo hệ điều hành"""
@@ -318,33 +304,35 @@ def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, is
 #             return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
 #         else:
 #             raise Exception("Hệ điều hành không được hỗ trợ.")
-
+    
 #     def get_profile_name_by_gmail():
 #         """Tìm profile theo email đăng nhập hoặc tạo mới nếu chưa có"""
 #         if not target_email:
-#             return None, False
+#             return None
 #         profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
 #         for profile in profiles:
 #             if target_email in profile:
-#                 return profile, False
+#                 return profile
 #         print(f'{canhbao}  Không tìm thấy profile cho email {target_email}. Đang tạo mới...')
         
-#         subprocess.run(["firefox", "-CreateProfile", f"{target_email}.default"], check=True)
+#         subprocess.run(["firefox", "-CreateProfile", f"{target_email}"], check=True)
 #         sleep(5)
 #         profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
 #         for profile in profiles:
 #             if target_email in profile:
 #                 print(f'✅ Đã tạo profile: {profile}')
-#                 return profile, True
-#         return None, False
+#                 return profile
+#         return None
+    
 
 #     try:
-#         target_email = target_email.replace(' ', '')
 #         firefox_profile_folder = get_firefox_profile_folder()
-#         profile_name, is_create = get_profile_name_by_gmail()
+#         profile_name = get_profile_name_by_gmail()
 #         if not profile_name:
 #             return None
+        
 #         profile_path = os.path.join(firefox_profile_folder, profile_name)
+
 #         if not os.path.exists(profile_path):
 #             print(f"❌ Không tìm thấy profile tại: {profile_path}")
 #             return None
@@ -353,65 +341,119 @@ def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, is
 #         options.add_argument(f"--profile")
 #         options.add_argument(profile_path)
 #         options.add_argument("--no-remote")
-#         options.add_argument("--disable-dev-shm-usage")
-#         options.set_preference("signon.rememberSignons", True) #bật hỏi lưu mật khẩu
-#         if is_create:
-#             # if proxy_ip and proxy_port and not proxy_user and not proxy_pass:
-#             #     options.set_preference("network.proxy.type", 1)
-#             #     options.set_preference("network.proxy.http", proxy_ip)
-#             #     options.set_preference("network.proxy.http_port", int(proxy_port))
-#             #     options.set_preference("network.proxy.share_proxy_settings", True)
-#             #     options.set_preference("network.proxy.no_proxies_on", "localhost, 127.0.0.1")
-#             service = Service(geckodriver_path)
-#             driver = webdriver.Firefox(service=service, options=options)
-#             sleep(1)
-#             proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
-#             if proxy_ip and proxy_port:
-#                 driver.get('about:preferences')
-#                 sleep(1)
-#                 input_text_to_driver(driver, 'proxy')
-#                 press_TAB_key(driver, 2)
-#                 press_ENTER_key(driver, 1)
-#                 press_ARROW_DOWN_key(driver, 1)
-#                 press_TAB_key(driver, 1)
-#                 input_text_to_driver(driver, proxy_ip)
-#                 press_TAB_key(driver, 1)
-#                 input_text_to_driver(driver, proxy_port)
-#                 press_TAB_key(driver, 1)
-#                 press_SPACE_key(driver, 1)
-#                 press_ENTER_key(driver, 1)
-#                 sleep_random(1,3)
-#                 driver.get("https://www.tiktok.com/")
-#                 sleep_random(3,4)
-#                 if proxy_user and proxy_pass:
-#                     sleep(30)
-#             remain_time = 120
-#             print(f'Bạn có {remain_time}s để thiết lập proxy và login tiktok/youtube/facebook')
-#             for i in range(remain_time, 0, -1):
-#                 sys.stdout.write(f"\r⏳ Thời gian còn lại: {i}s ")
-#                 sys.stdout.flush()
-#                 sleep(1)
-#             driver.quit()
-#             driver = None
-   
+#         options.add_argument("--disable-dev-shm-usage")  # Bỏ qua startup delay
+
 #         if not show:
 #             options.add_argument("--headless")  
+
 #         # ⚡ Chống phát hiện bot trên Firefox
-#         # options.set_preference("dom.webdriver.enabled", False)  # Ẩn WebDriver
-#         # options.set_preference("useAutomationExtension", False)
-#         # options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/110.0")
-#         # options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
-#         # options.set_preference("privacy.resistFingerprinting", True)  # Chống lấy dấu vân tay trình duyệt
-#         # options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
+#         options.set_preference("dom.webdriver.enabled", False)
+#         options.set_preference("useAutomationExtension", False)
+#         options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/110.0")
+#         options.set_preference("media.peerconnection.enabled", False)
+#         options.set_preference("privacy.resistFingerprinting", True)
+#         options.set_preference("network.http.referer.spoofSource", True)
 
-
-#         service = Service(geckodriver_path)
+#         service = Service(geckodriver_path)  # Đặt đường dẫn thích hợp cho geckodriver
 #         driver = webdriver.Firefox(service=service, options=options)
+
 #         print(f"✅ {target_email} Đã mở Firefox với profile: {profile_path}")
+        
 #         return driver
 #     except Exception as e:
-#         getlog()
+#         print(f"🚨 Lỗi: {e}")
 #         return None
+
+
+
+
+def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, email=None, password=None):
+    """Mở Firefox với profile cụ thể"""
+    
+    def get_firefox_profile_folder():
+        """Xác định thư mục profile của Firefox theo hệ điều hành"""
+        if platform.system() == "Windows":
+            return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
+        else:
+            raise Exception("Hệ điều hành không được hỗ trợ.")
+
+    def get_profile_name_by_gmail():
+        """Tìm profile theo email đăng nhập hoặc tạo mới nếu chưa có"""
+        if not target_email:
+            return None, False
+        profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
+        for profile in profiles:
+            if f".{target_email}.default" in profile:
+                print(profile)
+                return profile, False
+        print(f'{canhbao}  Không tìm thấy profile cho email {target_email}. Đang tạo mới...')
+        
+        subprocess.run(["firefox", "-CreateProfile", f"{target_email}.default"], check=True)
+        sleep(5)
+        subprocess.run(["firefox", "-P", f"{target_email}.default"], check=True)
+        proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+        if proxy_ip and proxy_port:
+            print(f'Hãy thiết lập proxy và login tài khoản trước khi dùng ứng dụng. Các bước thực hiện:')
+            print(f"-Mở đường dẫn: about:preferences")
+            print(f"-Tìm proxy và mở lên.")
+            print(f"-Chọn Manual proxy configuration")
+            print(f"-Nhập proxy IP: {proxy_ip}")
+            print(f"-Nhập proxy port: {proxy_port}")
+            print("Lưu lại và truy cập trang web.")
+            if proxy_user and proxy_pass:
+                print(f"Nhập user: {proxy_user}")
+                print(f"Nhập pass: {proxy_pass}")
+                print("Lưu lại (Nếu không hiện cửa sổ lưu thì vào setting --> vào <Privacy & Security> --> bật <Ask to save passwords>)")
+            print("Lưu lại và truy cập trang web --> Nhập user và pass proxy nếu có --> lưu user và pass")
+        print(f'--> Login tài khoản tiktok/yuoutube/facebook vào profile.')
+        if email and password:
+            print(f'email: {email}')
+            print(f'password: {password}')
+        return None, False
+
+    try:
+        target_email = target_email.replace(' ', '')
+        firefox_profile_folder = get_firefox_profile_folder()
+        profile_name, is_create = get_profile_name_by_gmail()
+        if not profile_name:
+            return None
+        profile_path = os.path.join(firefox_profile_folder, profile_name)
+        if not os.path.exists(profile_path):
+            print(f"❌ Không tìm thấy profile tại: {profile_path}")
+            return None
+        
+        options = Options()
+        options.add_argument(f"--profile")
+        options.add_argument(profile_path)
+        options.add_argument("--no-remote")
+        options.add_argument("--disable-dev-shm-usage")
+        options.set_preference("signon.rememberSignons", True)
+   
+        if not show:
+            options.add_argument("--headless")  
+        # ⚡ Chống phát hiện bot trên Firefox
+        options.set_preference("dom.webdriver.enabled", False)  # Ẩn WebDriver
+        options.set_preference("useAutomationExtension", False)
+        # options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
+        # options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
+
+        service = Service(geckodriver_path)
+        driver = webdriver.Firefox(service=service, options=options)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        driver.execute_script("""
+        const getContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function(type, attribs) {
+            if (type === '2d') {
+                attribs = Object.assign({}, attribs, {willReadFrequently: true});
+            }
+            return getContext.apply(this, arguments);
+        };
+        """)
+        print(f"✅ {target_email} Đã mở Firefox với profile: {profile_path}")
+        return driver
+    except Exception as e:
+        getlog()
+        return None
 
 
 def get_chrome_driver_with_profile(target_email=None, show=True, proxy=None, is_remove_proxy=False):
@@ -732,6 +774,7 @@ def input_char_by_char(ele, text):
             sleep_random(0.1,0.2)
         else:
             sleep_random(0.03,0.8)
+
 def get_element_by_text(driver, text, tag_name='*', timeout=6):
     try:
         # Tìm element chứa text thuộc thẻ xác định
@@ -3268,7 +3311,7 @@ def load_tiktok_config(acc=None):
                     "is_title_plus_video_name":False,
                     "upload_date":datetime.now().strftime('%Y-%m-%d'),
                     "is_delete_after_upload":False,
-                    "waiting_verify":True,
+                    "waiting_verify":"30",
                     "number_of_days":"1",
                     "day_gap":"1",
                     "first_login":True,
@@ -3276,9 +3319,9 @@ def load_tiktok_config(acc=None):
                     "auto_interact":True,
                     "use_profile_type":"Không dùng",
     
-                    "chrome_cookies":{},
-                    "firefox_cookies":{},
-                    "mobi_cookies":{}
+                    "chrome_cookies":[],
+                    "firefox_cookies":[],
+                    "mobi_cookies":[]
                 }
                 save_tiktok_config(acc, config)
         else:
@@ -3324,9 +3367,9 @@ def load_youtube_config(acc=None):
                     "number_of_days":"1",
                     "day_gap":"1",
     
-                    "chrome_cookies":{},
-                    "firefox_cookies":{},
-                    "mobi_cookies":{}
+                    "chrome_cookies":[],
+                    "firefox_cookies":[],
+                    "mobi_cookies":[]
                 }
                 save_tiktok_config(acc, config)
         else:
@@ -3368,7 +3411,7 @@ def load_facebook_config(acc=None):
                     "number_of_days":"1",
                     "day_gap":"1",
                     "is_reel_video":True,
-                    "waiting_verify":"",
+                    "waiting_verify":"30",
 
                     "chrome_cookies":[],
                     "firefox_cookies":[],

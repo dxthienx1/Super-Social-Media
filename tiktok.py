@@ -27,6 +27,7 @@ class TikTokManager:
         self.is_stop_download = False
         self.check_copyright = True
         self.is_stop_interact = False
+        self.language = None
 
 #-----------------------------Thao tác trên tiktok--------------------------------------------------------------
 
@@ -34,8 +35,11 @@ class TikTokManager:
         is_interact_only = False
         def leave_video():
             if self.check_leave_video:
-                leave = get_element_by_text(self.driver, 'Leave')
-                if leave and leave.text.lower() == 'leave':
+                if self.language == 'en':
+                    leave = get_element_by_text(self.driver, 'Leave')
+                else:
+                    leave = get_element_by_text(self.driver, 'Rời khỏi')
+                if leave and leave.text:
                     try:
                         leave.click()
                         self.check_leave_video = False
@@ -47,11 +51,22 @@ class TikTokManager:
             sleep_random(1,2)
 
         def close_video():
-            browse_close_x = get_xpath_by_multi_attribute('button', ['aria-label="Close"'])
+            if self.language == 'en':
+                browse_close_x = get_xpath_by_multi_attribute('button', ['aria-label="Close"'])
+            else:
+                browse_close_x = get_xpath_by_multi_attribute('button', ['aria-label="Đóng"'])
             browse_close = get_element_by_xpath(self.driver, browse_close_x)
             if browse_close:
                 browse_close.click()
                 sleep_random(1.5,3)
+        def close_capcha():
+            capcha_x = get_xpath_by_multi_attribute('button', ['id="captcha_close_button"'])
+            capcha_ele = get_element_by_xpath(self.driver, capcha_x)
+            if capcha_ele:
+                capcha_ele.click()
+                sleep_random(2,4)
+            
+
         try:
             if video_number_interact_str:
                 is_interact_only = True
@@ -59,7 +74,7 @@ class TikTokManager:
             else:
                 video_number_interact_str = self.acc_config['video_number_interact_befor_upload']
             if video_number_interact_str == 'không tương tác':
-                video_number_interact = 0
+                return
             else:
                 try:
                     video_number_interact_list = [int(fff.strip()) for fff in video_number_interact_str.split('-')]
@@ -80,7 +95,7 @@ class TikTokManager:
             if random.random() > watch_percent:
                 print(f"🚀 {self.account} Bỏ qua tương tác TikTok lần này.")
                 return
-            self.driver.get(trang_chu_tiktok)
+
             sleep_random(3,5)
             print(f"🎯 {self.account} Bắt đầu tương tác trên TikTok...")
 
@@ -135,6 +150,7 @@ class TikTokManager:
                     break
                 cnt += 1
                 leave_video()
+                close_capcha()
                 if cnt > 1:
                     print(f"▶️ {self.account} Đang xem video thứ {cnt-1}...")
                     watch_time = float(get_time_random(watch_time_min,watch_time_max))
@@ -145,8 +161,19 @@ class TikTokManager:
                     if random.random() < like_percent:
                         check += 1
                         try:
-                            like_button_xpath = get_xpath('button', attribute='aria-label', attribute_value='Like video', contain=True)
-                            like_buttons = get_element_by_xpath(self.driver, like_button_xpath, multiple_ele=True)
+                            if not self.language:
+                                lang_map = {'en': 'Like video', 'vi': 'Thích video'}
+                                for lang, label in lang_map.items():
+                                    like_button_xpath = get_xpath('button', attribute='aria-label', attribute_value=label, contain=True)
+                                    like_buttons = get_element_by_xpath(self.driver, like_button_xpath, multiple_ele=True) or []
+                                    if like_buttons:
+                                        self.language = lang
+                                        break
+                            else:
+                                label = 'Like video' if self.language == 'en' else 'Thích video'
+                                like_button_xpath = get_xpath('button', attribute='aria-label', attribute_value=label, contain=True)
+                                like_buttons = get_element_by_xpath(self.driver, like_button_xpath, multiple_ele=True) or []
+
                             for like_button in like_buttons:
                                 try:
                                     like_button.click()
@@ -161,8 +188,19 @@ class TikTokManager:
                     if random.random() < comment_percent:
                         check += 1
                         try:
-                            comment_xpath = get_xpath('button', attribute='aria-label', attribute_value='Read or add comment', contain=True)
-                            comment_eles = get_element_by_xpath(self.driver, comment_xpath, multiple_ele=True)
+                            if not self.language:
+                                comment_map = {'en': 'Read or add comment', 'vi': 'Đọc hoặc viết bình luận'}
+                                for lang, label in comment_map.items():
+                                    comment_xpath = get_xpath('button', attribute='aria-label', attribute_value=label, contain=True)
+                                    comment_eles = get_element_by_xpath(self.driver, comment_xpath, multiple_ele=True) or []
+                                    if comment_eles:
+                                        self.language = lang
+                                        break
+                            else:
+                                label = 'Read or add comment' if self.language == 'en' else 'Đọc hoặc viết bình luận'
+                                comment_xpath = get_xpath('button', attribute='aria-label', attribute_value=label, contain=True)
+                                comment_eles = get_element_by_xpath(self.driver, comment_xpath, multiple_ele=True) or []
+
                             for comment_ele in comment_eles:
                                 try:
                                     comment_ele.click()
@@ -173,7 +211,10 @@ class TikTokManager:
                                     if comment_box:
                                         input_char_by_char(comment_box, comment_text)
                                         sleep_random(1,2)
-                                        post_xpath = get_xpath_by_multi_attribute('div', ['aria-label="Post"', 'role="button"'])
+                                        if self.language == 'en':
+                                            post_xpath = get_xpath_by_multi_attribute('div', ['aria-label="Post"', 'role="button"'])
+                                        else:
+                                            post_xpath = get_xpath_by_multi_attribute('div', ['aria-label="Đăng"', 'role="button"'])
                                         post_ele = get_element_by_xpath(self.driver, post_xpath)
                                         if post_ele:
                                             post_ele.click()
@@ -198,7 +239,7 @@ class TikTokManager:
                             self.check_leave_video = True
                             print(f"{thatbai} {self.account} Không tìm thấy ô nhập comment")
                     # if check == 0:
-                    #     sleep(watch_time/3)
+                    #     sleep(watch_time/4)
                     sleep_random(0.5,1.5)
                 else:
                     sleep_random(1,3)
@@ -206,6 +247,7 @@ class TikTokManager:
                 body = self.driver.find_element(By.TAG_NAME, "body")
                 body.send_keys(Keys.ARROW_DOWN)
             if cnt > 1:
+                self.save_session()
                 print(f"✅ {self.account} Hoàn thành tương tác trên TikTok!")
         except:
             getlog()
@@ -222,7 +264,7 @@ class TikTokManager:
             self.is_stop_upload = False
             proxy = self.acc_config["proxy"]
             if self.acc_config['use_profile_type'] == 'Firefox':
-                self.driver = get_firefox_driver_with_profile(target_email=self.account, show=show, proxy=proxy)
+                self.driver = get_firefox_driver_with_profile(target_email=self.account, show=show, proxy=proxy, email=self.acc_config['email'], password=self.acc_config['password'])
                 if not self.driver:
                     return False
                 self.load_session(trang_chu_tiktok)
@@ -279,16 +321,16 @@ class TikTokManager:
             if email_input:
                 email_input.send_keys(self.email)
                 sleep(0.5)
+                pass_xpath = get_xpath_by_multi_attribute("input", ["type='password'", "placeholder='Password'"])
+                password_input = get_element_by_xpath(self.driver, pass_xpath)
+                if password_input:
+                    password_input.send_keys(self.password)
+                    sleep_random(1,2)
+                    password_input.send_keys(Keys.RETURN)
+                    sleep_random(3,5)
+                    self.waiting_for_capcha_verify()
+                    return True
             else:
-                self.waiting_for_capcha_verify()
-                return True
-            pass_xpath = get_xpath_by_multi_attribute("input", ["type='password'", "placeholder='Password'"])
-            password_input = get_element_by_xpath(self.driver, pass_xpath)
-            if password_input:
-                password_input.send_keys(self.password)
-                sleep_random(1,2)
-                password_input.send_keys(Keys.RETURN)
-                sleep_random(3,5)
                 self.waiting_for_capcha_verify()
                 return True
         except:
@@ -320,7 +362,7 @@ class TikTokManager:
             sleep(1.5)
             if self.acc_config['use_profile_type'] != 'Firefox' and self.acc_config['use_profile_type'] != 'Chrome':
                 self.driver.refresh()
-                sleep(2)
+                sleep_random(1,2)
         except:
             getlog()
         
@@ -463,9 +505,10 @@ class TikTokManager:
                     sleep(4)
                     ele.send_keys(Keys.RETURN)
                     sleep(1)
+                return True
         except:
             print(f"{thatbai} {self.account} Lỗi khi nhập nội dung")
-            pass
+        return False
 
     def input_thumbnail(self, thumbnail_path):
         try:
@@ -533,9 +576,10 @@ class TikTokManager:
             
 
     def click_schedule_button(self):
-        # xpath = get_xpath_by_multi_attribute('input', ['name="postSchedule"', 'value="schedule"'])
-        # ele = get_element_by_xpath(self.driver, xpath)
-        ele = get_element_by_text(self.driver, text='Schedule', tag_name='span')
+        if self.language == 'en':
+            ele = get_element_by_text(self.driver, text='Schedule', tag_name='span')
+        else:
+            ele = get_element_by_text(self.driver, text='Lên lịch', tag_name='span')
         if ele:
             ele.click()
             sleep(1)
@@ -573,17 +617,24 @@ class TikTokManager:
         cnt = 0
         while True:
             try:
-                xpath = "//span[contains(text(), 'Run a copyright check')]"
+                if self.language == 'en':
+                    xpath = "//span[contains(text(), 'Run a copyright check')]"
+                else:
+                    xpath = "//span[contains(text(), 'Chạy quy trình kiểm tra bản quyền')]"
+                    
                 ele = get_element_by_xpath(self.driver, xpath)
                 if not ele:
                     print("Không phát hiện nút check bản quyền --> Tiếp tục đăng video ...")
                     return True
                 if self.is_stop_upload:
                     return False
-                issues_xpath = "//div[contains(@class, 'copyright')]//span[contains(text(), 'ssues')]"
+                if self.language == 'en':
+                    issues_xpath = "//div[contains(@class, 'copyright')]//span[contains(text(), 'ssues')]"
+                else:
+                    issues_xpath = "//div[contains(@class, 'copyright')]//span[contains(text(), 'vấn đề')]"
                 issues_ele = get_element_by_xpath(self.driver, issues_xpath)
                 if issues_ele:
-                    if 'no issues detected'in  issues_ele.text.lower():
+                    if 'no issues detected'in  issues_ele.text.lower() or 'không phát hiện vấn đề nào' in issues_ele.text.lower():
                         return True
                     else:
                         return False
@@ -616,13 +667,29 @@ class TikTokManager:
         while True:
             if self.is_stop_upload:
                 return False
-            ele = get_element_by_text(self.driver, text='Uploaded', tag_name='span')
-            if ele:
-                return True
+            if not self.language:
+                ele = get_element_by_text(self.driver, text='Uploaded', tag_name='span')
+                if ele:
+                    self.language = 'en'
+                    return True
+                ele = get_element_by_text(self.driver, text='Đã tải lên', tag_name='span')
+                if ele:
+                    self.language = 'vi'
+                    return True
             else:
-                sleep(5)
-                cnt += 1
-            if cnt > 10:
+                if self.language == 'en':
+                    ele = get_element_by_text(self.driver, text='Uploaded', tag_name='span')
+                    if ele:
+                        return True
+                else:
+                    ele = get_element_by_text(self.driver, text='Đã tải lên', tag_name='span')
+                    if ele:
+                        self.language = 'vi'
+                        return True
+            sleep(3)
+            cnt += 1
+            if cnt > 4:
+                print(f'{thatbai} {self.account} Không thể kiểm tra tiến trình tải video lên.')
                 return False
 
     def click_schedule_post(self):
@@ -632,19 +699,16 @@ class TikTokManager:
             sleep(6)
         else:
             print(f'{thatbai} {self.account} không tìm thấy Schedule button')
-
-    def click_upload_more_video_button(self):
-        xpath = get_xpath('div', "TUXButton-label")
-        ele = get_element_by_xpath(self.driver, xpath, "Upload")
-        if ele:
-            ele.click()
-            sleep(1)
-        else:
-            print("không thấy upload more video button")
     
-    def waiting_for_capcha_verify(self, time_wait=25):
-        if self.acc_config['waiting_verify']:
-            sleep_random(time_wait, time_wait + 3)
+    def waiting_for_capcha_verify(self, time_wait=None):
+        try:
+            if not time_wait:
+                time_wait = self.acc_config['waiting_verify']
+            time_wait = int(time_wait)
+        except:
+            print(f"{self.account} Thời gian chờ không hợp lệ: {self.acc_config['waiting_verify']} --> Bỏ qua chờ xác minh")
+            time_wait = 1
+        sleep_random(time_wait, time_wait + 2)
 #--------------------------------Giao diện upload--------------------------------------
 
     def get_start_tiktok(self):
@@ -707,7 +771,7 @@ class TikTokManager:
         self.hashtags_var = self.create_settings_input("Hashtags", "hashtags", config=self.acc_config, left=left, right=right)
         self.upload_date_var = self.create_settings_input("Ngày đăng(yyyy-mm-dd)", "upload_date", config=self.acc_config, left=left, right=right)
         self.publish_times_var = self.create_settings_input("Giờ đăng(hh:mm)", "publish_times", config=self.acc_config, left=left, right=right)
-        self.waiting_verify_var = self.create_settings_input(text="Thêm giời gian chờ xác minh capcha", config_key="waiting_verify", config=self.acc_config, values=['Yes', 'No'], left=left, right=right)
+        self.waiting_verify_var = self.create_settings_input(text="Thêm giời gian chờ xác minh (s)", config_key="waiting_verify", config=self.acc_config, values=['0', '30', '60'], left=left, right=right)
         # self.number_of_days_var = self.create_settings_input("Số ngày muốn đăng", config_key="number_of_days", config=self.acc_config, left=left, right=right)
         # self.day_gap_var = self.create_settings_input("Khoảng cách giữa các ngày đăng", "day_gap", config=self.acc_config, left=left, right=right)
         self.day_gap_var, self.number_of_days_var = create_frame_label_input_input(self.root,text="Số ngày đăng/Khoảng cách ngày đăng", width=self.width, left=left, mid=0.33, right=0.37)
@@ -768,7 +832,7 @@ class TikTokManager:
             self.acc_config['cnt_upload_in_day'] = 0
             self.acc_config["upload_folder"] = self.upload_folder_var.get().strip()
             self.acc_config["thumbnail_folder"] = self.thumbnail_folder_var.get().strip()
-            self.acc_config["waiting_verify"] = self.waiting_verify_var.get() == 'Yes'
+            self.acc_config["waiting_verify"] = self.waiting_verify_var.get().strip()
             self.acc_config["use_profile_type"] = self.use_profile_type_var.get().strip()
             self.acc_config["proxy"] = self.proxy_var.get().strip()
             self.commond_config["show_browser"] = self.show_browser_var.get() == 'Yes'
@@ -868,17 +932,20 @@ class TikTokManager:
                             break
                 if upload_count == 0:
                     if not self.login(self.commond_config['show_browser']):
-                        print(f'{self.account}: Có lỗi trong quá trình đăng nhập.')
+                        print(f'{self.account}: đăng nhập không thành công.')
                         return False, False
                     self.acc_config['first_login'] = False
-                    self.acc_config['waiting_verify'] = False
+                    self.acc_config['waiting_verify'] = "0"
                     if self.driver_type == 'web':
+                        if self.acc_config['use_profile_type'] == 'Chrome':
+                            self.driver.get(trang_chu_tiktok)
+                            sleep_random(3,4)
                         self.interact_with_tiktok()
                 self.driver.get("https://www.tiktok.com/tiktokstudio/upload")
                 sleep_random(3,4)
                 if upload_count == 0:
-                    self.waiting_for_capcha_verify(20)
-                    self.save_session()
+                    self.waiting_for_capcha_verify()
+                    
                 video_name = os.path.splitext(video_file)[0] #lấy tên
                 thumbnail_path = os.path.join(thumbnail_folder, f'{video_name}.png')
     
@@ -892,8 +959,9 @@ class TikTokManager:
                 if not self.input_video_on_tiktok(video_path):
                     print(f'{thatbai} {self.account} Có lỗi trong quá trình tải video lên.')
                     break
-                self.input_description(description, hashtags)
-
+                if not self.input_description(description, hashtags):
+                    return False, False
+                self.save_session()
                 if location:
                     self.input_location(location)
                 if os.path.exists(thumbnail_path):
