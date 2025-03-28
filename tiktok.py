@@ -238,8 +238,6 @@ class TikTokManager:
                             getlog()
                             self.check_leave_video = True
                             print(f"{thatbai} {self.account} Không tìm thấy ô nhập comment")
-                    # if check == 0:
-                    #     sleep(watch_time/4)
                     sleep_random(0.5,1.5)
                 else:
                     sleep_random(1,3)
@@ -267,6 +265,7 @@ class TikTokManager:
                 self.driver = get_firefox_driver_with_profile(target_email=self.account, show=show, proxy=proxy, email=self.acc_config['email'], password=self.acc_config['password'])
                 if not self.driver:
                     return False
+                self.waiting_for_capcha_verify()
                 self.load_session(trang_chu_tiktok)
 
                 return True
@@ -320,7 +319,7 @@ class TikTokManager:
             email_input = get_element_by_xpath(self.driver, email_xpath)
             if email_input:
                 email_input.send_keys(self.email)
-                sleep(0.5)
+                sleep_random(0.5,1)
                 pass_xpath = get_xpath_by_multi_attribute("input", ["type='password'", "placeholder='Password'"])
                 password_input = get_element_by_xpath(self.driver, pass_xpath)
                 if password_input:
@@ -340,14 +339,14 @@ class TikTokManager:
     def get_upload_button(self):
         upload_link = get_element_by_text(self.driver, 'Upload', tag_name='div')
         if not upload_link:
-            sleep(4)
+            sleep_random(4,5)
             xpath = get_xpath_by_multi_attribute('a', ['aria-label="Upload a video"'])
             upload_link = get_element_by_xpath(self.driver, xpath)
         return upload_link
 
     def load_session(self, url="https://www.tiktok.com/login/phone-or-email/email"):
         self.driver.get(url)
-        sleep(1.5)
+        sleep_random(1.5,2)
         try:
             if self.driver_type != 'web':
                 cookies_info = self.acc_config['mobi_cookies']
@@ -359,10 +358,10 @@ class TikTokManager:
                 return
             for cookie in cookies_info:
                 self.driver.add_cookie(cookie)
-            sleep(1.5)
+            sleep_random(1.5,2)
             if self.acc_config['use_profile_type'] != 'Firefox' and self.acc_config['use_profile_type'] != 'Chrome':
                 self.driver.refresh()
-                sleep_random(1,2)
+                sleep_random(3,4)
         except:
             getlog()
         
@@ -385,7 +384,7 @@ class TikTokManager:
             if date_time_ele:
                 time_ele = date_time_ele[0]
                 time_ele.click()
-                sleep(1)
+                sleep_random(1,2)
                 xpath_hh = get_xpath('span', "tiktok-timepicker-option-text tiktok-timepicker-left")
                 hh_elements = self.driver.find_elements(By.XPATH, xpath_hh)
                 for element in hh_elements:
@@ -393,7 +392,7 @@ class TikTokManager:
                     if int(element.text) == int(hh):
                         element.click()
                         break
-                sleep(0.5)
+                sleep_random(0.5,1)
                 xpath_mm = get_xpath('span', "tiktok-timepicker-option-text tiktok-timepicker-right")
                 mm_elements = self.driver.find_elements(By.XPATH, xpath_mm)
                 for element in mm_elements:
@@ -401,7 +400,7 @@ class TikTokManager:
                     if int(element.text) == int(mm):
                         element.click()
                         break
-                sleep(0.3)
+                sleep_random(0.3,0.5)
             try:
                 time_ele.click()
             except:
@@ -431,7 +430,7 @@ class TikTokManager:
                 return False
         if date_ele:
             date_ele.click()
-            sleep(1)
+            sleep_random(1,2)
             date_elements = get_element_by_xpath(self.driver, xpath2, multiple_ele=True) or []
             if len(date_elements) == 0:
                 self.is_stop_upload = True
@@ -441,13 +440,13 @@ class TikTokManager:
                 date = ele.text
                 if int(date) == int(day):
                     ele.click()
-                    sleep(1)
+                    sleep_random(1,2)
                     return False
             if len(date_elements) < 11:
                 date_elements[-1].click()
-                sleep(0.5)
+                sleep_random(0.5,1)
                 date_ele.click()
-                sleep(1)
+                sleep_random(1,2)
                 date_elements = get_element_by_xpath(self.driver, xpath2, multiple_ele=True)
                 if len(date_elements) == 0:
                     self.is_stop_upload = True
@@ -457,7 +456,7 @@ class TikTokManager:
                     if int(date) == int(day):
                         kq.append(ele)
                         ele.click()
-                        sleep(1)
+                        sleep_random(1,2)
                         return False
                 self.is_stop_upload = True
 
@@ -465,7 +464,7 @@ class TikTokManager:
             
     def scroll_into_view(self, element):
         self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
-        sleep(0.2)
+        sleep_random(0.2,0.4)
 
     def input_video_on_tiktok(self, video_path):
             try:
@@ -476,7 +475,7 @@ class TikTokManager:
                 ele = get_element_by_xpath(self.driver, xpath)
                 if ele:
                     ele.send_keys(str(video_path))
-                    sleep(3)
+                    sleep_random(3,4)
                     return True
                 else:
                     return False
@@ -493,18 +492,18 @@ class TikTokManager:
             if ele:
                 if description.strip():
                     ele.send_keys(description.strip())
-                    sleep(0.5)
+                    sleep_random(0.5,1)
                     press_esc_key(1, self.driver)
                 ele.send_keys(Keys.RETURN)
-                sleep(1)
+                sleep_random(1,2)
                 print(f"Nhập hashtags ... {hashtags}")
                 for hash in hashtags:
                     for char in hash:
                         ele.send_keys(char)
-                        sleep(0.15)
-                    sleep(4)
+                        sleep_random(0.13,0.17)
+                    sleep_random(4,5)
                     ele.send_keys(Keys.RETURN)
-                    sleep(1)
+                    sleep_random(1,2)
                 return True
         except:
             print(f"{thatbai} {self.account} Lỗi khi nhập nội dung")
@@ -517,24 +516,24 @@ class TikTokManager:
                 ele = get_element_by_xpath(self.driver, xpath, key='Upload cover')
                 if ele:
                     ele.click()
-                    sleep(1)
+                    sleep_random(1,2)
             ele = get_element_by_text(self.driver, 'Edit cover')
             if not ele:
                 xpath = get_xpath('div', 'cover-container', contain=True)
                 ele = get_element_by_xpath(self.driver, xpath)
             ele.click()
-            sleep(1)
+            sleep_random(1,2)
             click_upload_image_tab()
             input_xpath = get_xpath_by_multi_attribute('input', ['accept="image/png, image/jpeg, image/jpg"'])
             input_ele = get_element_by_xpath(self.driver, input_xpath)
             if input_ele:
                 input_ele.send_keys(thumbnail_path)
-                sleep(1)
+                sleep_random(1,2)
                 confirm_xpath = get_xpath('div', 'TUXButton-label')
                 confirm_ele = get_element_by_xpath(self.driver, confirm_xpath, key="Confirm")
                 if confirm_ele:
                     confirm_ele.click()
-                    sleep(1)
+                    sleep_random(1,2)
         except:
             pass
 
@@ -547,30 +546,30 @@ class TikTokManager:
                 ele.click()
                 ele.clear()
                 ele.send_keys(location)
-                sleep(2)
+                sleep_random(2,3)
                 choose_xpath = get_xpath('div', 'Select__itemInner', contain=True)
                 choose_ele = get_element_by_xpath(self.driver, choose_xpath, index=0)
                 if choose_ele:
-                    sleep(1)
+                    sleep_random(1,2)
                     choose_ele.click()
                     try:
                         choose_ele.click()
                     except:
                         pass
-                    sleep(1)
+                    sleep_random(1,2)
                 else:
                     choose_xpath = get_xpath('div', 'SearchableSelect-OptionBox', contain=True)
                     choose_ele = get_element_by_xpath(self.driver, choose_xpath, index=0, timeout=4)
                     if choose_ele:
                         choose_ele.click()
-                        sleep(1)
+                        sleep_random(1,2)
         except:
             try:
                 choose_xpath = get_xpath('div', 'SearchableSelect-OptionBox', contain=True)
                 choose_ele = get_element_by_xpath(self.driver, choose_xpath, index=0, timeout=4)
                 if choose_ele:
                     choose_ele.click()
-                    sleep(1)
+                    sleep_random(1,2)
             except:
                 pass
             
@@ -582,11 +581,11 @@ class TikTokManager:
             ele = get_element_by_text(self.driver, text='Lên lịch', tag_name='span')
         if ele:
             ele.click()
-            sleep(1)
+            sleep_random(1,2)
             allow_btn = get_element_by_text(self.driver, 'Allow', 'div')
             if allow_btn:
                 allow_btn.click()
-                sleep(1)
+                sleep_random(1,2)
         else:
             print(f"{thatbai} {self.account} không tìm thấy nút lên lịch đăng video")
 
@@ -641,7 +640,7 @@ class TikTokManager:
                 cnt += 1
                 if cnt > 30:
                     return False
-                sleep(2)
+                sleep_random(2,3)
             except:
                 return True
 
@@ -650,14 +649,14 @@ class TikTokManager:
             xpath = get_xpath_by_multi_attribute('button', ['data-e2e="post_video_button"'])
             ele = get_element_by_xpath(self.driver, xpath)
             ele.click()
-            sleep(4)
+            sleep_random(4,5)
             return True
         except:
             try:
                 xpath = get_xpath("button", "TUXButton TUXButton--default TUXButton--large TUXButton--primary")
                 ele = get_element_by_xpath(self.driver, xpath)
                 ele.click()
-                sleep(4)
+                sleep_random(4,5)
                 return True
             except:
                 return False
@@ -686,7 +685,7 @@ class TikTokManager:
                     if ele:
                         self.language = 'vi'
                         return True
-            sleep(3)
+            sleep_random(3,4)
             cnt += 1
             if cnt > 4:
                 print(f'{thatbai} {self.account} Không thể kiểm tra tiến trình tải video lên.')
@@ -696,7 +695,7 @@ class TikTokManager:
         ele = get_element_by_text(self.driver, 'Schedule', tag_name='div')
         if ele:
             ele.click()
-            sleep(6)
+            sleep_random(6,7)
         else:
             print(f'{thatbai} {self.account} không tìm thấy Schedule button')
     
@@ -789,8 +788,7 @@ class TikTokManager:
         self.video_number_interact_var = self.create_settings_input(text="Số video tương tác khi đăng (min-max)", config_key="video_number_interact_befor_upload", config=self.acc_config, values=['không tương tác', '3-5', '5-10', '10-20'], left=left, right=right)
         if not self.video_number_interact_var.get().strip():
             self.video_number_interact_var.set('không tương tác')
-        self.auto_interact_var = self.create_settings_input(text="Tương tác tự động", config_key="auto_interact", config=self.commond_config, values=['Yes', 'No'], left=left, right=right)
-        self.auto_interact_var.set('Yes')
+        self.auto_interact_var = self.create_settings_input(text="Tương tác tự động", config_key="auto_interact", config=self.acc_config, values=['Yes', 'No'], left=left, right=right)
         self.proxy_var.insert(0, self.acc_config['proxy'])
         self.thumbnail_folder_var = create_frame_button_and_input(self.root,text="Chọn thư mục chứa thumbnail", command=set_thumbnail_folder, width=self.width)
         self.thumbnail_folder_var.insert(0, self.acc_config['thumbnail_folder'])
@@ -1120,13 +1118,13 @@ class TikTokManager:
             self.driver = get_driver(show=self.commond_config['show_browser'])
             if not self.driver:
                 return
-            sleep(1)
+            sleep_random(1,2)
             self.load_session()
             self.driver.get(url)
-            sleep(4)
+            sleep_random(4,5)
             press_esc_key(1, self.driver)
             if self.commond_config['show_browser']:
-                sleep(6)
+                sleep_random(6,7)
             press_esc_key(1, self.driver)
             if self.is_stop_download:
                 self.close()
@@ -1139,15 +1137,15 @@ class TikTokManager:
                     self.close()
                     return None
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                sleep(2)
+                sleep_random(2,3)
                 new_height = self.driver.execute_script("return document.body.scrollHeight")
                 if new_height == last_height:
                     if k < 3:
                         k += 1
                         self.driver.execute_script("window.scrollBy(0, -400);")
-                        sleep(1)
+                        sleep_random(1,2)
                         self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                        sleep(2)
+                        sleep_random(2,3)
                     else:
                         break
                 else:

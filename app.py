@@ -285,6 +285,47 @@ class MainApp:
 
             account_queue.task_done()  # Đánh dấu tài khoản đã được xử lý
 
+    def check_new_video_and_download_from_channels(self):
+        driver = get_chrome_driver_with_profile()
+        accs = self.tiktok_config['registered_account']
+        download_info = load_download_info()
+        
+        for acc in accs:
+            acc_config = load_tiktok_config(acc)
+            youtube_edit_video_info = acc_config['youtube_edit_video_info'] or {}
+            check_youtube_channels = youtube_edit_video_info.keys() if youtube_edit_video_info else []
+            for check_youtube_channel in check_youtube_channels:
+                check_youtube_channel_edit_info = youtube_edit_video_info[check_youtube_channel] or None
+                if not check_youtube_channel_edit_info:
+                    print(f'{thatbai} {check_youtube_channel}: Không tìm thấy thông tin chỉnh sửa video.')
+                    continue
+                
+                video_urls = []
+                driver.get(check_youtube_channel)
+                sleep_random(3,4)
+                xpath = get_xpath_by_multi_attribute('div', ['id="content"'])
+                div_contents = get_element_by_xpath(self.driver, xpath, multiple_ele=True) or []
+                for div_content in div_contents:
+                    if check_youtube_channel.endswith('/shorts'):
+                        link_video = get_element_by_xpath(div_content, './/a[contains(@href, "/shorts")]')
+                    else:
+                        link_video = get_element_by_xpath(div_content, './/a[contains(@href, "/watch?")]')
+                    if link_video:
+                        url = link_video.get_attribute('href')
+                        if url and url not in video_urls and url not in download_info['downloaded_urls']:
+                            video_urls.append(url)
+            
+                for video_url in video_urls:
+                    upload_folder = acc_config['upload_folder']
+                    download_folder = os.path.join(upload_folder, 'auto_download')
+                    os.makedirs(download_folder, exist_ok=True)
+                    download_video_by_url(video_url, download_folder=download_folder)
+                video_files = get_file_in_folder_by_type(download_folder, '.mp4', noti=False) or []
+                for video_file in video_files:
+                    video_path = os.path.join(download_folder, video_file)
+                    self.fast_edit_video(video_path, upload_folder, channel_edit_info=check_youtube_channel_edit_info)
+
+                    
 #-------------------------------------------Điều hướng window--------------------------------------------
 
     def get_start_window(self):
@@ -754,15 +795,12 @@ class MainApp:
         create_button(self.root, text="Lùi lại", command=self.open_other_download_video_window, width=self.width)
 
 
-
-        
-
     def check_noti_login_douyin(self, driver):
         xpath = get_xpath('div', 'douyin-login__close dy-account-close')
         ele = get_element_by_xpath(driver, xpath)
         if ele:
             ele.click()
-        
+
     def open_edit_audio_window(self):
         self.reset()
         self.is_edit_audio_window = True
@@ -908,6 +946,7 @@ class MainApp:
         if other_name:
             self.tiktok_account_var.set(other_name)
         create_button(self.root, text="Mở cửa sổ quản lý kênh tiktok", command=self.start_tiktok_management)
+        # create_button(self.root, text="Thiết Lập theo dõi kênh", command=self.start_tiktok_management)
         create_button(self.root, text="Đăng ký tài khoản tiktok mới", command=self.sign_up_tiktok_window)
         create_button(self.root, text="Xóa thông tin kênh tiktok", command=self.remove_tiktok_channel_window)
         create_button(self.root, text="Thiết lập tự dộng đăng", command=self.auto_upload_tiktok_window)
@@ -1690,20 +1729,7 @@ class MainApp:
                 print(f'{thatbai} Chỉnh sửa video {video_file} thất bại!!!')
                 continue
             if self.config['edit_level_2']:
-                print(f'\nXử lý thêm hiệu ứng, viền, chữ vào video...')
-                temp_video = process_video(
-                            output_video_path,
-                            wave_amplitude=1.2,    # Biên độ gợn sóng (càng cao, sóng càng mạnh)
-                            wave_frequency=0.1, # Tần suất gợn sóng
-                            line_spacing=10,     # Khoảng cách giữa các đường gạch ngang
-                            line_thickness=1,    # Độ dày của đường gạch ngang
-                            line_opacity=0.1,     # Độ mờ của đường gạch ngang (0.0 - 1.0)
-                            text_top_input=self.config['top_text'],
-                            text_bottom_input=self.config['bot_text']
-                        )
-                if temp_video:
-                    merge_audio(temp_video, output_video_path)
-                    remove_file(temp_video)
+                edit_video_level_2(output_video_path, self.config['top_text'], self.config['bot_text'])
 
         cnt = len(list_edit_finished)
         if cnt > 0:
@@ -1733,36 +1759,56 @@ class MainApp:
             pass
         return top_overlay, bot_overlay, color, transparent
 
-    def fast_edit_video(self, input_video_path, upload_folder=None):
-        speed_up = self.config.get('speed_up', '1')
-        if not speed_up:
-            speed_up = '1'
-        first_cut = self.config.get('first_cut', '0')
-        end_cut = self.config.get('end_cut', '0')
-        zoom_size = self.config.get('max_zoom_size', '1')
-        horizontal_position = self.config.get('horizontal_position', 'center')
-        vertical_position = self.config.get('vertical_position', 'center')
-        watermark = self.config.get('water_path', None)
-        horizontal_watermark_position = self.config.get('horizontal_watermark_position', 'center')
-        vertical_watermark_position = self.config.get('vertical_watermark_position', 'center')
-        watermark_scale = self.config.get('watermark_scale', '1,1')
-        flip_horizontal = self.config.get('flip_video', False)
-        top_bot_overlay = self.config.get('top_bot_overlay', '2,2,black,100')
-        left_right_overlay = self.config.get('left_right_overlay', '2,2,black,100')
-        pitch_factor = self.config.get('pitch_factor', "1")
+    def fast_edit_video(self, input_video_path, upload_folder=None, channel_edit_info=None):
+        if channel_edit_info:
+            speed_up = channel_edit_info.get('speed_up', '1')
+            first_cut = channel_edit_info.get('first_cut', '0')
+            end_cut = channel_edit_info.get('end_cut', '0')
+            zoom_size = channel_edit_info.get('max_zoom_size', '1')
+            horizontal_position = channel_edit_info.get('horizontal_position', 'center')
+            vertical_position = channel_edit_info.get('vertical_position', 'center')
+            watermark = channel_edit_info.get('water_path', None)
+            horizontal_watermark_position = channel_edit_info.get('horizontal_watermark_position', 'center')
+            vertical_watermark_position = channel_edit_info.get('vertical_watermark_position', 'center')
+            watermark_scale = channel_edit_info.get('watermark_scale', '1,1')
+            flip_horizontal = channel_edit_info.get('flip_video', False)
+            top_bot_overlay = channel_edit_info.get('top_bot_overlay', '2,2,black,100')
+            left_right_overlay = channel_edit_info.get('left_right_overlay', '2,2,black,100')
+            pitch_factor = channel_edit_info.get('pitch_factor', "1")
+            background_music_volume = channel_edit_info.get('background_music_volume', '100')
+            remove_original_audio = channel_edit_info.get('is_delete_original_audio', False)
+            new_audio_folder = channel_edit_info.get('background_music_path', None)
+            is_delete_video = channel_edit_info.get('is_delete_video', False)
+        else:
+            speed_up = self.config.get('speed_up', '1')
+            first_cut = self.config.get('first_cut', '0')
+            end_cut = self.config.get('end_cut', '0')
+            zoom_size = self.config.get('max_zoom_size', '1')
+            horizontal_position = self.config.get('horizontal_position', 'center')
+            vertical_position = self.config.get('vertical_position', 'center')
+            watermark = self.config.get('water_path', None)
+            horizontal_watermark_position = self.config.get('horizontal_watermark_position', 'center')
+            vertical_watermark_position = self.config.get('vertical_watermark_position', 'center')
+            watermark_scale = self.config.get('watermark_scale', '1,1')
+            flip_horizontal = self.config.get('flip_video', False)
+            top_bot_overlay = self.config.get('top_bot_overlay', '2,2,black,100')
+            left_right_overlay = self.config.get('left_right_overlay', '2,2,black,100')
+            pitch_factor = self.config.get('pitch_factor', "1")
+            background_music_volume = self.config.get('background_music_volume', '100')
+            remove_original_audio = self.config.get('is_delete_original_audio', False)
+            new_audio_folder = self.config.get('background_music_path', None)
+            is_delete_video = self.config.get('is_delete_video', False)
+
         try:
             pitch = float(pitch_factor)
         except:
             pitch = 1
-        new_audio_folder = self.config.get('background_music_path', None)
         new_audio_path = None
         if new_audio_folder and os.path.exists(new_audio_folder):
             new_audio_path = get_random_audio_path(new_audio_folder)
             if not new_audio_path or not os.path.exists(new_audio_path):
                 print(f"Không có file .mp3 nào trong thư mục {new_audio_folder}")
                 return None
-        background_music_volume = self.config.get('background_music_volume', '100')
-        remove_original_audio = self.config.get('is_delete_original_audio', False)
         try:
             audio_volume = int(background_music_volume)/100
         except:
@@ -1933,7 +1979,7 @@ class MainApp:
                 shutil.move(output_file, new_file_path)
             remove_file(combined_audio_path)
             remove_file(temp_audio_path)
-            remove_or_move_file(input_video_path, is_delete=self.config['is_delete_video'], finish_folder_name='Finished Edit')
+            remove_or_move_file(input_video_path, is_delete=is_delete_video, finish_folder_name='Finished Edit')
             return output_file
         except:
             print(f"Có lỗi trong quá trình xử lý video {input_video_path}")

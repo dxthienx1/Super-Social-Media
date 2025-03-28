@@ -37,7 +37,6 @@ from PIL import Image, ImageDraw
 import pystray
 from pystray import MenuItem as item
 import keyboard
-import pyperclip
 import tempfile
 import queue
 from pathlib import Path
@@ -365,7 +364,7 @@ def save_download_info(data):
 #         return None
 
 
-
+foxyproxy_path = os.path.join(current_dir, 'foxyproxy.xpi')
 
 def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, email=None, password=None):
     """Mở Firefox với profile cụ thể"""
@@ -378,38 +377,127 @@ def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, em
             raise Exception("Hệ điều hành không được hỗ trợ.")
 
     def get_profile_name_by_gmail():
-        """Tìm profile theo email đăng nhập hoặc tạo mới nếu chưa có"""
-        if not target_email:
+        try:
+            if not target_email:
+                return None, False
+            profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
+            for profile in profiles:
+                if f".{target_email}.default" in profile:
+                    print(profile)
+                    return profile, False
+            print(f'{canhbao}  Không tìm thấy profile cho email {target_email}. Đang tạo mới...')
+            profile_name_temp = f"{target_email}.default"
+            subprocess.run(["firefox", "-CreateProfile", profile_name_temp], check=True)
+            sleep(5)
+            proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+            if proxy_ip and proxy_port:
+            #     print(f'Hãy thiết lập proxy và login tài khoản trước khi dùng ứng dụng. Các bước thực hiện:')
+            #     print(f"-Mở đường dẫn: about:preferences")
+            #     print(f"-Tìm proxy và mở lên.")
+            #     print(f"-Chọn Manual proxy configuration")
+            #     print(f"-Nhập proxy IP: {proxy_ip}")
+            #     print(f"-Nhập proxy port: {proxy_port}")
+            #     print("Lưu lại và truy cập trang web.")
+            #     if proxy_user and proxy_pass:
+            #         print(f"Nhập user: {proxy_user}")
+            #         print(f"Nhập pass: {proxy_pass}")
+            #         print("Lưu lại (Nếu không hiện cửa sổ lưu thì vào setting --> vào <Privacy & Security> --> bật <Ask to save passwords>)")
+            #     print("Lưu lại và truy cập trang web --> Nhập user và pass proxy nếu có --> lưu user và pass")
+                profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
+                for profile_name in profiles:
+                    if f".{profile_name_temp}" in profile_name:
+                        print(profile_name)
+                        profile_path = os.path.join(firefox_profile_folder, profile_name)
+                        if not os.path.exists(profile_path):
+                            print(f"❌ Không tìm thấy profile tại: {profile_path}")
+                            return None, False
+                    
+                        options = Options()
+                        options.add_argument(f"--profile")
+                        options.add_argument(profile_path)
+                        options.add_argument("--no-remote")
+                        options.add_argument("--disable-dev-shm-usage")
+                
+                        if not show:
+                            options.add_argument("--headless")  
+                        # ⚡ Chống phát hiện bot trên Firefox
+                        options.set_preference("dom.webdriver.enabled", False)  # Ẩn WebDriver
+                        options.set_preference("useAutomationExtension", False)
+                        options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
+                        options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
+
+                        options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0")
+                        options.set_preference("intl.accept_languages", "en-US, en")
+                        options.set_preference("permissions.default.image", 2)
+                        service = Service(geckodriver_path)
+                        driver = webdriver.Firefox(service=service, options=options)
+                        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                        driver.install_addon(foxyproxy_path, temporary=False)
+                        sleep_random(4,6)
+                        driver.get("about:addons")
+                        sleep_random(2,4)
+                        Extensions_ele = get_element_by_text(driver, 'Extensions', 'span')
+                        if Extensions_ele:
+                            Extensions_ele.click()
+                            sleep(1)
+                        foxyproxy_element = driver.find_element(By.CSS_SELECTOR, '[aria-labelledby*="foxyproxy"]')
+                        if foxyproxy_element:
+                            btn_more_xpath = get_xpath_by_multi_attribute('button', ['action="more-options"'])
+                            foxyproxy_opt = foxyproxy_element.find_element(By.XPATH, btn_more_xpath)
+                            if foxyproxy_opt:
+                                foxyproxy_opt.click()
+                                sleep(1)
+                                press_ARROW_DOWN_key(driver, 2)
+                                press_ENTER_key(driver, 1)
+                                driver.switch_to.window(driver.window_handles[-1])
+                                sleep(2)
+                                proxies_ele = get_element_by_text(driver, 'Proxies', 'label')
+                                if proxies_ele:
+                                    proxies_ele.click()
+                                    sleep(1)
+                                    add_xpath = get_xpath_by_multi_attribute('button', ['data-i18n="add"'])
+                                    add_ele = get_element_by_xpath(driver, add_xpath)
+                                    if add_ele:
+                                        try:
+                                            add_ele.click()
+                                        except:
+                                            press_TAB_key(driver, 1)
+                                            press_ENTER_key(driver, 1)
+                                        sleep(1)
+                                        host_xpath = get_xpath_by_multi_attribute('input', ['data-id="hostname"'])
+                                        port_xpath = get_xpath_by_multi_attribute('input', ['data-id="port"'])
+                                        host_ele = get_element_by_xpath(driver, host_xpath)
+                                        if host_ele:
+                                            host_ele.send_keys(proxy_ip)
+                                            sleep(1)
+                                        port_ele = get_element_by_xpath(driver, port_xpath)
+                                        if port_ele:
+                                            port_ele.send_keys(proxy_port)
+                                            sleep(1)
+                                        if proxy_user and proxy_pass:
+                                            username_xpath = get_xpath_by_multi_attribute('input', ['data-id="username"'])
+                                            password_xpath = get_xpath_by_multi_attribute('input', ['data-id="password"'])
+                                            username_ele = get_element_by_xpath(driver, username_xpath)
+                                            if username_ele:
+                                                username_ele.send_keys(proxy_user)
+                                                sleep(1)
+                                            password_ele = get_element_by_xpath(driver, password_xpath)
+                                            if password_ele:
+                                                password_ele.send_keys(proxy_pass)
+                                                sleep(1)
+                                        press_TAB_key(driver, 10)
+                                        press_ENTER_key(driver, 1)
+                                        sleep_random(3,5)
+            driver.quit()
+            sleep(2)
+            subprocess.run(["firefox", "-P", profile_name_temp], check=True)
+            print(f'--> Login tài khoản tiktok/yuoutube/facebook vào profile.')
+            if email and password:
+                print(f'email: {email}')
+                print(f'password: {password}')
             return None, False
-        profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
-        for profile in profiles:
-            if f".{target_email}.default" in profile:
-                print(profile)
-                return profile, False
-        print(f'{canhbao}  Không tìm thấy profile cho email {target_email}. Đang tạo mới...')
-        
-        subprocess.run(["firefox", "-CreateProfile", f"{target_email}.default"], check=True)
-        sleep(5)
-        subprocess.run(["firefox", "-P", f"{target_email}.default"], check=True)
-        proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
-        if proxy_ip and proxy_port:
-            print(f'Hãy thiết lập proxy và login tài khoản trước khi dùng ứng dụng. Các bước thực hiện:')
-            print(f"-Mở đường dẫn: about:preferences")
-            print(f"-Tìm proxy và mở lên.")
-            print(f"-Chọn Manual proxy configuration")
-            print(f"-Nhập proxy IP: {proxy_ip}")
-            print(f"-Nhập proxy port: {proxy_port}")
-            print("Lưu lại và truy cập trang web.")
-            if proxy_user and proxy_pass:
-                print(f"Nhập user: {proxy_user}")
-                print(f"Nhập pass: {proxy_pass}")
-                print("Lưu lại (Nếu không hiện cửa sổ lưu thì vào setting --> vào <Privacy & Security> --> bật <Ask to save passwords>)")
-            print("Lưu lại và truy cập trang web --> Nhập user và pass proxy nếu có --> lưu user và pass")
-        print(f'--> Login tài khoản tiktok/yuoutube/facebook vào profile.')
-        if email and password:
-            print(f'email: {email}')
-            print(f'password: {password}')
-        return None, False
+        except:
+            getlog()
 
     try:
         target_email = target_email.replace(' ', '')
@@ -426,34 +514,40 @@ def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, em
         options.add_argument(f"--profile")
         options.add_argument(profile_path)
         options.add_argument("--no-remote")
-        options.add_argument("--disable-dev-shm-usage")
-        options.set_preference("signon.rememberSignons", True)
    
         if not show:
             options.add_argument("--headless")  
         # ⚡ Chống phát hiện bot trên Firefox
         options.set_preference("dom.webdriver.enabled", False)  # Ẩn WebDriver
         options.set_preference("useAutomationExtension", False)
-        # options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
-        # options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
+        options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
+        options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
 
         service = Service(geckodriver_path)
         driver = webdriver.Firefox(service=service, options=options)
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        driver.execute_script("""
-        const getContext = HTMLCanvasElement.prototype.getContext;
-        HTMLCanvasElement.prototype.getContext = function(type, attribs) {
-            if (type === '2d') {
-                attribs = Object.assign({}, attribs, {willReadFrequently: true});
-            }
-            return getContext.apply(this, arguments);
-        };
-        """)
+        sleep_random(2,4)
+
+        proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+        browser_ip = get_browser_ip(driver)
+        if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
+            if target_email:
+                print(f"❌ {target_email} Đổi IP không thành công!")
+            driver.quit()
+            return None
+        else:
+            print(f"{tot} {target_email} IP đang dùng: {browser_ip}")
+
         print(f"✅ {target_email} Đã mở Firefox với profile: {profile_path}")
         return driver
     except Exception as e:
         getlog()
         return None
+
+
+    
+
+
 
 
 def get_chrome_driver_with_profile(target_email=None, show=True, proxy=None, is_remove_proxy=False):
@@ -1261,25 +1355,6 @@ def get_current_folder_and_basename(input_video_path):
 def download_video_by_bravedown(video_urls, download_folder=None, root_web="https://bravedown.com/ixigua-video-downloader"):
     try:
         driver = get_chrome_driver_with_profile(show=True)
-        # def choose_downlaod_folder():
-        #     if download_folder:
-        #         try:
-        #             driver.get("chrome://settings/downloads")
-        #             pyperclip.copy(download_folder)
-        #             sleep(1)
-        #             press_TAB_key(driver, 2)
-        #             sleep(0.5)
-        #             press_SPACE_key(driver, 1)
-        #             sleep(0.5)
-        #             press_key_on_window('tab', 4)
-        #             press_key_on_window('space', 1)
-        #             keyboard.send('ctrl+v')
-        #             press_key_on_window('enter', 4)
-        #             sleep(1)
-        #         except:
-        #             pass
-        #     sleep(1)
-        # choose_downlaod_folder()
         def verify_human(video_url):
             ele = get_element_by_text(driver, "you are human")
             if ele:
@@ -2926,6 +3001,28 @@ def extract_audio_ffmpeg(audio_path=None, video_path=None, video_url=None, video
         print("Có lỗi trong quá trình trích xuất audio !!!")
 
 
+def edit_video_level_2(input_video_path, text_top_input=None, text_bottom_input=None, wave_amplitude=1.2, wave_frequency=0.1, line_spacing=10, line_thickness=1, line_opacity=0.1):
+    if not input_video_path:
+        return None
+    print(f'\nXử lý cấp độ 2 cho video: {input_video_path}')
+    try:
+        temp_video = process_video(
+                    input_video_path,
+                    wave_amplitude=wave_amplitude,    # Biên độ gợn sóng (càng cao, sóng càng mạnh)
+                    wave_frequency=wave_frequency, # Tần suất gợn sóng
+                    line_spacing=line_spacing,     # Khoảng cách giữa các đường gạch ngang
+                    line_thickness=line_thickness,    # Độ dày của đường gạch ngang
+                    line_opacity=line_opacity,     # Độ mờ của đường gạch ngang (0.0 - 1.0)
+                    text_top_input=text_top_input,
+                    text_bottom_input=text_bottom_input
+                )
+        if temp_video:
+            output_video_path = merge_audio(temp_video, input_video_path)
+            remove_file(temp_video)
+            return output_video_path
+    except:
+        getlog()
+    return None
 
 
 
@@ -3117,25 +3214,26 @@ def apply_wave_effect(frame, frame_count, amplitude, frequency):
     return wave_frame
 
 def merge_audio(video_path, original_video):
-    """ Ghép âm thanh từ video gốc vào video đã chỉnh sửa """
-    output_folder = os.path.join(os.path.dirname(video_path), 'end_videos')
-    os.makedirs(output_folder, exist_ok=True)
-    file_name = os.path.basename(original_video)
-    output_video = os.path.join(output_folder, file_name)
-    command = [
-        "ffmpeg", "-y",
-        "-i", video_path,    # Video đã chỉnh sửa
-        "-i", original_video, # Video gốc (chứa âm thanh)
-        "-c:v", "copy",
-        "-c:a", "aac",
-        "-strict", "experimental",
-        "-map", "0:v:0",  # Lấy video từ file đã chỉnh sửa
-        "-map", "1:a:0",  # Lấy âm thanh từ file gốc
-        output_video
-    ]
-    run_command_ffmpeg(command, False)
-
-
+    try:
+        output_folder = os.path.join(os.path.dirname(video_path), 'edit_level_2')
+        os.makedirs(output_folder, exist_ok=True)
+        file_name = os.path.basename(original_video)
+        output_video = os.path.join(output_folder, file_name)
+        command = [
+            "ffmpeg", "-y",
+            "-i", video_path,    # Video đã chỉnh sửa
+            "-i", original_video, # Video gốc (chứa âm thanh)
+            "-c:v", "copy",
+            "-c:a", "aac",
+            "-strict", "experimental",
+            "-map", "0:v:0",  # Lấy video từ file đã chỉnh sửa
+            "-map", "1:a:0",  # Lấy âm thanh từ file gốc
+            output_video
+        ]
+        run_command_ffmpeg(command, False)
+        return output_video
+    except:
+        return None
 
 #-----------------commond-------------------------------
 
@@ -3250,7 +3348,10 @@ youtube_category = {
 
 youtube_config_commond = {
    "registered_account": [],
-   "registered_account_dic": {},
+   "check_youtube_channels": [],
+   "check_tiktok_channels": [],
+   "check_facebook_channels": [],
+   "downloaded_urls": [],
    "current_channel": "",
    "download_folder": "",
    "download_url": "",
@@ -3263,6 +3364,10 @@ youtube_config_commond = {
 
 tiktok_config_commond = {
    "registered_account": [],
+   "check_youtube_channels": [],
+   "check_tiktok_channels": [],
+   "check_facebook_channels": [],
+   "downloaded_urls": [],
    "output_folder": "",
    "show_browser": True,
    "download_url": "",
@@ -3275,6 +3380,10 @@ tiktok_config_commond = {
 
 facebook_config_commond = {
    "registered_account": [],
+   "check_youtube_channels": [],
+   "check_tiktok_channels": [],
+   "check_facebook_channels": [],
+   "downloaded_urls": [],
    "show_browser": True,
    "use_profile_facebook": False,
    "download_url": "",
@@ -3318,7 +3427,31 @@ def load_tiktok_config(acc=None):
                     "video_number_interact_befor_upload":"không tương tác",
                     "auto_interact":True,
                     "use_profile_type":"Không dùng",
-    
+                    "youtube_edit_video_info":{
+                        "first_cut": "0",
+                        "end_cut": "0",
+                        "is_delete_original_audio": False,
+                        "background_music_path": "",
+                        "background_music_volume": "",
+                        "speed_up": "1.05",
+                        "max_zoom_size": "1.1",
+                        "is_random_zoom": False,
+                        "vertical_position": 'center',
+                        "horizontal_position": 'center',
+                        "flip_video": False,
+                        "water_path": "",
+                        "watermark_scale": "1,1",
+                        "vertical_watermark_position": "50",
+                        "horizontal_watermark_position": "50",
+                        "top_bot_overlay": "0,0,black,1",
+                        "left_right_overlay": "0,0,black,1",
+                        "top_text": "",
+                        "bot_text": "",
+                        "edit_level_2": True
+                    },
+                    "tiktok_edit_video_info":{},
+                    "facebook_edit_video_info":{},
+
                     "chrome_cookies":[],
                     "firefox_cookies":[],
                     "mobi_cookies":[]
@@ -3357,7 +3490,7 @@ def load_youtube_config(acc=None):
                     "description":"",
                     "curent_playlist":"",
                     "playlist":"",
-                    "altered_content":False,
+                    "altered_content":True,
                     "upload_date":datetime.now().strftime('%Y-%m-%d'),
                     "publish_times":"19:00",
                     "cnt_upload_in_day":0,
@@ -3859,9 +3992,6 @@ def cleaner_text(text):
     return text
 
 
-
-
-import re
 
 def number_to_english_with_units(text):
     if not text:

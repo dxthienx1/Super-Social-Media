@@ -54,10 +54,10 @@ class YouTubeManager():
                 if not self.driver:
                     return
                 print(f'--> Đang sử dụng cookies để đăng nhập ...')
-                sleep(2)
+                sleep_random(2,3)
                 self.load_session()
                 self.driver.get("https://www.youtube.com/")
-                sleep(3)
+                sleep_random(3,4)
                 press_esc_key(2, self.driver)
                 account_menu, language = self.get_account_menu()
                 if not account_menu:
@@ -70,7 +70,7 @@ class YouTubeManager():
                     return
                 print(f'--> Đang sử dụng chrome profile để đăng nhập ...')
                 self.driver.get("https://www.youtube.com/")
-                sleep(3)
+                sleep_random(3,4)
                 account_menu, language = self.get_account_menu()
             if account_menu:
                 if language == 'en':
@@ -79,7 +79,7 @@ class YouTubeManager():
                     self.en_language = False
                 press_esc_key(1, self.driver)
                 account_menu.click()
-                sleep(1)
+                sleep_random(1,2)
                 self.click_switch_account()
                 return True
             else:
@@ -91,7 +91,7 @@ class YouTubeManager():
 
     def load_session(self, url="https://www.youtube.com/"):
         self.driver.get(url)
-        sleep(1)
+        sleep_random(1,2)
         try:
             youtube_cookies = self.acc_config['chrome_cookies'] or []
             for cookie in youtube_cookies:
@@ -104,7 +104,7 @@ class YouTubeManager():
                     self.driver.add_cookie(cookie)
                 except:
                     getlog()
-            sleep(1.5)
+            sleep_random(1.5,2.5)
             self.driver.refresh()
             sleep_random(3,5)
         except:
@@ -118,7 +118,7 @@ class YouTubeManager():
             ele = get_element_by_xpath(self.driver, xpath, 'Chuyển đổi tài khoản')
         if ele:
             ele.click()
-            sleep(0.5)
+            sleep_random(0.5,1)
             self.choose_channel()
 
     def choose_channel(self):
@@ -126,7 +126,7 @@ class YouTubeManager():
         ele = get_element_by_xpath(self.driver, xpath, self.channel_name)
         if ele:
             ele.click()
-            sleep(1)
+            sleep_random(1,2)
 
     def get_account_menu(self):
         xpath = get_xpath('button', 'style-scope ytd-topbar-menu-button-renderer', attribute='aria-label', attribute_value='Account menu')
@@ -149,7 +149,7 @@ class YouTubeManager():
             ele = get_element_by_xpath(self.driver, xpath, 'Tải video lên')
         if ele:
             ele.click()
-            sleep(2)
+            sleep_random(2,3)
 
     def click_upload_button(self):
         if self.en_language:
@@ -159,7 +159,7 @@ class YouTubeManager():
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
             ele.click()
-            sleep(0.5)
+            sleep_random(0.5,1)
             self.click_upload_video_button()
 
     def click_upload_button_again(self):
@@ -170,7 +170,7 @@ class YouTubeManager():
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
             ele.click()
-            sleep(0.4)
+            sleep_random(0.5,1)
             self.click_upload_video_button_again()
     
     def click_upload_video_button_again(self):
@@ -181,14 +181,14 @@ class YouTubeManager():
             ele = get_element_by_xpath(self.driver, xpath, 'Tải video lên')
         if ele:
             ele.click()
-            sleep(1)
+            sleep_random(1,2)
     
     def send_video_to_youtube(self, video_path):
         xpath = get_xpath_by_multi_attribute('input', ['type="file"', 'name="Filedata"'])
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
             ele.send_keys(video_path)
-            sleep(4.5)
+            sleep_random(4.5,6.5)
     
     def check_daily_update_limit(self):
         err_xpath = get_xpath('div', 'error-short style-scope ytcp-uploads-dialog')
@@ -212,13 +212,13 @@ class YouTubeManager():
                 press_esc_key(1, self.driver)
                 ele.clear()
                 ele.send_keys(title)
-                sleep(1)
+                sleep_random(1,2)
                 break
             else:
                 cnt += 1
                 if cnt > 5:
                     break
-                sleep(2)
+                sleep_random(2,3)
 
     def input_description(self, description):
         if self.en_language:
@@ -231,10 +231,7 @@ class YouTubeManager():
                 ele.clear()
                 ele.send_keys(description)
             except:
-                print(xpath)
                 getlog()
-                sleep(1000)
-                pass
             press_esc_key(1, self.driver)
 
     def input_thumbnail(self, thumbnail_path):
@@ -242,30 +239,30 @@ class YouTubeManager():
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
             ele.send_keys(thumbnail_path)
-            sleep(1)
+            sleep_random(1,2)
 
     def choose_playlist(self, playlist_name):
         def click_done():
             if self.en_language:
-                xpath = get_xpath('button', 'ytcp-button-shape-impl ytcp-button-shape-impl--tonal ytcp-button-shape-impl--mono ytcp-button-shape-impl--size-m', 'aria-label', 'Done')
+                xpath = get_xpath_by_multi_attribute('button', ['aria-label="Done"'])
             else:
-                xpath = get_xpath('button', 'ytcp-button-shape-impl ytcp-button-shape-impl--tonal ytcp-button-shape-impl--mono ytcp-button-shape-impl--size-m', 'aria-label', 'Xong')
+                xpath = get_xpath_by_multi_attribute('button', ['aria-label="Xong"'])
             ele = get_element_by_xpath(self.driver, xpath)
             if ele:
                 ele.click()
-                sleep(1)
+                sleep_random(1,2)
         try:
             xpath = get_xpath('ytcp-text-dropdown-trigger', 'dropdown style-scope ytcp-video-metadata-playlists')
             dropdown = get_element_by_xpath(self.driver, xpath)
             if dropdown:
                 self.scroll_into_view(dropdown)
                 dropdown.click()
-                sleep(1)
+                sleep_random(1,2)
                 xpath = get_xpath('span', 'checkbox-label style-scope ytcp-checkbox-group')
                 ele = get_element_by_xpath(self.driver, xpath, playlist_name)
                 if ele:
                     ele.click()
-                    sleep(1)
+                    sleep_random(1,2)
                 click_done()
         except:
             print("Chức năng chọn thumbnail chỉ áp dụng cho những tài khoản youtube đã xác minh số điện thoại !!!")
@@ -277,7 +274,7 @@ class YouTubeManager():
         if ele:
             try:
                 ele.click()
-                sleep(0.3)
+                sleep_random(0.5,2)
             except:
                 print(f'Có lỗi trong quá trình đăng video. Có thể tải khoản {self.email} đã đạt giới hạn đăng video trong ngày !!!')
                 self.is_stop_upload = True
@@ -292,11 +289,10 @@ class YouTubeManager():
             if ele:
                 self.scroll_into_view(ele)
                 ele.click()
-                sleep(1)
+                sleep_random(1,2)
                 return True
         except:
             getlog()
-            print("111111111111111111111111111111")
             return False
 
     def click_altered_content(self, no_altered=True):
@@ -309,7 +305,7 @@ class YouTubeManager():
             if ele:
                 self.scroll_into_view(ele)
                 ele.click()
-                sleep(0.5)
+                sleep_random(0.5,2)
         except:
             getlog()
 
@@ -331,22 +327,22 @@ class YouTubeManager():
                     add_end = get_element_by_xpath(main_ele, add_xpath, index=1)
                     if add_end:
                         add_end.click()
-                        sleep(3)
+                        sleep_random(3,4)
                         end_ele = get_element_by_xpath(self.driver, subscribe_xpath, index=0)
                         if end_ele:
                             end_ele.click()
-                            sleep(1)
+                            sleep_random(1,2)
                         try:
                             save_ele = get_element_by_xpath(self.driver, save_xpath, index=1)
                         except:
                             save_ele = get_element_by_xpath(self.driver, save_xpath)
                         if save_ele:
                             save_ele.click()
-                            sleep(3)
+                            sleep_random(3,5)
                 else:
-                    sleep(0.5)
+                    sleep_random(0.5,1)
             except:
-                sleep(0.5)
+                sleep_random(0.5,1)
 
         def add_related_video():
             def click_close():
@@ -354,7 +350,6 @@ class YouTubeManager():
                 ele = get_element_by_xpath(self.driver, xpath)
                 if ele:
                     ele.click()
-                    sleep(2)
             try:
                 main_xpath = get_xpath_by_multi_attribute('div', ['id="upload-container"'])
                 if self.en_language:
@@ -370,15 +365,15 @@ class YouTubeManager():
                         related_ele = get_element_by_xpath(self.driver, related_xpath, index=0, timeout=6)
                         if related_ele:
                             related_ele.click()
-                            sleep(2)
                         else:
                             press_esc_key(2, self.driver)
                             click_close()
                             self.first_upload = True
+                        sleep_random(2,3)
                 else:
                     add_an_end_screen()
             except:
-                sleep(0.5)
+                sleep_random(1,2)
         try:
             if self.en_language:
                 xpath = get_xpath_by_multi_attribute('button', ['aria-label="Next"'])
@@ -388,10 +383,10 @@ class YouTubeManager():
             if next_ele:
                 self.scroll_into_view(next_ele)
                 next_ele.click()
-                sleep(1)
+                sleep_random(1,2)
                 if self.first_upload:
                     add_related_video()
-                    sleep(1)
+                    sleep_random(1,2)
                 try:
                     next_ele.click()
                 except:
@@ -405,9 +400,9 @@ class YouTubeManager():
                             print("Không tìm thấy nút \"Tiếp\" --> Dừng đăng video ...")
                         self.is_stop_upload = True
                         return
-                sleep(1)
+                sleep_random(1,2)
                 next_ele.click()
-                sleep(1)
+                sleep_random(1,2)
             else:
                 if self.en_language:
                     print("Không tìm thấy nút \"Next\" --> Dừng đăng video ...")
@@ -424,7 +419,7 @@ class YouTubeManager():
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
             ele.click()
-            sleep(1)
+            sleep_random(1,2)
 
     def click_public_now(self):
         if self.en_language:
@@ -434,7 +429,7 @@ class YouTubeManager():
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
             ele.click()
-            sleep(5)
+            sleep_random(5,7)
         else:
             print("Không tìm thấy nút xuất bản video !!!")
             self.is_stop_upload = True
@@ -466,9 +461,11 @@ class YouTubeManager():
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
             ele.click()
-            sleep(1)
+            sleep_random(1,2)
+            xpath_today = get_xpath('span', 'calendar-day today  style-scope ytcp-scrollable-calendar style-scope ytcp-scrollable-calendar')
+            today_ele = get_element_by_xpath(self.driver, xpath_today)
             xpath = get_xpath('span', 'calendar-day   style-scope ytcp-scrollable-calendar style-scope ytcp-scrollable-calendar')
-            date_elements = self.driver.find_elements(By.XPATH, xpath)
+            date_elements = ([today_ele] if today_ele else []) + self.driver.find_elements(By.XPATH, xpath)
             j = 0
             for day_ele in date_elements:
                 date = day_ele.text.strip()
@@ -486,46 +483,7 @@ class YouTubeManager():
                 day_ele = kq[0]
                 day_ele.click()
                 print(f"đã chọn ngày {year}-{month}-{date}")
-                sleep(1)
-
-    def click_today(self, click=True):
-        xpath = get_xpath('span', 'calendar-day today  style-scope ytcp-scrollable-calendar style-scope ytcp-scrollable-calendar')
-        ele = get_element_by_xpath(self.driver, xpath)
-        if ele:
-            if click:
-                ele.click()
-            self.is_selected_today = False
-            sleep(0.5)
-        else:
-            xpath = get_xpath('span', 'calendar-day selected today  style-scope ytcp-scrollable-calendar style-scope ytcp-scrollable-calendar')
-            ele = get_element_by_xpath(self.driver, xpath)
-            if ele:
-                if click:
-                    ele.click()
-                self.is_selected_today = True
-                sleep(0.5)
-
-
-    def click_next_month(self):
-        if self.en_language:
-            xpath = get_xpath('ytcp-icon-button', 'style-scope ytcp-date-picker', 'aria-label', 'Next month')
-        else:
-            xpath = get_xpath('ytcp-icon-button', 'style-scope ytcp-date-picker', 'aria-label', 'Tháng sau')
-        ele = get_element_by_xpath(self.driver, xpath)
-        if ele:
-            for i in range(3):
-                ele.click()
-                sleep(1)
-    def click_previous_month(self):
-        if self.en_language:
-            xpath = get_xpath('ytcp-icon-button', 'style-scope ytcp-date-picker', 'aria-label', 'Previous month')
-        else:
-            xpath = get_xpath('ytcp-icon-button', 'style-scope ytcp-date-picker', 'aria-label', 'Tháng trước')
-        ele = get_element_by_xpath(self.driver, xpath)
-        if ele:
-            for i in range(2):
-                ele.click()
-                sleep(1)
+                sleep_random(1,3)
 
     def choose_publish_time(self, publish_time):
         xpath = "//input[starts-with(@aria-labelledby, 'paper-input-label-')]"
@@ -533,7 +491,7 @@ class YouTubeManager():
         if ele:
             ele.clear()
             ele.send_keys(publish_time)
-            sleep(1)
+            sleep_random(1,2)
             
     def click_schedule_now(self):
         if self.en_language:
@@ -543,7 +501,7 @@ class YouTubeManager():
         ele = get_element_by_xpath(self.driver, xpath)
         if ele:
             ele.click()
-            sleep(5)
+            sleep_random(5,7)
 
     def check_status_upload(self):
         xpath = get_xpath('span', 'progress-label style-scope ytcp-video-upload-progress')
@@ -555,7 +513,7 @@ class YouTubeManager():
                 if 'Đã tải được' in status or 'Uploading' in status:
                     sys.stdout.write(f'\r{status}')
                     sys.stdout.flush()
-                    sleep(1)
+                    sleep_random(1,2)
                 else:
                     print("\nĐã tải xong ...")
                     print(status)
@@ -566,7 +524,7 @@ class YouTubeManager():
                 if cnt > 1:
                     self.is_stop_upload = True
                     return False
-                sleep(1)
+                sleep_random(1,2)
 
     def close_driver(self):
         if self.driver:
@@ -578,7 +536,7 @@ class YouTubeManager():
             self.driver.execute_script("arguments[0].scrollIntoView({ behavior: 'smooth', block: 'center' });", element)
         else:
             self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
-        sleep(0.2)
+        sleep_random(0.2,0.3)
 
     def get_elements_by_xpath(self, xpath):
         eles = self.driver.find_elements(By.XPATH, xpath)
@@ -734,7 +692,7 @@ class YouTubeManager():
             except:
                 self.playlist_var.delete(0, ctk.END)
                 self.playlist_var.insert(0, template.get("curent_playlist", ""))
-            self.altered_content_var.set(convert_boolean_to_Yes_No(template.get("altered_content", False)))
+            self.altered_content_var.set(convert_boolean_to_Yes_No(template.get("altered_content", True)))
             self.upload_folder_var.insert(0, template.get("upload_folder", ""))
             self.thumbnail_folder_var.insert(0, template.get("thumbnail_folder", ""))
             self.is_delete_after_upload_var.set(convert_boolean_to_Yes_No(self.acc_config['is_delete_after_upload']))
@@ -861,7 +819,7 @@ class YouTubeManager():
         try:
             def get_studio():
                 self.driver.get('https://studio.youtube.com/')
-                sleep(2)
+                sleep_random(2,3)
                 if self.en_language:
                     ele = get_element_by_text(self.driver, 'Content', 'div')
                 else:
@@ -873,7 +831,7 @@ class YouTubeManager():
                     ele = get_element_by_xpath(self.driver, xpath)
                     if ele:
                         ele.click()
-                sleep(2)
+                sleep_random(2,3)
 
             def click_more_action_and_delete():
                 def click_delete_video():
@@ -884,11 +842,11 @@ class YouTubeManager():
                 if ele:
                     ele.click()
                     click_delete_video()
-                    sleep(0.5)
+                    sleep_random(1,2)
                     press_TAB_key(self.driver)
-                    sleep(1)
+                    sleep_random(1,2)
                     press_ENTER_key(self.driver)
-                    sleep(1)
+                    sleep_random(1,2)
                     press_TAB_key(self.driver, 2)
                     press_ENTER_key(self.driver)
                     sleep(60)
@@ -897,7 +855,7 @@ class YouTubeManager():
                 short_tag = get_element_by_text(self.driver, 'Shorts', tag_name='span')
                 if short_tag:
                     short_tag.click()
-                    sleep(3)
+                    sleep_random(3,4)
 
             def get_all_video_in_one_page():
                 xpath = get_xpath_by_multi_attribute('div', ['id="row-container"'])
@@ -928,14 +886,14 @@ class YouTubeManager():
                             checkbox_element = div_video.find_element(By.XPATH, './/div[contains(@class, "ytcp-checkbox-lit")]')
                             if checkbox_element:
                                 self.scroll_into_view(div_video, center=True)
-                                sleep(0.5)
+                                sleep_random(0.5,1)
                                 checkbox_element.click()
                                 self.cnt_delete_video += 1
                     if self.cnt_delete_video > 0:
                         click_more_action_and_delete()
                     if next_ele:
                         next_ele.click()
-                        sleep(3)
+                        sleep_random(3,4)
                     else:
                         if check_short_video:
                             break
@@ -1035,7 +993,7 @@ class YouTubeManager():
                 print(f'--> Bắt đầu đăng video: {video_file}')
                 if upload_count > 0:
                     self.driver.get("https://www.youtube.com/")
-                    sleep(4)
+                    sleep_random(4,6)
                 self.click_upload_button()
                 self.send_video_to_youtube(video_path)
                 if self.is_stop_upload:
@@ -1238,13 +1196,13 @@ class YouTubeManager():
             t=time()
             if channel_url.endswith('/videos'):
                 print(f"Bắt đầu tìm video dài trong kênh {channel_url} ...")
-                sleep(3)
+                sleep_random(3,4)
                 if not download_folder:
                     self.scroll_page()
                 get_videos(filter_by_views, short=False)
             elif channel_url.endswith('/shorts'):
                 print(f"Bắt đầu tìm video ngắn trong kênh {channel_url} ...")
-                sleep(3)
+                sleep_random(3,4)
                 self.scroll_page()
                 get_videos(filter_by_views, short=True)
             else:
@@ -1299,21 +1257,21 @@ class YouTubeManager():
         last_height = self.driver.execute_script("return document.documentElement.scrollHeight")
         k = 0
         cnt_search = 0
-        sleep(1)
+        sleep_random(1,2)
         while True:
             if self.is_stop_download:
                 self.close_driver()
                 return None
             self.driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-            sleep(2)
+            sleep_random(2,3)
             new_height = self.driver.execute_script("return document.documentElement.scrollHeight")
             if new_height == last_height:
                 if k < 2:
                     k += 1
                     self.driver.execute_script("window.scrollBy(0, -400);")
-                    sleep(0.5)
+                    sleep_random(0.5,0.7)
                     self.driver.execute_script("window.scrollTo(0, document.documentElement.scrollHeight);")
-                    sleep(2)
+                    sleep_random(1.5,2.5)
                 else:
                     break
             else:
