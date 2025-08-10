@@ -6,7 +6,6 @@ command = [
     "--onefile",
     "--add-data", "import/icon.ico;.",
     "--add-data", "import/icon.png;.",
-    "--add-data", "private_key.pem;.",
     "--add-data", "common_function.py;.",
     "--add-data", "facebook.py;.",
     "--add-data", "youtube.py;.",

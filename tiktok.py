@@ -70,7 +70,7 @@ class TikTokManager:
         try:
             if video_number_interact_str:
                 is_interact_only = True
-                self.login(True, driver_type='web')
+                self.login(True)
             else:
                 video_number_interact_str = self.acc_config['video_number_interact_befor_upload']
             if video_number_interact_str == 'không tương tác':
@@ -254,11 +254,8 @@ class TikTokManager:
                 self.close()
 
 
-    def login(self, show=False, driver_type=None):
+    def login(self, show=False):
         try:
-            self.driver_type = self.acc_config.get('driver_type', 'web')
-            if driver_type:
-                self.driver_type = driver_type
             self.is_stop_upload = False
             proxy = self.acc_config["proxy"]
             if self.acc_config['use_profile_type'] == 'Firefox':
@@ -276,43 +273,32 @@ class TikTokManager:
                 self.load_session("https://www.tiktok.com")
                 return True
             else:
-                self.driver = get_driver(show=show, proxy=proxy, mode=self.driver_type, target_email=self.account)
+                self.driver = get_driver(show=show, proxy=proxy, target_email=self.account)
                 if not self.driver:
                     return False
                 self.load_session()
                 self.upload_link = None
-                if self.driver_type == 'web':
-                    if not self.acc_config['first_login']:
-                        sleep_random(6,9)
-                        self.upload_link = self.get_upload_button()
+                if not self.acc_config['first_login']:
+                    sleep_random(6,9)
+                    self.upload_link = self.get_upload_button()
                         
 
                 if not self.upload_link:
                     if not self.input_username_and_pass():
                         return False
-                    if self.driver_type != 'web':
-                        self.check_get_app_button_for_mobi()
-                        return True
                     press_esc_key(2, self.driver)
                     self.upload_link = self.get_upload_button()
 
                 if not self.upload_link:
-                    print(f"{thatbai} {self.account}: Đăng nhập thất bại!!!")
+                    print(f"{thatbai} {self.account}: Đăng nhập thất bại.")
                     return False
+                self.save_session()
                 return True
         except:
             getlog()
             print(f"{thatbai} {self.account} : Lỗi trong quá trình đăng nhập tiktok.")
             return False
 
-    def check_get_app_button_for_mobi(self):
-        try:
-            ele = get_element_by_text(self.driver, 'Not now', 'button')
-            if ele:
-                ele.click()
-                sleep_random(0.5,1.5)
-        except:
-            pass
     def input_username_and_pass(self):
         try:
             email_xpath = '//input[@name="username"]'
@@ -348,9 +334,7 @@ class TikTokManager:
         self.driver.get(url)
         sleep_random(1.5,2)
         try:
-            if self.driver_type != 'web':
-                cookies_info = self.acc_config['mobi_cookies']
-            elif self.acc_config['use_profile_type'] == 'Firefox':
+            if self.acc_config['use_profile_type'] == 'Firefox':
                 cookies_info = self.acc_config['firefox_cookies']
             else:
                 cookies_info = self.acc_config['chrome_cookies']
@@ -367,9 +351,7 @@ class TikTokManager:
         
     def save_session(self):
         try:
-            if self.driver_type != 'web':
-                self.acc_config['mobi_cookies']= self.driver.get_cookies()
-            elif self.acc_config['use_profile_type'] == 'Firefox':
+            if self.acc_config['use_profile_type'] == 'Firefox':
                 self.acc_config['firefox_cookies']= self.driver.get_cookies()
             else:
                 self.acc_config['chrome_cookies']= self.driver.get_cookies()
@@ -404,12 +386,12 @@ class TikTokManager:
             try:
                 time_ele.click()
             except:
-                print(f"{thatbai} {self.account} Ngày giờ đăng không hợp lệ --> Không thể lên lịch quá 10 ngày so với ngày hiện tại !!!")
+                print(f"{thatbai} {self.account} Ngày giờ đăng không hợp lệ --> Không thể lên lịch quá 10 ngày so với ngày hiện tại.")
                 self.is_stop_upload = True
 
     def select_date(self, date_string):
         if is_date_greater_than_current_day(date_str=date_string, day_delta=9):
-            print(f"{thatbai} {self.account} Ngày giờ đăng không hợp lệ --> Không thể lên lịch quá 10 ngày so với ngày hiện tại !!!")
+            print(f"{thatbai} {self.account} Ngày giờ đăng không hợp lệ --> Không thể lên lịch quá 10 ngày so với ngày hiện tại.")
             self.is_stop_upload = True
             return True
         year, month, day = date_string.strip().split("-")
@@ -545,6 +527,7 @@ class TikTokManager:
             if ele:
                 ele.click()
                 ele.clear()
+                sleep_random(0.3,0.6)
                 ele.send_keys(location)
                 sleep_random(2,3)
                 choose_xpath = get_xpath('div', 'Select__itemInner', contain=True)
@@ -781,7 +764,6 @@ class TikTokManager:
         self.use_profile_type_var = self.create_settings_input(text="Sử dụng profile", config_key="use_profile_type", config=self.acc_config, values=['Không dùng', 'Firefox', 'Chrome'], left=left, right=right)
         self.show_browser_var = self.create_settings_input(text="Hiển thị trình duyệt", config_key="show_browser", config=self.commond_config, values=['Yes', 'No'], left=left, right=right)
         self.show_browser_var.set('Yes')
-        self.driver_type_var = self.create_settings_input(text="Hiển thị dạng", config_key="driver_type", config=self.acc_config, values=['web', 'mobi'], left=left, right=right)
         self.proxy_var = create_frame_label_and_input(self.root,text="Proxy", width=self.width, left=left, right=right)
         if 'proxy' not in self.acc_config:
             self.acc_config['proxy'] = ""
@@ -835,7 +817,6 @@ class TikTokManager:
             self.acc_config["proxy"] = self.proxy_var.get().strip()
             self.commond_config["show_browser"] = self.show_browser_var.get() == 'Yes'
             self.commond_config["is_delete_after_upload"] = self.is_delete_after_upload_var.get() == 'Yes'
-            self.acc_config["driver_type"] = self.driver_type_var.get().strip()
             self.acc_config["number_of_days"] = self.number_of_days_var.get().strip()
             self.acc_config["day_gap"] = self.day_gap_var.get().strip()
             self.acc_config["video_number_interact_befor_upload"] = self.video_number_interact_var.get().strip()
@@ -934,11 +915,10 @@ class TikTokManager:
                         return False, False
                     self.acc_config['first_login'] = False
                     self.acc_config['waiting_verify'] = "0"
-                    if self.driver_type == 'web':
-                        if self.acc_config['use_profile_type'] == 'Chrome':
-                            self.driver.get(trang_chu_tiktok)
-                            sleep_random(3,4)
-                        self.interact_with_tiktok()
+                    # if self.acc_config['use_profile_type'] == 'Chrome':
+                    #     self.driver.get(trang_chu_tiktok)
+                    #     sleep_random(3,4)
+                    # self.interact_with_tiktok()
                 self.driver.get("https://www.tiktok.com/tiktokstudio/upload")
                 sleep_random(3,4)
                 if upload_count == 0:
@@ -1019,7 +999,7 @@ class TikTokManager:
                             print(f'{thatbai} {self.account}: video {video_path} có thể đã vi phạm chính sách tiltok, hãy kiểm tra lại...')
                             continue
                     else:
-                        print(f"{thatbai} {self.account} Không thể kiểm tra tiến trình đăng video --> Dừng đăng video !!!")
+                        print(f"{thatbai} {self.account} Không thể kiểm tra tiến trình đăng video --> Dừng đăng video.")
                         break
                     
                     upload_count += 1
@@ -1060,10 +1040,10 @@ class TikTokManager:
                 try:
                     self.download_folder = self.download_folder_var.get()
                     if not self.download_folder:
-                        notification(self.root, "Vui lòng chọn thư mục chứa video tải về !!!")
+                        print(f"{thatbai} Vui lòng chọn thư mục chứa video tải về.")
                         return False
                     if not os.path.exists(self.download_folder):
-                        notification(self.root, f"Thư mục {self.download_folder} không tồn tại, hãy chọn lại !!!")
+                        print(f"Thư mục {self.download_folder} không tồn tại, hãy chọn lại.")
                         return False
                     self.commond_config['download_folder'] = self.download_folder
                     self.commond_config['show_browser'] = self.show_browser_var.get() == "Yes"
@@ -1097,7 +1077,7 @@ class TikTokManager:
     def get_tiktok_videos_by_channel_url(self):
         url = self.commond_config['download_url']
         if not url:
-            print(f"{thatbai} {self.account} Hãy nhập link tải video !!!")
+            print(f"{thatbai} {self.account} Hãy nhập link tải video.")
             return
         view_cnt = self.commond_config['filter_by_views'] or "0"
         if 'quantity_download' not in self.commond_config:
@@ -1115,11 +1095,12 @@ class TikTokManager:
             return
             
         try:
-            self.driver = get_driver(show=self.commond_config['show_browser'])
+            self.driver = get_driver(target_email=self.account, show=self.commond_config['show_browser'])
             if not self.driver:
                 return
             sleep_random(1,2)
-            self.load_session()
+            # if not self.login(True):
+            #     return
             self.driver.get(url)
             sleep_random(4,5)
             press_esc_key(1, self.driver)
@@ -1203,9 +1184,10 @@ class TikTokManager:
             if len(video_urls) > 0:
                 print(f"--> Tổng số video tìm được là {len(video_urls)}")
             else:
-                print(f'Không tìm thấy video nào phù hợp!!!')
+                print(f'{thatbai} Không tìm thấy video nào phù hợp.')
                 return
             download_folder = self.commond_config['download_folder']
+            err_links = []
             for url in video_urls.copy():
                 try:
                     if self.is_stop_download:
@@ -1213,25 +1195,29 @@ class TikTokManager:
                     print(f'--> Bắt đầu tải video: {url}')
                     if download_video_by_url(url, download_folder=download_folder):
                         print(f"--> Tải thành công video: {url}")
+                        
                         cnt_download += 1
                         video_urls.remove(url)
                         if url not in self.download_info['downloaded_urls']:
                             self.download_info['downloaded_urls'].append(url)
                         save_download_info(self.download_info)
                     else:
-                        print(f"!!! Tải không thành công video {url} !!!")
+                        print(f"{thatbai} Tải không thành công video: {url}")
+                        if url not in err_links:
+                            err_links.append(url)
                     if cnt_download > quantity_download:
                         break
                 except:
                     getlog()
-                    print(f"Tải không thành công {url}")
-            if cnt_download > 0:
+                    if url not in err_links:
+                        err_links.append(url)
+            if len(err_links) > 0:
+                download_video_by_bravedown(err_links, download_folder)
+            elif cnt_download > 0:
                 notification(self.root, f"Đã tải thành công {cnt_download} video.")
-            else:
-                download_video_by_bravedown(video_urls, download_folder)
         except:
             getlog()
-            notification(self.root, f"{thatbai} {self.account}  Gặp lỗi trong quá trình tìm quét video --> có thể tiktok yêu cầu xác minh capcha !!!")
+            notification(self.root, f"{thatbai} {self.account}  Gặp lỗi trong quá trình tìm quét video --> có thể tiktok yêu cầu xác minh capcha.")
 
     def close(self):
         if self.driver:

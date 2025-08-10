@@ -13,7 +13,7 @@ class MainApp:
             serial = serial.strip()
             is_ok = True
             if serial in ban_serials:
-                print("bạn không thể dùng ứng dụng !!!")
+                print(f"{thatbai} bạn không thể dùng ứng dụng.")
                 return
             if serial not in serials.keys():
                 if serial in already_serial:
@@ -117,32 +117,6 @@ class MainApp:
             getlog()
 
 #------------------------------------------------main thread----------------------------------------------------
-    def start_main_check_thread(self):
-            if self.is_start_app:
-                self.config['time_check_auto_upload'] = "0"
-                self.config['time_check_status_video'] = "0"
-                self.save_config()
-            self.thread_main = threading.Thread(target=self.main_check_thread)
-            self.thread_main.daemon = True
-            self.thread_main.start()
-
-    def main_check_thread(self):
-        while True:
-            try:
-                if not self.upload_thread.is_alive() and not self.download_thread.is_alive() and not self.edit_thread.is_alive():
-                    self.auto_check_status_video_youtube()
-                    self.auto_upload_youtube()
-                    self.auto_upload_facebook()
-                    self.auto_upload_tiktok()
-                sleep(30)
-            except:
-                getlog()
-                sleep(500)
-
-    def check_status_process(self):
-        status = False
-        if self.upload_thread.is_alive() or self.download_thread.is_alive() or self.edit_thread.is_alive():
-            return True
 
     def auto_upload_youtube(self):
         try:
@@ -163,37 +137,37 @@ class MainApp:
                     self.youtube.schedule_videos_by_selenium()
                 except:
                     getlog()
-                    print(f"Có lỗi trong quá trình đăng video tự động cho kênh {channel_name} !!!")
+                    print(f"{thatbai} Có lỗi trong quá trình đăng video tự động cho kênh: {channel_name}")
                 sleep(2)
 
         except:
             getlog()
 
-    def auto_check_status_video_youtube(self):
-        print(f'Đang tạm dừng...')
-        return
-        try:
-            time_check_cycle = get_time_check_cycle(self.config['time_check_status_video'])
-            if time_check_cycle == 0:
-                return
-            if (self.first_check_status_video and time_check_cycle > 0) or (time() - self.pre_time_check_status_video_youtube >= time_check_cycle):
-                self.pre_time_check_status_video_youtube = time()
-                auto_channel_name = []
-                for channel_name in auto_channel_name:
-                    try:
-                        time_check_cycle = get_time_check_cycle(self.config['time_check_status_video'])
-                        if time_check_cycle == 0:
-                            return
-                        print(f"đang thực hiện kiểm tra tình trạng video cho kênh {channel_name} ...")
-                        auto_youtube= YouTubeManager(channel_name, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
-                        auto_youtube.check_status_videos_by_selenium()
-                    except:
-                        getlog()
-                        print(f"Có lỗi trong quá trình đăng video tự động cho kênh {channel_name} !!!")
-                    sleep(2)
-                self.first_check_status_video = False
-        except:
-            getlog()
+    # def auto_check_status_video_youtube(self):
+    #     print(f'Đang tạm dừng...')
+    #     return
+    #     try:
+    #         time_check_cycle = get_time_check_cycle(self.config['time_check_status_video'])
+    #         if time_check_cycle == 0:
+    #             return
+    #         if (self.first_check_status_video and time_check_cycle > 0) or (time() - self.pre_time_check_status_video_youtube >= time_check_cycle):
+    #             self.pre_time_check_status_video_youtube = time()
+    #             auto_channel_name = []
+    #             for channel_name in auto_channel_name:
+    #                 try:
+    #                     time_check_cycle = get_time_check_cycle(self.config['time_check_status_video'])
+    #                     if time_check_cycle == 0:
+    #                         return
+    #                     print(f"đang thực hiện kiểm tra tình trạng video cho kênh {channel_name} ...")
+    #                     auto_youtube= YouTubeManager(channel_name, is_auto_upload=True, upload_thread=self.upload_thread, download_thread=self.download_thread)
+    #                     auto_youtube.check_status_videos_by_selenium()
+    #                 except:
+    #                     getlog()
+    #                     print(f"Có lỗi trong quá trình đăng video tự động cho kênh {channel_name} !!!")
+    #                 sleep(2)
+    #             self.first_check_status_video = False
+    #     except:
+    #         getlog()
 
     def auto_upload_facebook(self):
         try:
@@ -220,7 +194,7 @@ class MainApp:
                             auto_facebook.upload_video()
                         except:
                             getlog()
-                            print(f"Có lỗi trong quá trình đăng video tự động cho trang {page_name} !!!")
+                            print(f"{thatbai} Có lỗi trong quá trình đăng video tự động cho trang: {page_name}")
                         sleep(2)
                     self.first_check_upload_video_facebook = False
         except:
@@ -286,44 +260,56 @@ class MainApp:
             account_queue.task_done()  # Đánh dấu tài khoản đã được xử lý
 
     def check_new_video_and_download_from_channels(self):
-        driver = get_chrome_driver_with_profile()
+        # driver = get_chrome_driver_with_profile()
+        driver = get_driver()
         accs = self.tiktok_config['registered_account']
         download_info = load_download_info()
         
         for acc in accs:
             acc_config = load_tiktok_config(acc)
-            youtube_edit_video_info = acc_config['youtube_edit_video_info'] or {}
-            check_youtube_channels = youtube_edit_video_info.keys() if youtube_edit_video_info else []
-            for check_youtube_channel in check_youtube_channels:
-                check_youtube_channel_edit_info = youtube_edit_video_info[check_youtube_channel] or None
-                if not check_youtube_channel_edit_info:
-                    print(f'{thatbai} {check_youtube_channel}: Không tìm thấy thông tin chỉnh sửa video.')
-                    continue
-                
+            follow_channels = acc_config['follow_channels'].keys() or []
+            if not follow_channels:
+                print(f"{canhbao} Chưa thiết lập kênh theo dõi cho tài khoản {acc}")
+                continue
+            upload_folder = acc_config['upload_folder']
+            if not upload_folder:
+                print(f"{canhbao} Chưa thiết lập thư mục chứa video đăng cho tài khoản {acc}")
+                continue
+            download_folder = os.path.join(upload_folder, 'auto_download')
+            os.makedirs(download_folder, exist_ok=True)
+
+            for follow_channel in follow_channels:
+                not_yet_downloads = []
                 video_urls = []
-                driver.get(check_youtube_channel)
+                driver.get(follow_channel)
                 sleep_random(3,4)
-                xpath = get_xpath_by_multi_attribute('div', ['id="content"'])
-                div_contents = get_element_by_xpath(self.driver, xpath, multiple_ele=True) or []
-                for div_content in div_contents:
-                    if check_youtube_channel.endswith('/shorts'):
-                        link_video = get_element_by_xpath(div_content, './/a[contains(@href, "/shorts")]')
-                    else:
-                        link_video = get_element_by_xpath(div_content, './/a[contains(@href, "/watch?")]')
-                    if link_video:
-                        url = link_video.get_attribute('href')
-                        if url and url not in video_urls and url not in download_info['downloaded_urls']:
-                            video_urls.append(url)
+                if 'youtube' in follow_channel:
+                    xpath = get_xpath_by_multi_attribute('div', ['id="content"'])
+                    div_contents = get_element_by_xpath(self.driver, xpath, multiple_ele=True) or []
+                    for div_content in div_contents:
+                        if follow_channel.endswith('/shorts'):
+                            link_video = get_element_by_xpath(div_content, './/a[contains(@href, "/shorts")]')
+                        else:
+                            link_video = get_element_by_xpath(div_content, './/a[contains(@href, "/watch?")]')
+                        if link_video:
+                            url = link_video.get_attribute('href')
+                            if url and url not in video_urls and url not in download_info['downloaded_urls']:
+                                video_urls.append(url)
             
-                for video_url in video_urls:
-                    upload_folder = acc_config['upload_folder']
-                    download_folder = os.path.join(upload_folder, 'auto_download')
-                    os.makedirs(download_folder, exist_ok=True)
-                    download_video_by_url(video_url, download_folder=download_folder)
-                video_files = get_file_in_folder_by_type(download_folder, '.mp4', noti=False) or []
-                for video_file in video_files:
-                    video_path = os.path.join(download_folder, video_file)
-                    self.fast_edit_video(video_path, upload_folder, channel_edit_info=check_youtube_channel_edit_info)
+                    for video_url in video_urls:
+                        if not download_video_by_url(video_url, download_folder=download_folder):
+                            not_yet_downloads.append(video_url)
+                    if len(not_yet_download) > 0:
+                        for not_yet_download in not_yet_downloads:
+                            download_video_by_bravedown(not_yet_download, download_folder=download_folder)
+                    video_files = get_file_in_folder_by_type(download_folder, '.mp4', noti=False) or []
+                    if not video_files:
+                        print(f"{thatbai} {acc} Tải video từ kênh {follow_channel} thất bại.")
+                        continue
+                    youtube_edit_video_info = acc_config['youtube_edit_video_info']
+                    for video_file in video_files:
+                        video_path = os.path.join(download_folder, video_file)
+                        self.fast_edit_video(video_path, upload_folder, channel_edit_info=youtube_edit_video_info)
 
                     
 #-------------------------------------------Điều hướng window--------------------------------------------
@@ -387,11 +373,11 @@ class MainApp:
                     return
                 download_url = self.download_video_from_url_var.get().strip()
                 if not download_url:
-                    print("Hãy nhập link tải video !!!")
+                    print(f"{thatbai} Hãy nhập link tải video.")
                     return
                 download_from, web = get_download_flatform(download_url)
                 if download_from not in download_platform:
-                    print(f"Chưa hỗ trợ nền tảng {download_from} !!!")
+                    print(f"{thatbai} Chưa hỗ trợ nền tảng {download_from}.")
                     return
                 filter_by_views = self.filter_by_views_var.get().strip() or "0"
                 quantity_download = self.quantity_download_var.get().strip() or "2000"
@@ -436,9 +422,9 @@ class MainApp:
                     self.download_thread = threading.Thread(target=facebook.download_page_videos_now)
                     self.download_thread.start()
                 else:
-                    print("Nơi tải video không phù hợp !!!")
+                    print(f"{thatbai} Nơi tải video không phù hợp.")
             else:
-                print("Hãy đảm bảo các tiến trình tải, edit và đăng video đã dừng !!!")
+                print(f"{thatbai} Hãy đảm bảo các tiến trình tải, edit và đăng video đã dừng.")
                 return
             upload_folder = download_folder
             if is_edit_video:
@@ -569,7 +555,7 @@ class MainApp:
                 self.upload_thread.start()
         except:
             getlog()
-            print("Có lỗi trong quá trình tự động tải - chỉnh sửa - đăng video !!!")
+            print(f"{thatbai} Có lỗi trong quá trình tự động tải - chỉnh sửa - đăng video.")
 
     def open_other_download_video_window(self):
         def start_download_by_video_url():
@@ -776,7 +762,7 @@ class MainApp:
                             video_urls.remove(url)
                             cnt_download += 1
                         else:
-                            print(f"Tải video không thành công: {url}!!!")
+                            print(f"{thatbai} Tải video không thành công: {url}")
                     if cnt_download > 0:
                         print(f'Đã tải thành công {cnt_download} video')
                     else:
@@ -784,7 +770,7 @@ class MainApp:
                         if len(video_urls) > 0:
                             download_video_by_bravedown(video_urls, self.config['download_folder'])
                 else:
-                    print("Không tìm thấy video phù hợp !!!")
+                    print(f"{thatbai} Không tìm thấy video phù hợp.")
             except:
                 print("Có lỗi trong quá trình tải video từ douyin")
             finally:
@@ -831,7 +817,7 @@ class MainApp:
             data['password'] = self.pass_mac_var.get().strip()
             data['new_mac_address'] = self.new_mac_address_var.get().strip()
             if not data['old_mac_address'] or not data['password'] or not data['new_mac_address']:
-                print("Hãy nhập đầy đủ thông tin !!!")
+                print(f"{thatbai} Hãy nhập đầy đủ thông tin.")
                 return
             response = requests.post(CHANGE_MAC_URL, json=data)
             print(response)
@@ -877,7 +863,7 @@ class MainApp:
                 else:
                     self.noti(f"Kênh {channel_name} không tồn tại trong cơ sở dữ liệu")
             except:
-                self.noti(f"Xóa kênh [{channel_name}] thất bại !!!")
+                self.noti(f"{thatbai} Xóa kênh [{channel_name}] thất bại.")
             
         self.reset()
         self.is_remove_channel = True
@@ -892,7 +878,7 @@ class MainApp:
         self.is_add_new_channel = True
         self.setting_window_size()
         self.show_window()
-        self.input_email = self.create_settings_input(text="Tài khoản gmail", values=self.youtube_config['registered_account'], left=left, right=right)
+        self.input_email = self.create_settings_input(text="Tài khoản gmail", values=self.youtube_config['registered_emails'], left=left, right=right)
         self.input_current_channel_name = create_frame_label_and_input(self.root, text="Nhập tên kênh")
         create_button(frame=self.root, text="Đăng ký ngay", command=self.sign_up_youtube_channel)
         create_button(self.root, text="Lùi lại", command=self.open_youtube_window, width=self.width)
@@ -911,6 +897,8 @@ class MainApp:
         acc_config['email'] = email
         if channel_name not in self.youtube_config['registered_account']:
             self.youtube_config['registered_account'].append(channel_name)
+        if email not in self.youtube_config['registered_emails']:
+            self.youtube_config['registered_emails'].append(email)
         self.config['current_channel'] = channel_name
         save_youtube_config(channel_name, acc_config)
         save_youtube_config(data=self.youtube_config)
@@ -1062,7 +1050,7 @@ class MainApp:
                 self.remove_tiktok_channel_window()
 
             except:
-                self.noti(f"Xóa kênh [{other_name}] thất bại !!!")
+                self.noti(f"{thatbai} Xóa kênh [{other_name}] thất bại.")
         self.reset()
         self.is_remove_channel = True
         self.setting_window_size()
@@ -1229,7 +1217,7 @@ class MainApp:
                 else:
                     self.noti(f"Trang {page_name} không tồn tại trong cơ sở dữ liệu")
             except:
-                self.noti(f"Xóa trang [{page_name}] thất bại !!!")
+                self.noti(f"{thatbai} Xóa trang [{page_name}] thất bại.")
             
         self.reset()
         self.is_remove_channel = True
@@ -1361,12 +1349,12 @@ class MainApp:
             video_get_audio_path = self.video_get_audio_path.get()
             video_folder = self.folder_get_audio_var.get()
             if not video_get_audio_url and not os.path.exists(audio_edit_path) and not os.path.exists(video_get_audio_path) and not os.path.exists(video_folder):
-                self.noti("Hãy chọn 1 nguồn lấy audio !!!")
+                self.noti(f"{thatbai} Hãy chọn 1 nguồn lấy audio.")
                 return
             segment_audio = self.segment_audio_var.get().strip()
             extract_audio_ffmpeg(audio_path=audio_edit_path, video_path=video_get_audio_path, video_url=video_get_audio_url, video_folder=video_folder, segments=segment_audio, download_folder=download_folder)
         except:
-            print("Có lỗi trong quá trình trích xuất audio !!!")
+            print(f"{thatbai} Có lỗi trong quá trình trích xuất audio.")
 
 #-------------------------------------------edit video-----------------------------------------------------
     def open_edit_video_menu(self):
@@ -1529,7 +1517,7 @@ class MainApp:
             is_ok, message = merge_audio_use_ffmpeg(videos_folder, file_name, fast_combine=fast_combine)
             self.noti(message)
         except:
-            print(f"Có lỗi trong quá trình gộp audio !!!")
+            print(f"{thatbai} Có lỗi trong quá trình gộp audio.")
 
     def combine_video_by_moviepy(self):
         videos_folder = self.videos_edit_folder_var.get()
@@ -1726,7 +1714,7 @@ class MainApp:
             video_path = f'{videos_folder}\\{video_file}'
             output_video_path = self.fast_edit_video(video_path)
             if not output_video_path:
-                print(f'{thatbai} Chỉnh sửa video {video_file} thất bại!!!')
+                print(f'{thatbai} Chỉnh sửa video {video_file} thất bại.')
                 continue
             if self.config['edit_level_2']:
                 edit_video_level_2(output_video_path, self.config['top_text'], self.config['bot_text'])
@@ -1906,7 +1894,7 @@ class MainApp:
             left_black_bar = f"drawbox=x=0:y=0:w={left_overlay}:h=ih:color={color_left_right}@{transparent_l_r}:t=fill"
             right_black_bar = f"drawbox=x=iw-{right_overlay}:y=0:w={right_overlay}:h=ih:color={color_left_right}@{transparent_l_r}:t=fill"
 
-            zoom_filter = f"scale=iw*{zoom_size*1.04}:ih*{zoom_size*0.96},crop={int(video_width*0.998)}:{int(video_height*0.999)}:{zoom_x}:{zoom_y}{flip_filter}"
+            zoom_filter = f"scale=iw*{zoom_size*1.04}:ih*{zoom_size*1.01},crop={int(video_width*0.998)}:{int(video_height*0.999)}:{zoom_x}:{zoom_y}{flip_filter}"
 
             if watermark:
                 try:
@@ -1969,7 +1957,7 @@ class MainApp:
             command.append(output_file)
             if not run_command_with_progress(command, duration):
                 if not run_command_ffmpeg(command):
-                    print(f"Video lỗi !!!")
+                    print(f"{thatbai} Video lỗi.")
                     return None
 
             if upload_folder:

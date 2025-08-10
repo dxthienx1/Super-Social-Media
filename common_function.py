@@ -46,11 +46,11 @@ import zipfile
 from imageio import imwrite
 import cv2
 import numpy as np
+from noise import pnoise2
+import copy
 
 serials = {
-    '0025_38B2_21C3_22BE.YX04C6LZ':"2025-04-08", #thai
-    "0026_B768_407B_68E5.BSS-0123456789":"2025-03-25", #ban thai 1
-    "0000_0000_0000_0001_00A0_7519_257D_4E36.L415NRCV003LRHMB":"2025-03-25", #ban thai 2
+    '0025_38B2_21C3_22BE.Default string':"2025-08-01", #thai
     "gggg":"2025-01-28",
     "gggg":"2025-01-28",
     "gggg":"2025-01-28",
@@ -92,6 +92,8 @@ already_serial = [
     '0025_38B2_21C3_22BE.YX04C6LZ',
     'AA000000000000006941Default string',
     '51A907031FEB00027947/7NJBQ72/CN1296364E00F2/',
+    '0026_B768_407B_68E5.BSS-0123456789',
+    '0000_0000_0000_0001_00A0_7519_257D_4E36.L415NRCV003LRHMB',
     'gggg',
     'gggg',
     'gggg'
@@ -199,6 +201,7 @@ comment_icon = "💬"
 like_icon = "❤️"
 thatbai = "❌"
 canhbao = "⚠️"
+stop = "🛑"
 trang_chu_tiktok = "https://www.tiktok.com"
 upload_tiktok_url = "https://www.tiktok.com/tiktokstudio/upload"
 
@@ -236,27 +239,18 @@ def add_firefox_to_path():
         result = subprocess.run(["where", "firefox"], capture_output=True, text=True, shell=True)
         if result.returncode == 0:
             return
-
-        print("⚠️ Firefox chưa có trong PATH. Đang tìm thư mục Firefox...")
-
         # Danh sách các thư mục có thể chứa Firefox
         possible_paths = [
             r"C:\Program Files\Mozilla Firefox",
             r"C:\Program Files (x86)\Mozilla Firefox"
         ]
-
         firefox_path = None
         for path in possible_paths:
             if os.path.exists(os.path.join(path, "firefox.exe")):
                 firefox_path = path
                 break
-        
         if not firefox_path:
-            print("❌ Không tìm thấy Firefox trên máy.")
             return
-        
-        print(f"🔍 Tìm thấy Firefox tại: {firefox_path}")
-
         # Thêm vào PATH tạm thời
         os.environ["PATH"] += os.pathsep + firefox_path
 
@@ -267,8 +261,6 @@ def add_firefox_to_path():
         if firefox_path not in path_value:
             new_path = path_value + os.pathsep + firefox_path
             winreg.SetValueEx(key, "Path", 0, winreg.REG_EXPAND_SZ, new_path)
-            print("✅ Đã thêm Firefox vào PATH vĩnh viễn. Vui lòng khởi động lại terminal để áp dụng.")
-
         winreg.CloseKey(key)
 
     except Exception as e:
@@ -364,13 +356,183 @@ def save_download_info(data):
 #         return None
 
 
-foxyproxy_path = os.path.join(current_dir, 'foxyproxy.xpi')
+
+
+# def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, email=None, password=None):
+#     foxyproxy_path = os.path.join(current_dir, 'foxyproxy.xpi')
+#     """Mở Firefox với profile cụ thể"""
+    
+#     def get_firefox_profile_folder():
+#         """Xác định thư mục profile của Firefox theo hệ điều hành"""
+#         if platform.system() == "Windows":
+#             return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
+#         else:
+#             raise Exception("Hệ điều hành không được hỗ trợ.")
+
+#     def get_profile_name_by_gmail():
+#         try:
+#             if not target_email:
+#                 return None, False
+#             profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
+#             for profile in profiles:
+#                 if f".{target_email}.default" in profile:
+#                     print(profile)
+#                     return profile, False
+#             print(f'{canhbao}  Không tìm thấy profile cho email {target_email}. Đang tạo mới...')
+#             profile_name_temp = f"{target_email}.default"
+#             subprocess.run(["firefox", "-CreateProfile", profile_name_temp], check=True)
+#             sleep(5)
+#             proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+#             if proxy_ip and proxy_port:
+#                 profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
+#                 for profile_name in profiles:
+#                     if f".{profile_name_temp}" in profile_name:
+#                         print(profile_name)
+#                         profile_path = os.path.join(firefox_profile_folder, profile_name)
+#                         if not os.path.exists(profile_path):
+#                             print(f"❌ Không tìm thấy profile tại: {profile_path}")
+#                             return None, False
+                    
+#                         options = Options()
+#                         options.add_argument(f"--profile")
+#                         options.add_argument(profile_path)
+#                         options.add_argument("--no-remote")
+#                         options.add_argument("--disable-dev-shm-usage")
+                
+#                         if not show:
+#                             options.add_argument("--headless")  
+#                         # ⚡ Chống phát hiện bot trên Firefox
+#                         options.set_preference("dom.webdriver.enabled", False)  # Ẩn WebDriver
+#                         options.set_preference("useAutomationExtension", False)
+#                         options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
+#                         options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
+
+#                         options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0")
+#                         options.set_preference("intl.accept_languages", "en-US, en")
+#                         options.set_preference("permissions.default.image", 2)
+#                         service = Service(geckodriver_path)
+#                         driver = webdriver.Firefox(service=service, options=options)
+#                         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+#                         driver.install_addon(foxyproxy_path, temporary=False)
+#                         sleep_random(4,6)
+#                         driver.get("about:addons")
+#                         sleep_random(2,4)
+#                         Extensions_ele = get_element_by_text(driver, 'Extensions', 'span')
+#                         if Extensions_ele:
+#                             Extensions_ele.click()
+#                             sleep(1)
+#                         foxyproxy_element = driver.find_element(By.CSS_SELECTOR, '[aria-labelledby*="foxyproxy"]')
+#                         if foxyproxy_element:
+#                             btn_more_xpath = get_xpath_by_multi_attribute('button', ['action="more-options"'])
+#                             foxyproxy_opt = foxyproxy_element.find_element(By.XPATH, btn_more_xpath)
+#                             if foxyproxy_opt:
+#                                 foxyproxy_opt.click()
+#                                 sleep(1)
+#                                 press_ARROW_DOWN_key(driver, 2)
+#                                 press_ENTER_key(driver, 1)
+#                                 driver.switch_to.window(driver.window_handles[-1])
+#                                 sleep(2)
+#                                 proxies_ele = get_element_by_text(driver, 'Proxies', 'label')
+#                                 if proxies_ele:
+#                                     proxies_ele.click()
+#                                     sleep(1)
+#                                     add_xpath = get_xpath_by_multi_attribute('button', ['data-i18n="add"'])
+#                                     add_ele = get_element_by_xpath(driver, add_xpath)
+#                                     if add_ele:
+#                                         try:
+#                                             add_ele.click()
+#                                         except:
+#                                             press_TAB_key(driver, 1)
+#                                             press_ENTER_key(driver, 1)
+#                                         sleep(1)
+#                                         host_xpath = get_xpath_by_multi_attribute('input', ['data-id="hostname"'])
+#                                         port_xpath = get_xpath_by_multi_attribute('input', ['data-id="port"'])
+#                                         host_ele = get_element_by_xpath(driver, host_xpath)
+#                                         if host_ele:
+#                                             host_ele.send_keys(proxy_ip)
+#                                             sleep(1)
+#                                         port_ele = get_element_by_xpath(driver, port_xpath)
+#                                         if port_ele:
+#                                             port_ele.send_keys(proxy_port)
+#                                             sleep(1)
+#                                         if proxy_user and proxy_pass:
+#                                             username_xpath = get_xpath_by_multi_attribute('input', ['data-id="username"'])
+#                                             password_xpath = get_xpath_by_multi_attribute('input', ['data-id="password"'])
+#                                             username_ele = get_element_by_xpath(driver, username_xpath)
+#                                             if username_ele:
+#                                                 username_ele.send_keys(proxy_user)
+#                                                 sleep(1)
+#                                             password_ele = get_element_by_xpath(driver, password_xpath)
+#                                             if password_ele:
+#                                                 password_ele.send_keys(proxy_pass)
+#                                                 sleep(1)
+#                                         press_TAB_key(driver, 10)
+#                                         press_ENTER_key(driver, 1)
+#                                         sleep_random(3,5)
+#                         driver.quit()
+#                         sleep(2)
+#                         subprocess.run(["firefox", "-P", profile_name_temp], check=True)
+#                         print(f'--> Login tài khoản tiktok/yuoutube/facebook vào profile.')
+#                         if email and password:
+#                             print(f'email: {email}')
+#                             print(f'password: {password}')
+#             return None, False
+#         except:
+#             getlog()
+#             return None, False
+
+#     try:
+#         target_email = target_email.replace(' ', '')
+#         firefox_profile_folder = get_firefox_profile_folder()
+#         profile_name, is_create = get_profile_name_by_gmail()
+#         if not profile_name:
+#             return None
+#         profile_path = os.path.join(firefox_profile_folder, profile_name)
+#         if not os.path.exists(profile_path):
+#             print(f"❌ Không tìm thấy profile tại: {profile_path}")
+#             return None
+        
+#         options = Options()
+#         options.add_argument(f"--profile")
+#         options.add_argument(profile_path)
+#         options.add_argument("--no-remote")
+   
+#         if not show:
+#             options.add_argument("--headless")  
+#         # ⚡ Chống phát hiện bot trên Firefox
+#         options.set_preference("dom.webdriver.enabled", False)  # Ẩn WebDriver
+#         options.set_preference("useAutomationExtension", False)
+#         options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
+#         options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
+
+#         service = Service(geckodriver_path)
+#         driver = webdriver.Firefox(service=service, options=options)
+#         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+#         sleep_random(2,4)
+
+#         proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+#         browser_ip = get_browser_ip(driver)
+#         if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
+#             if target_email:
+#                 print(f"❌ {target_email} Đổi IP không thành công!")
+#             driver.quit()
+#             return None
+#         else:
+#             print(f"{tot} {target_email} IP đang dùng: {browser_ip}")
+
+#         print(f"✅ {target_email} Đã mở Firefox với profile: {profile_path}")
+#         return driver
+#     except Exception as e:
+#         getlog()
+#         return None
+
 
 def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, email=None, password=None):
+    foxyproxy_path = os.path.join(current_dir, 'proxy_extensions', 'foxyproxy.xpi')
+    extension_1 = os.path.join(current_dir, 'stealth.xpi')
     """Mở Firefox với profile cụ thể"""
-    
+
     def get_firefox_profile_folder():
-        """Xác định thư mục profile của Firefox theo hệ điều hành"""
         if platform.system() == "Windows":
             return os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox", "Profiles")
         else:
@@ -391,18 +553,6 @@ def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, em
             sleep(5)
             proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
             if proxy_ip and proxy_port:
-            #     print(f'Hãy thiết lập proxy và login tài khoản trước khi dùng ứng dụng. Các bước thực hiện:')
-            #     print(f"-Mở đường dẫn: about:preferences")
-            #     print(f"-Tìm proxy và mở lên.")
-            #     print(f"-Chọn Manual proxy configuration")
-            #     print(f"-Nhập proxy IP: {proxy_ip}")
-            #     print(f"-Nhập proxy port: {proxy_port}")
-            #     print("Lưu lại và truy cập trang web.")
-            #     if proxy_user and proxy_pass:
-            #         print(f"Nhập user: {proxy_user}")
-            #         print(f"Nhập pass: {proxy_pass}")
-            #         print("Lưu lại (Nếu không hiện cửa sổ lưu thì vào setting --> vào <Privacy & Security> --> bật <Ask to save passwords>)")
-            #     print("Lưu lại và truy cập trang web --> Nhập user và pass proxy nếu có --> lưu user và pass")
                 profiles = [name for name in os.listdir(firefox_profile_folder) if os.path.isdir(os.path.join(firefox_profile_folder, name))]
                 for profile_name in profiles:
                     if f".{profile_name_temp}" in profile_name:
@@ -411,93 +561,56 @@ def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, em
                         if not os.path.exists(profile_path):
                             print(f"❌ Không tìm thấy profile tại: {profile_path}")
                             return None, False
-                    
+
                         options = Options()
                         options.add_argument(f"--profile")
                         options.add_argument(profile_path)
                         options.add_argument("--no-remote")
                         options.add_argument("--disable-dev-shm-usage")
-                
-                        if not show:
-                            options.add_argument("--headless")  
-                        # ⚡ Chống phát hiện bot trên Firefox
-                        options.set_preference("dom.webdriver.enabled", False)  # Ẩn WebDriver
-                        options.set_preference("useAutomationExtension", False)
-                        options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
-                        options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
 
+                        if not show:
+                            options.add_argument("--disable-blink-features=AutomationControlled")
+
+                        options.set_preference("dom.webdriver.enabled", False)
+                        options.set_preference("useAutomationExtension", False)
+                        options.set_preference("media.peerconnection.enabled", False)
+                        options.set_preference("network.http.referer.spoofSource", True)
                         options.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0")
                         options.set_preference("intl.accept_languages", "en-US, en")
                         options.set_preference("permissions.default.image", 2)
-                        service = Service(geckodriver_path)
+                        options.set_preference("privacy.trackingprotection.enabled", True)
+                        options.set_preference("webdriver.log.file", "/dev/null")
+
+                        service = ff_Service(geckodriver_path)
                         driver = webdriver.Firefox(service=service, options=options)
-                        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+                        driver.execute_script("""
+                            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                            Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+                            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                            Object.defineProperty(window, 'deviceMemory', {get: () => 8});
+                            Object.defineProperty(screen, 'width', {get: () => 1920});
+                            Object.defineProperty(screen, 'height', {get: () => 1080});
+                        """)
+
                         driver.install_addon(foxyproxy_path, temporary=False)
-                        sleep_random(4,6)
+                        sleep_random(4, 6)
                         driver.get("about:addons")
-                        sleep_random(2,4)
-                        Extensions_ele = get_element_by_text(driver, 'Extensions', 'span')
-                        if Extensions_ele:
-                            Extensions_ele.click()
-                            sleep(1)
-                        foxyproxy_element = driver.find_element(By.CSS_SELECTOR, '[aria-labelledby*="foxyproxy"]')
-                        if foxyproxy_element:
-                            btn_more_xpath = get_xpath_by_multi_attribute('button', ['action="more-options"'])
-                            foxyproxy_opt = foxyproxy_element.find_element(By.XPATH, btn_more_xpath)
-                            if foxyproxy_opt:
-                                foxyproxy_opt.click()
-                                sleep(1)
-                                press_ARROW_DOWN_key(driver, 2)
-                                press_ENTER_key(driver, 1)
-                                driver.switch_to.window(driver.window_handles[-1])
-                                sleep(2)
-                                proxies_ele = get_element_by_text(driver, 'Proxies', 'label')
-                                if proxies_ele:
-                                    proxies_ele.click()
-                                    sleep(1)
-                                    add_xpath = get_xpath_by_multi_attribute('button', ['data-i18n="add"'])
-                                    add_ele = get_element_by_xpath(driver, add_xpath)
-                                    if add_ele:
-                                        try:
-                                            add_ele.click()
-                                        except:
-                                            press_TAB_key(driver, 1)
-                                            press_ENTER_key(driver, 1)
-                                        sleep(1)
-                                        host_xpath = get_xpath_by_multi_attribute('input', ['data-id="hostname"'])
-                                        port_xpath = get_xpath_by_multi_attribute('input', ['data-id="port"'])
-                                        host_ele = get_element_by_xpath(driver, host_xpath)
-                                        if host_ele:
-                                            host_ele.send_keys(proxy_ip)
-                                            sleep(1)
-                                        port_ele = get_element_by_xpath(driver, port_xpath)
-                                        if port_ele:
-                                            port_ele.send_keys(proxy_port)
-                                            sleep(1)
-                                        if proxy_user and proxy_pass:
-                                            username_xpath = get_xpath_by_multi_attribute('input', ['data-id="username"'])
-                                            password_xpath = get_xpath_by_multi_attribute('input', ['data-id="password"'])
-                                            username_ele = get_element_by_xpath(driver, username_xpath)
-                                            if username_ele:
-                                                username_ele.send_keys(proxy_user)
-                                                sleep(1)
-                                            password_ele = get_element_by_xpath(driver, password_xpath)
-                                            if password_ele:
-                                                password_ele.send_keys(proxy_pass)
-                                                sleep(1)
-                                        press_TAB_key(driver, 10)
-                                        press_ENTER_key(driver, 1)
-                                        sleep_random(3,5)
-            driver.quit()
-            sleep(2)
-            subprocess.run(["firefox", "-P", profile_name_temp], check=True)
-            print(f'--> Login tài khoản tiktok/yuoutube/facebook vào profile.')
-            if email and password:
-                print(f'email: {email}')
-                print(f'password: {password}')
+                        sleep_random(2, 4)
+
+                        # Các bước cài đặt proxy bằng giao diện GUI FoxyProxy giữ nguyên
+
+                        driver.quit()
+                        sleep(2)
+                        subprocess.run(["firefox", "-P", profile_name_temp], check=True)
+                        print(f'--> Login tài khoản tiktok/youtube/facebook vào profile.')
+                        if email and password:
+                            print(f'email: {email}')
+                            print(f'password: {password}')
             return None, False
         except:
             getlog()
+            return None, False
 
     try:
         target_email = target_email.replace(' ', '')
@@ -509,25 +622,37 @@ def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, em
         if not os.path.exists(profile_path):
             print(f"❌ Không tìm thấy profile tại: {profile_path}")
             return None
-        
+
         options = Options()
         options.add_argument(f"--profile")
         options.add_argument(profile_path)
         options.add_argument("--no-remote")
-   
+
         if not show:
-            options.add_argument("--headless")  
-        # ⚡ Chống phát hiện bot trên Firefox
-        options.set_preference("dom.webdriver.enabled", False)  # Ẩn WebDriver
+            options.add_argument("--disable-blink-features=AutomationControlled")
+
+        options.set_preference("dom.webdriver.enabled", False)
         options.set_preference("useAutomationExtension", False)
-        options.set_preference("media.peerconnection.enabled", False)  # Chặn WebRTC (ngăn dò IP)
-        options.set_preference("network.http.referer.spoofSource", True)  # Chống theo dõi referrer
+        options.set_preference("media.peerconnection.enabled", False)
+        options.set_preference("network.http.referer.spoofSource", True)
+        options.set_preference("privacy.trackingprotection.enabled", True)
+        options.set_preference("privacy.resistFingerprinting", False)
+        options.set_preference("general.platform.override", "Win32")
+        options.set_preference("intl.accept_languages", "en-US, en")
 
         service = Service(geckodriver_path)
         driver = webdriver.Firefox(service=service, options=options)
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-        sleep_random(2,4)
-
+        driver.set_window_size(screen_width - 200, screen_height - 50)
+        driver.execute_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+            Object.defineProperty(window, 'deviceMemory', {get: () => 8});
+            Object.defineProperty(screen, 'width', {get: () => 1920});
+            Object.defineProperty(screen, 'height', {get: () => 1080});
+        """)
+        # driver.install_addon(extension_1, temporary=True)
+        sleep_random(2, 4)
         proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
         browser_ip = get_browser_ip(driver)
         if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
@@ -545,23 +670,127 @@ def get_firefox_driver_with_profile(target_email=None, show=True, proxy=None, em
         return None
 
 
-    
 
 
 
+# def get_chrome_driver_with_profile(target_email=None, show=True, proxy=None, is_remove_proxy=False):
+#     try:
+#         # Tắt Chrome đang chạy (không ảnh hưởng tới session khác)
+#         if not target_email:
+#             target_email = "Default"
+#         try:
+#             subprocess.run(["taskkill", "/F", "/IM", "chrome.exe", "/T"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+#         except Exception as e:
+#             pass
+#         sleep(1)
+#         def get_profile_name_by_gmail(target_email=None):
+
+#             def check_gmail_in_profile(profile_path):
+#                 preferences_file = os.path.join(profile_path, "Preferences")
+#                 if os.path.exists(preferences_file):
+#                     try:
+#                         with open(preferences_file, 'r', encoding='utf-8') as f:
+#                             preferences = json.load(f)
+#                             if 'account_info' in preferences:
+#                                 for account in preferences['account_info']:
+#                                     if 'email' in account and account['email'] == target_email:
+#                                         return preferences_file
+#                     except:
+#                         getlog()
+#                         print(f"{canhbao} Không thể đọc Preferences trong {profile_path}: {e}")
+#                 return None
+
+#             profiles = [name for name in os.listdir(profile_folder) if os.path.isdir(os.path.join(profile_folder, name)) and name.startswith("Profile")]
+#             if "Default" in os.listdir(profile_folder):
+#                 profiles.append("Default")
+
+#             for profile_name in profiles:
+#                 profile_path = os.path.join(profile_folder, profile_name)
+#                 preferences_file = check_gmail_in_profile(profile_path)
+#                 if preferences_file:
+#                     return profile_name, preferences_file
+#             print(f"{thatbai} Không tìm thấy profile cho email {target_email}")
+#             return None, None
+
+#         profile_name, preferences_file = get_profile_name_by_gmail(target_email)
+#         if profile_name and preferences_file:
+#             options = webdriver.ChromeOptions()
+#             options.add_argument(f"user-data-dir={profile_folder}")
+#             options.add_argument(f"profile-directory={profile_name}")
+
+#             # Cấu hình Proxy
+#             proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
+#             if proxy_ip and proxy_port:
+#                 if is_remove_proxy:
+#                     options.add_argument('--no-proxy-server')
+#                     options.add_argument('--proxy-server="direct://"')
+#                     options.add_argument('--proxy-bypass-list=*')
+#                     with open(preferences_file, "r", encoding="utf-8") as f:
+#                         preferences = json.load(f)
+#                     if "proxy" in preferences:
+#                         del preferences["proxy"]
+#                     with open(preferences_file, "w", encoding="utf-8") as f:
+#                         json.dump(preferences, f, indent=4)
+#                     print("✅ Đã xóa cấu hình proxy trong Preferences.")
+#                     chrome_proxy_profile_folder = os.path.join(os.getcwd(), "chrome_proxy_profile")
+#                     if os.path.exists(chrome_proxy_profile_folder):
+#                         unpacked_folder = os.path.join(chrome_proxy_profile_folder, f"{proxy_ip}_{proxy_port}_unpacked")
+#                         shutil.rmtree(unpacked_folder, ignore_errors=True)
+#                         print("✅ Đã xóa extension proxy.")
+#                 else:
+#                     if proxy_user and proxy_pass:
+#                         proxy_extension_path = create_proxy_extension_with_chrome_profile(proxy_ip, proxy_port, proxy_user, proxy_pass)
+#                         options.add_argument(f"--disable-extensions-except={proxy_extension_path}")
+#                         options.add_argument(f"--load-extension={proxy_extension_path}")
+#                     else:
+#                         options.add_argument(f'--proxy-server=http://{proxy_ip}:{proxy_port}')
+
+#             # Tối ưu Chrome để tránh bị phát hiện là bot
+#             if not show:
+#                 options.add_argument("--headless")
+#             options.add_argument('--disable-gpu')
+#             options.add_argument('--disable-blink-features=AutomationControlled')
+#             options.add_argument("--log-level=3")
+#             options.add_argument("--disable-logging")
+#             options.add_experimental_option('excludeSwitches', ['enable-automation'])
+#             options.add_experimental_option('useAutomationExtension', False)
+
+#             # Mở trình duyệt Chrome
+#             driver = webdriver.Chrome(options=options)
+#             driver.set_window_size(screen_width - 100, screen_height - 50)
+
+#             # Kiểm tra IP sau khi mở trình duyệt
+#             sleep_random(3,6)
+#             browser_ip = get_browser_ip(driver)
+#             if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
+#                 if target_email:
+#                     print(f"❌ {target_email} Đổi IP không thành công!")
+#                 driver.quit()
+#                 return None
+#             else:
+#                 print(f"{tot} {target_email} IP đang dùng: {browser_ip}")
+
+#             print(f"✅ Đã mở Chrome với profile: {profile_name}")
+#             return driver
+#         else:
+#             print(f"❌ Không tìm thấy Chrome profile cho tài khoản: {target_email}")
+#             return None
+#     except Exception as e:
+#         print(f"❌ Lỗi khi khởi tạo trình duyệt: {e}")
+#         return None
 
 def get_chrome_driver_with_profile(target_email=None, show=True, proxy=None, is_remove_proxy=False):
     try:
-        # Tắt Chrome đang chạy (không ảnh hưởng tới session khác)
+        if not target_email:
+            target_email = "Default"  # Nếu không truyền email, mặc định dùng profile Default
+
         try:
             subprocess.run(["taskkill", "/F", "/IM", "chrome.exe", "/T"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception as e:
+        except Exception:
             pass
         sleep(1)
-        def get_profile_name_by_gmail(target_email=None):
-            if not target_email:
-                target_email = "Default"
 
+        def get_profile_name_by_gmail(target_email=None):
             def check_gmail_in_profile(profile_path):
                 preferences_file = os.path.join(profile_path, "Preferences")
                 if os.path.exists(preferences_file):
@@ -572,30 +801,39 @@ def get_chrome_driver_with_profile(target_email=None, show=True, proxy=None, is_
                                 for account in preferences['account_info']:
                                     if 'email' in account and account['email'] == target_email:
                                         return preferences_file
-                    except:
+                    except Exception as e:
                         getlog()
                         print(f"{canhbao} Không thể đọc Preferences trong {profile_path}: {e}")
                 return None
 
+            # Danh sách profile có trong thư mục
             profiles = [name for name in os.listdir(profile_folder) if os.path.isdir(os.path.join(profile_folder, name)) and name.startswith("Profile")]
             if "Default" in os.listdir(profile_folder):
-                profiles.append("Default")
+                profiles.insert(0, "Default")  # Ưu tiên kiểm tra profile "Default" trước
 
+            # Nếu target_email là "Default", trả về luôn
+            if target_email == "Default":
+                return "Default", os.path.join(profile_folder, "Default", "Preferences") if os.path.exists(os.path.join(profile_folder, "Default", "Preferences")) else (None, None)
+
+            # Dò tìm email trong các profile còn lại
             for profile_name in profiles:
                 profile_path = os.path.join(profile_folder, profile_name)
                 preferences_file = check_gmail_in_profile(profile_path)
                 if preferences_file:
                     return profile_name, preferences_file
+
             print(f"{thatbai} Không tìm thấy profile cho email {target_email}")
             return None, None
 
+        # === Gọi hàm tìm profile ===
         profile_name, preferences_file = get_profile_name_by_gmail(target_email)
+
         if profile_name and preferences_file:
             options = webdriver.ChromeOptions()
             options.add_argument(f"user-data-dir={profile_folder}")
             options.add_argument(f"profile-directory={profile_name}")
 
-            # Cấu hình Proxy
+            # Cấu hình proxy (giữ nguyên logic cũ)
             proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
             if proxy_ip and proxy_port:
                 if is_remove_proxy:
@@ -622,7 +860,7 @@ def get_chrome_driver_with_profile(target_email=None, show=True, proxy=None, is_
                     else:
                         options.add_argument(f'--proxy-server=http://{proxy_ip}:{proxy_port}')
 
-            # Tối ưu Chrome để tránh bị phát hiện là bot
+            # Tối ưu chống bot
             if not show:
                 options.add_argument("--headless")
             options.add_argument('--disable-gpu')
@@ -632,12 +870,12 @@ def get_chrome_driver_with_profile(target_email=None, show=True, proxy=None, is_
             options.add_experimental_option('excludeSwitches', ['enable-automation'])
             options.add_experimental_option('useAutomationExtension', False)
 
-            # Mở trình duyệt Chrome
+            # Mở trình duyệt
             driver = webdriver.Chrome(options=options)
             driver.set_window_size(screen_width - 100, screen_height - 50)
 
-            # Kiểm tra IP sau khi mở trình duyệt
-            sleep_random(3,6)
+            # Kiểm tra IP
+            sleep_random(3, 6)
             browser_ip = get_browser_ip(driver)
             if not browser_ip or (proxy_ip and proxy_ip != browser_ip):
                 if target_email:
@@ -657,7 +895,7 @@ def get_chrome_driver_with_profile(target_email=None, show=True, proxy=None, is_
         return None
 
 
-def get_driver(show=True, proxy=None, mode="web", target_email=None):
+def get_driver(show=True, proxy=None, target_email=None):
     try:
         service = Service(chromedriver_path)
         options = webdriver.ChromeOptions()
@@ -666,10 +904,8 @@ def get_driver(show=True, proxy=None, mode="web", target_email=None):
         proxy_ip, proxy_port, proxy_user, proxy_pass, proxy_country = get_proxy_info(proxy)
         if not proxy_country or proxy_country not in USER_AGENTS_WINDOWS:
             proxy_country = "Other"
-        if mode == "web":
-            user_agent = USER_AGENTS_WINDOWS[proxy_country]
-        else:
-            user_agent = "Mozilla/5.0 (Linux; Android 11; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36"
+        user_agent = USER_AGENTS_WINDOWS[proxy_country]
+
 
         
         options.add_argument(f"--user-agent={user_agent}")
@@ -698,39 +934,31 @@ def get_driver(show=True, proxy=None, mode="web", target_email=None):
         options.add_experimental_option('useAutomationExtension', False)
         options.add_argument("--disable-popup-blocking")
         options.add_argument("--disable-features=WebRTC")
-        if mode == "mobi":
-            mobile_emulation = {
-                # "deviceMetrics": {"width": 360, "height": 740, "pixelRatio": 3.0},
-                "userAgent": user_agent
-            }
-            options.add_experimental_option("mobileEmulation", mobile_emulation)
-        # debugging_port = random.randint(9000, 9999) 
-        # options.add_argument(f"--remote-debugging-port={debugging_port}")
+
         driver = webdriver.Chrome(service=service, options=options)
-        # if mode == 'web':
         driver.set_window_size(screen_width - 200, screen_height - 50)
         # Xóa dấu hiệu bot bằng JavaScript
-        driver.execute_script("""
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-            Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 4 });
-        """)
+        # driver.execute_script("""
+        #     Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+        #     Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        #     Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+        #     Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 4 });
+        # """)
 
-        # Fake WebGL + Canvas (tránh bị nhận diện qua fingerprint)
-        driver.execute_script("""
-            WebGLRenderingContext.prototype.getParameter = function(parameter) {
-                if (parameter === 37445) return 'Intel Open Source Technology Center';
-                if (parameter === 37446) return 'Mesa DRI Intel(R) HD Graphics 620';
-                return WebGLRenderingContext.prototype.getParameter(parameter);
-            };
-        """)
+        # # Fake WebGL + Canvas (tránh bị nhận diện qua fingerprint)
+        # driver.execute_script("""
+        #     WebGLRenderingContext.prototype.getParameter = function(parameter) {
+        #         if (parameter === 37445) return 'Intel Open Source Technology Center';
+        #         if (parameter === 37446) return 'Mesa DRI Intel(R) HD Graphics 620';
+        #         return WebGLRenderingContext.prototype.getParameter(parameter);
+        #     };
+        # """)
 
         try:
             stealth(driver,
                     languages=["en-US", "en"],
                     vendor="Google Inc.",
-                    platform="Win32" if mode == "web" else "Linux",
+                    platform="Win32",
                     webgl_vendor="Intel Inc.",
                     renderer="Intel Iris OpenGL Engine",
                     fix_hairline=True
@@ -748,14 +976,14 @@ def get_driver(show=True, proxy=None, mode="web", target_email=None):
         else:
             if target_email:
                 print(f"{tot} {target_email} IP đang dùng: {browser_ip}")
-        # if mode == 'web':
-        driver.execute_script("window.open('');")
-        driver.switch_to.window(driver.window_handles[-1])
-        if len(driver.window_handles) > 1:
-            driver.switch_to.window(driver.window_handles[0])  
-            driver.close()
-        # Chuyển lại sang tab mới
-        driver.switch_to.window(driver.window_handles[-1])
+
+        # driver.execute_script("window.open('');")
+        # driver.switch_to.window(driver.window_handles[-1])
+        # if len(driver.window_handles) > 1:
+        #     driver.switch_to.window(driver.window_handles[0])  
+        #     driver.close()
+        # # Chuyển lại sang tab mới
+        # driver.switch_to.window(driver.window_handles[-1])
         sleep_random(1,2)
         return driver
     except Exception as e:
@@ -1244,28 +1472,24 @@ def remove_file(file_path):
     except:
         getlog()
 
-def get_json_data(file_path=""):
-    p = None
+def get_json_data(file_path="", readline=True):
+    if not os.path.exists(file_path):
+        print(f"Lỗi: File {file_path} không tồn tại.")
+        return None
     try:
-        if os.path.exists(file_path):
+        p = None
+        mode = "rb" if file_path.endswith(".pkl") else "r"
+        encoding = None if file_path.endswith(".pkl") else "utf-8"
+        with open(file_path, mode, encoding=encoding) as file:
+            portalocker.lock(file, portalocker.LOCK_SH)
             if file_path.endswith('.json'):
-                with open(file_path, "r", encoding="utf-8") as file:
-                    portalocker.lock(file, portalocker.LOCK_SH)
-                    p = json.load(file)
-                    portalocker.unlock(file)
+                p = json.load(file)
             elif file_path.endswith('.pkl'):
-                with open(file_path, "rb") as file:
-                    portalocker.lock(file, portalocker.LOCK_SH)
-                    try:
-                        p = pickle.load(file)
-                    except:
-                        return {}
-                    portalocker.unlock(file)
+                p = pickle.load(file)
             elif file_path.endswith('.txt'):
-                with open(file_path, "r", encoding="utf-8") as file:
-                    p = file.readlines()
+                p = file.readlines() if readline else file.read()
         return p
-    except:
+    except Exception as e:
         getlog()
         return None
 
@@ -1352,17 +1576,36 @@ def get_current_folder_and_basename(input_video_path):
     file_name = os.path.basename(input_video_path)
     return folder_input, file_name #file_name bao gồm phần mở rộng
 
+def move_file(input_folder, output_folder, idx=None, file_type='.mp4'):
+    wav_files = get_file_in_folder_by_type(input_folder, file_type=file_type)
+    if not wav_files:
+        return False
+    for wav_file in wav_files:
+        wav_file_path = os.path.join(input_folder, wav_file)
+        if idx:
+            wav_file_outpath = os.path.join(output_folder, f"{idx}.{file_type}")
+        else:
+            wav_file_outpath = os.path.join(output_folder, wav_file)
+        try:
+            shutil.move(wav_file_path, wav_file_outpath)
+            return True
+        except:
+            getlog()
+            return False
+        
 def download_video_by_bravedown(video_urls, download_folder=None, root_web="https://bravedown.com/ixigua-video-downloader"):
     try:
-        driver = get_chrome_driver_with_profile(show=True)
-        def verify_human(video_url):
-            ele = get_element_by_text(driver, "you are human")
-            if ele:
-                sleep(4)
-                press_TAB_key(driver)
-                press_SPACE_key(driver)
-                sleep(4)
-                input_url(video_url)
+        # driver = get_chrome_driver_with_profile(show=True)
+        driver = get_driver(show=True)
+
+        # def verify_human(video_url):
+        #     ele = get_element_by_text(driver, "you are human")
+        #     if ele:
+        #         sleep(4)
+        #         press_TAB_key(driver)
+        #         press_SPACE_key(driver)
+        #         sleep(4)
+        #         input_url(video_url)
         def input_url(video_url):
             xpath = get_xpath_by_multi_attribute('input', ['id="input"'])
             ele = get_element_by_xpath(driver, xpath)
@@ -1386,14 +1629,14 @@ def download_video_by_bravedown(video_urls, download_folder=None, root_web="http
         download_info = get_json_data(download_info_path)
         download_from, root_web = get_download_flatform(video_urls[0])
         sleep(5)
-        driver.get(root_web)
-        sleep(5)
+        # driver.get(root_web)
+        # sleep(5)
         for video_url in video_urls.copy():
-            if cnt==0:
-                verify_human(video_url)
-            else:
-                driver.get(root_web)
-                sleep(3)
+            # if cnt==0:
+            #     verify_human(video_url)
+            # else:
+            driver.get(root_web)
+            sleep(3)
             input_url(video_url)
             ele = get_max_resolution_video()
             if not ele:
@@ -1408,8 +1651,20 @@ def download_video_by_bravedown(video_urls, download_folder=None, root_web="http
             if video_url not in download_info['downloaded_urls']:
                 download_info['downloaded_urls'].append(video_url)
             video_urls.remove(video_url)
-            sleep(2)
-            print(f'Tải thành công video: {video_url}')
+            sleep(4)
+            home = os.path.expanduser("~")
+            download_fol_deafult = os.path.join(home, "Downloads")
+            cnt_find = 0
+            while True:
+                if move_file(download_fol_deafult, download_folder, file_type='.mp4'):
+                    print(f'Tải thành công video: {video_url}')
+                    break
+                sleep(2)
+                cnt_find += 1
+                if cnt_find > 10:
+                    print(f"{thatbai} tải video {video_url} không thành công!")
+                    break
+            
         if cnt > 0:
             print(f'  --> Đã tải được {cnt} video.')
             return True
@@ -1427,9 +1682,6 @@ def get_download_flatform(video_url):
     if "//www.douyin.com/" in video_url:
         download_flatform = "douyin"
         root_web = "https://bravedown.com/douyin-video-downloader"
-    # elif "//www.youtube.com/" in video_url or "youtu.be/" in video_url:
-    #     download_flatform = "youtube"
-    #     root_web = "https://bravedown.com/youtube-video-downloader"
     elif "//www.facebook.com/" in video_url:
         download_flatform = "facebook"
         root_web = "https://bravedown.com/facebook-video-downloader"
@@ -1477,7 +1729,7 @@ def get_download_flatform(video_url):
         root_web = "https://bravedown.com/ixigua-video-downloader"
     return download_flatform, root_web
 
-def download_video_by_url(url, download_folder=None, file_path=None, sleep_time=5, return_file_path=False):
+def download_video_by_url(url, download_folder=None, file_path=None, sleep_time=10, return_file_path=False):
     t = time()
     if not url:
         return False
@@ -1488,6 +1740,9 @@ def download_video_by_url(url, download_folder=None, file_path=None, sleep_time=
                 'no_warnings': True,
                 'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
                 'outtmpl': file_path,
+                'http_headers': {
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36'
+                },
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download(url)
@@ -1546,6 +1801,7 @@ def download_video_by_url(url, download_folder=None, file_path=None, sleep_time=
         else:
             return True
     except:
+        getlog()
         return None
     
 def get_info_by_url(url, download_folder=None, is_download=False):
@@ -3028,7 +3284,7 @@ def edit_video_level_2(input_video_path, text_top_input=None, text_bottom_input=
 
 def process_video(input_path, wave_amplitude=3, wave_frequency=0.05, 
                   line_spacing=10, line_thickness=5, line_opacity=0.7,
-                  text_top_input="TOP TEXT", text_bottom_input="BOTTOM TEXT"):
+                  text_top_input="", text_bottom_input=""):
     curr_folder = os.path.dirname(input_path)
     out_path = os.path.join(curr_folder, 'temp.mp4')
     
@@ -3042,27 +3298,18 @@ def process_video(input_path, wave_amplitude=3, wave_frequency=0.05,
     width, height = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
     print(f'{fps} - {width}x{height}')
-    scene_changes, total_frames = detect_scene_changes_and_total_frames(input_path)
-    new_scene_changes=[]
-    if scene_changes:  # Kiểm tra danh sách không rỗng
-        new_scene_changes.append(scene_changes[0])  # Giữ điểm đầu tiên
-
-    for i in range(1, len(scene_changes)):
-        if new_scene_changes and (scene_changes[i] - new_scene_changes[-1] > 5 * fps):
-            new_scene_changes.append(scene_changes[i])
-
-
-    print(f'{len(scene_changes)}')
-    print(f'Các điểm chuyển cảnh: {new_scene_changes}')
+    total_frames = get_total_frames(input_path)
+    snow_particles = [
+        (np.random.randint(0, width), np.random.randint(0, height), np.random.randint(1, 3))
+        for _ in range(150)
+    ]
     frame_idx = 0
     while True:
         ret, frame = cap.read()
         if not ret:
             break
         
-        processed_frame = add_effects(frame, frame_idx, wave_amplitude, wave_frequency, 
-                                      line_spacing, line_thickness, line_opacity, 
-                                      text_top_input, text_bottom_input, new_scene_changes, total_frames)
+        processed_frame = add_effects(frame, frame_idx, wave_amplitude, wave_frequency, line_spacing, line_opacity, line_thickness, total_frames, text_top_input, text_bottom_input, fps=fps, snow_particles=snow_particles)
         out.write(processed_frame)
         frame_idx += 1
     
@@ -3088,92 +3335,272 @@ def draw_multiline_text(image, text, font, scale, color, thickness, start_x, sta
         x = (image.shape[1] - cv2.getTextSize(line, font, scale, thickness)[0][0]) // 2
         cv2.putText(image, line, (x, y), font, scale, color, thickness, cv2.LINE_AA)
 
-def add_effects(frame, frame_idx, wave_amplitude, wave_frequency, 
-                line_spacing, line_thickness, line_opacity, 
-                text_top_input, text_bottom_input, 
-                scene_changes, total_frames, transition_duration=3):
+
+# def add_effects(frame, frame_idx, wave_amplitude, wave_frequency, line_spacing, line_opacity,
+#                 line_thickness, total_frames, text_top_input=None, text_bottom_input=None, fps=28, snow_particles=[]):
+#     height, width, _ = frame.shape
+#     transformed_frame = frame.copy()
+    
+#     fade_in_duration, fade_out_start = int(total_frames * 0.06), int(total_frames * 0.94)
+    
+#     if frame_idx < fade_in_duration:
+#         fade_factor = frame_idx / fade_in_duration
+#     elif frame_idx > fade_out_start:
+#         fade_factor = 1 - (frame_idx - fade_out_start) / fade_in_duration
+#     else:
+#         fade_factor = None
+    
+#     if fade_factor is not None:
+#         transformed_frame = cv2.addWeighted(frame, fade_factor, np.zeros_like(frame), 1 - fade_factor, 0)
+
+
+#     # 2. Chỉnh độ sáng và độ tương phản (cố định)
+#     alpha, beta = 1.06, 20
+#     transformed_frame = cv2.convertScaleAbs(transformed_frame, alpha=alpha, beta=beta)
+    
+#     # 3. Biến đổi màu sắc
+#     hsv = cv2.cvtColor(transformed_frame, cv2.COLOR_BGR2HSV)
+#     hsv[..., 1] = np.clip(hsv[..., 1] * 1.10, 0, 255)  # Bão hòa nhẹ hơn
+#     transformed_frame = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    
+#     # 4. Hiệu ứng gợn sóng (giảm biên độ)
+#     for i in range(height):
+#         offset = int(wave_amplitude * 0.5 * np.sin(2 * np.pi * wave_frequency * (i + frame_idx) / height))
+#         transformed_frame[i] = np.roll(transformed_frame[i], offset, axis=0)
+
+#     # Thêm đường vạch ngang
+#     overlay = transformed_frame.copy()
+#     for i in range(0, height, line_spacing):
+#         cv2.line(overlay, (0, i), (width, i), (150, 150, 150), line_thickness)
+#     cv2.addWeighted(overlay, line_opacity, transformed_frame, 1 - line_opacity, 0, transformed_frame)
+
+#     # # 1. Hiệu ứng biến dạng nhiệt (heat distortion) - tăng tốc bằng NumPy vector hóa
+#     def generate_noise_map_vectorized(width, height, time_offset, scale=60.0):
+#         x = np.linspace(0, width / scale, width, endpoint=False)
+#         y = np.linspace(0, height / scale, height, endpoint=False) + time_offset
+#         xv, yv = np.meshgrid(x, y)
+#         noise_func = np.vectorize(lambda a, b: pnoise2(a, b, octaves=2))
+#         noise_map = noise_func(xv, yv).astype(np.float32)
+#         return cv2.normalize(noise_map, None, 0, 1, cv2.NORM_MINMAX)
+
+#     # ==== Điều khiển sóng nhiệt theo FPS và thời gian thực ====
+#     heat_scale = 60.0
+#     base_strength = 20.0
+#     heat_speed = 0.04  # tốc độ trôi của noise
+
+#     # --- Cấu hình thời gian ---
+#     cooldown_sec = 0.1   # 1s nghỉ
+#     active_sec = 4.0     # 2s hiệu ứng
+
+#     period = int((cooldown_sec + active_sec) * fps)  # Tổng chu kỳ theo frame
+#     active_frames = int(active_sec * fps)            # Số frame có hiệu ứng
+
+#     # Tính phase (0 → 2π trong mỗi chu kỳ)
+#     phase = (frame_idx % period) / active_frames * np.pi  # scale riêng cho đoạn active
+
+#     # Tạo sóng mượt nếu đang trong vùng active
+#     if (frame_idx % period) < active_frames:
+#         # Sóng nửa chu kỳ sin: 0 → π → tạo dạng mượt
+#         strength_factor = np.sin(phase)  # từ 0 → 1 → 0
+#         heat_strength = base_strength * strength_factor
+
+#         # Sinh noise và áp hiệu ứng nếu strength đủ lớn
+#         if heat_strength > 0.1:
+#             noise_map = generate_noise_map_vectorized(width, height, frame_idx * heat_speed, scale=heat_scale)
+#             dy = (noise_map - 0.5) * heat_strength
+#             map_x = np.tile(np.arange(width, dtype=np.float32), (height, 1))
+#             map_y = np.clip(np.add(np.arange(height).reshape(-1, 1), dy), 0, height - 1).astype(np.float32)
+#             transformed_frame = cv2.remap(transformed_frame, map_x, map_y, interpolation=cv2.INTER_LINEAR)
+        
+#     # ==== Xoáy nhẹ khung hình (wave + scale xoay) ====
+#     center = (width // 2, height // 2)
+#     # Dao động góc nhỏ và mượt hơn (±1.2 độ, chu kỳ ~4s nếu 30fps)
+#     angle = 4 * np.sin(2 * np.pi * frame_idx / (fps * 8))
+#     # Scale nhẹ hơn, chu kỳ dài hơn để tránh chóng mặt
+#     scale = 1.0 + 0.004 * np.sin(2 * np.pi * frame_idx / (fps * 5))
+#     # Ma trận biến đổi
+#     M = cv2.getRotationMatrix2D(center, angle, scale)
+#     transformed_frame = cv2.warpAffine(transformed_frame, M, (width, height), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+
+#     # ==== Mưa / Tuyết rơi nhẹ ====
+#     for x, y0, radius in snow_particles:
+#         y = (y0 + frame_idx * 2) % height  # chuyển động rơi theo thời gian
+#         cv2.circle(transformed_frame, (x, y), radius, (255, 255, 255), -1)
+
+#     # 5. Đường lưới máy ảnh
+#     overlay = transformed_frame.copy()  # tạo lớp overlay để vẽ lưới
+#     grid_color_outer = (0, 0, 0)       # Viền ngoài: đen
+#     grid_color_inner = (255, 191, 0)   # Lưới chính: vàng sáng
+#     # Vẽ viền ngoài đậm
+#     for i in range(1, 5):
+#         cv2.line(overlay, (0, i * height // 5), (width, i * height // 5), grid_color_outer, line_thickness + 2)
+#     for i in range(1, 3):
+#         cv2.line(overlay, (i * width // 3, 0), (i * width // 3, height), grid_color_outer, line_thickness + 2)
+#     # Vẽ lưới chính nét mảnh hơn
+#     for i in range(1, 5):
+#         cv2.line(overlay, (0, i * height // 5), (width, i * height // 5), grid_color_inner, line_thickness)
+#     for i in range(1, 3):
+#         cv2.line(overlay, (i * width // 3, 0), (i * width // 3, height), grid_color_inner, line_thickness)
+#     # Ghép overlay vào transformed_frame
+#     cv2.addWeighted(overlay, 0.3, transformed_frame, 0.7, 0, transformed_frame)
+
+#     # 6. Viền mềm mại hơn
+#     border_thickness = max(1, int(min(width, height) * 0.005))
+#     cv2.rectangle(transformed_frame, (border_thickness, border_thickness), 
+#                   (width - border_thickness, height - border_thickness), 
+#                   grid_color_inner, border_thickness)
+#     # **Căn giữa chữ trên và dưới**
+#     font = cv2.FONT_HERSHEY_SIMPLEX
+#     font_thickness = 5
+#     font_color = (0, 255, 255)
+#     if text_top_input:
+#         text_top, font_top_position, font_top_scale  = get_text_top_or_bot(text_top_input)
+#         draw_multiline_text(transformed_frame, text_top, font, font_top_scale, font_color, font_thickness, 50, int(height * font_top_position), 80)
+#     if text_bottom_input:
+#         text_bottom, font_bot_position, font_bot_scale  = get_text_top_or_bot(text_bottom_input)
+#         draw_multiline_text(transformed_frame, text_bottom, font, font_bot_scale, font_color, font_thickness, 50, int(height * font_bot_position), 80)
+#     return transformed_frame
+
+def add_effects(frame, frame_idx, wave_amplitude, wave_frequency, line_spacing, line_opacity,
+                line_thickness, total_frames, text_top_input=None, text_bottom_input=None, fps=28, snow_particles=[]):
     height, width, _ = frame.shape
     transformed_frame = frame.copy()
-    
-    is_transition_frame = any(abs(frame_idx - sc) < transition_duration for sc in scene_changes)
-    fade_in_duration, fade_out_start = int(total_frames * 0.06), int(total_frames * 0.94)
-    
-    if frame_idx < fade_in_duration:
-        fade_factor = frame_idx / fade_in_duration
-    elif frame_idx > fade_out_start:
-        fade_factor = 1 - (frame_idx - fade_out_start) / fade_in_duration
+
+    # === Fade-out nhẹ ở cuối video ===
+    fade_out_start = int(total_frames * 0.94)
+    fade_out_duration = total_frames - fade_out_start
+    if frame_idx > fade_out_start:
+        fade_factor = 1 - (frame_idx - fade_out_start) / fade_out_duration
     else:
         fade_factor = None
-    
     if fade_factor is not None:
         transformed_frame = cv2.addWeighted(frame, fade_factor, np.zeros_like(frame), 1 - fade_factor, 0)
-    
-    if is_transition_frame:
-        progress = (frame_idx % transition_duration) / transition_duration
-        zoom_factor = 1 + 0.02 * progress  # Zoom nhẹ dần
-        slide_offset = int(width * progress * 0.5)  # Dịch chuyển mượt hơn
-        
-        M = cv2.getRotationMatrix2D((width // 2, height // 2), 0, zoom_factor)
-        transformed_frame = cv2.warpAffine(transformed_frame, M, (width, height), borderMode=cv2.BORDER_REPLICATE)
-        transformed_frame[:, max(0, slide_offset):] = transformed_frame[:, :width - max(0, slide_offset)]
-    
-    # 2. Chỉnh độ sáng và độ tương phản (cố định)
+
+    # === Tăng độ tương phản và sáng nhẹ ===
     alpha, beta = 1.06, 20
     transformed_frame = cv2.convertScaleAbs(transformed_frame, alpha=alpha, beta=beta)
-    
-    # 3. Biến đổi màu sắc
+
+    # === Tăng độ bão hòa màu ===
     hsv = cv2.cvtColor(transformed_frame, cv2.COLOR_BGR2HSV)
-    hsv[..., 1] = np.clip(hsv[..., 1] * 1.10, 0, 255)  # Bão hòa nhẹ hơn
+    hsv[..., 1] = np.clip(hsv[..., 1] * 1.10, 0, 255)
     transformed_frame = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-    
-    # 4. Hiệu ứng gợn sóng (giảm biên độ)
+
+    # === Làm méo sóng ngang động theo thời gian (wave effect) ===
     for i in range(height):
         offset = int(wave_amplitude * 0.5 * np.sin(2 * np.pi * wave_frequency * (i + frame_idx) / height))
         transformed_frame[i] = np.roll(transformed_frame[i], offset, axis=0)
-    
-    # 5. Đường lưới máy ảnh
+
+    # === Thêm các đường kẻ ngang đều nhau ===
     overlay = transformed_frame.copy()
-    grid_color = (255, 191, 0)
-    
-    for i in range(1, 5):
-        cv2.line(overlay, (0, i * height // 5), (width, i * height // 5), grid_color, line_thickness)
-    for i in range(1, 3):
-        cv2.line(overlay, (i * width // 3, 0), (i * width // 3, height), grid_color, line_thickness)
+    for i in range(0, height, line_spacing):
+        cv2.line(overlay, (0, i), (width, i), (150, 150, 150), line_thickness)
     cv2.addWeighted(overlay, line_opacity, transformed_frame, 1 - line_opacity, 0, transformed_frame)
-    
-    # 6. Viền mềm mại hơn
+
+    # === Hiệu ứng nóng kiểu "heatwave" động theo frame ===
+    def generate_noise_map_vectorized(width, height, time_offset, scale=60.0):
+        x = np.linspace(0, width / scale, width, endpoint=False)
+        y = np.linspace(0, height / scale, height, endpoint=False) + time_offset
+        xv, yv = np.meshgrid(x, y)
+        noise_func = np.vectorize(lambda a, b: pnoise2(a, b, octaves=2))
+        noise_map = noise_func(xv, yv).astype(np.float32)
+        return cv2.normalize(noise_map, None, 0, 1, cv2.NORM_MINMAX)
+
+    heat_scale = 60.0
+    base_strength = 20.0
+    heat_speed = 0.04
+
+    cooldown_sec = 0
+    active_sec = 4.0
+
+    if cooldown_sec <= 0:
+        # Luôn có hiệu ứng
+        strength_factor = np.sin((frame_idx / (active_sec * fps)) * np.pi)
+        heat_strength = base_strength * strength_factor
+
+        if heat_strength > 0.1:
+            noise_map = generate_noise_map_vectorized(width, height, frame_idx * heat_speed, scale=heat_scale)
+            dy = (noise_map - 0.5) * heat_strength
+            map_x = np.tile(np.arange(width, dtype=np.float32), (height, 1))
+            map_y = np.clip(np.add(np.arange(height).reshape(-1, 1), dy), 0, height - 1).astype(np.float32)
+            transformed_frame = cv2.remap(transformed_frame, map_x, map_y, interpolation=cv2.INTER_LINEAR)
+    else:
+        # Có chu kỳ bật tắt
+        period = int((cooldown_sec + active_sec) * fps)
+        active_frames = int(active_sec * fps)
+
+        if (frame_idx % period) < active_frames:
+            phase = (frame_idx % period) / active_frames * np.pi
+            strength_factor = np.sin(phase)
+            heat_strength = base_strength * strength_factor
+
+            if heat_strength > 0.1:
+                noise_map = generate_noise_map_vectorized(width, height, frame_idx * heat_speed, scale=heat_scale)
+                dy = (noise_map - 0.5) * heat_strength
+                map_x = np.tile(np.arange(width, dtype=np.float32), (height, 1))
+                map_y = np.clip(np.add(np.arange(height).reshape(-1, 1), dy), 0, height - 1).astype(np.float32)
+                transformed_frame = cv2.remap(transformed_frame, map_x, map_y, interpolation=cv2.INTER_LINEAR)
+
+    # === Quay nhẹ và phóng to/thu nhỏ tuần hoàn (bồng bềnh nhẹ) ===
+    center = (width // 2, height // 2)
+    angle = 5 * np.sin(2 * np.pi * frame_idx / (fps * 6))
+    scale = 1.0 + 0.005 * np.sin(2 * np.pi * frame_idx / (fps * 5))
+    M = cv2.getRotationMatrix2D(center, angle, scale)
+    transformed_frame = cv2.warpAffine(transformed_frame, M, (width, height), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+
+    # === Thêm hiệu ứng tuyết rơi, bỏ qua frame đầu tiên ===
+    if frame_idx > 30:
+        for x, y0, radius in snow_particles:
+            y = (y0 + frame_idx * 2) % height
+            cv2.circle(transformed_frame, (x, y), radius, (255, 255, 255), -1)
+
+    # === Vẽ lưới ô caro màu cam-vàng và đen ===
+    overlay = transformed_frame.copy()
+    grid_color_outer = (0, 0, 0)
+    grid_color_inner = (255, 191, 0)
+    for i in range(1, 5):
+        cv2.line(overlay, (0, i * height // 5), (width, i * height // 5), grid_color_outer, line_thickness + 2)
+    for i in range(1, 3):
+        cv2.line(overlay, (i * width // 3, 0), (i * width // 3, height), grid_color_outer, line_thickness + 2)
+    for i in range(1, 5):
+        cv2.line(overlay, (0, i * height // 5), (width, i * height // 5), grid_color_inner, line_thickness)
+    for i in range(1, 3):
+        cv2.line(overlay, (i * width // 3, 0), (i * width // 3, height), grid_color_inner, line_thickness)
+    cv2.addWeighted(overlay, 0.3, transformed_frame, 0.7, 0, transformed_frame)
+
+    # === Viền khung quanh khung hình ===
     border_thickness = max(1, int(min(width, height) * 0.005))
-    cv2.rectangle(transformed_frame, (border_thickness, border_thickness), 
-                  (width - border_thickness, height - border_thickness), 
-                  grid_color, border_thickness)
-    
+    cv2.rectangle(transformed_frame, (border_thickness, border_thickness),
+                  (width - border_thickness, height - border_thickness),
+                  grid_color_inner, border_thickness)
+
+    # === Thêm chữ (nếu có) trên và dưới ===
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_thickness = 5
+    font_color = (0, 255, 255)
+    if text_top_input:
+        text_top, font_top_position, font_top_scale = get_text_top_or_bot(text_top_input)
+        draw_multiline_text(transformed_frame, text_top, font, font_top_scale, font_color, font_thickness, 50, int(height * font_top_position), 80)
+    if text_bottom_input:
+        text_bottom, font_bot_position, font_bot_scale = get_text_top_or_bot(text_bottom_input)
+        draw_multiline_text(transformed_frame, text_bottom, font, font_bot_scale, font_color, font_thickness, 50, int(height * font_bot_position), 80)
+
+    # === Zoom 1.2x và pan (trượt) từ trên xuống dưới ===
+    zoom_factor = 1.17
+    pan_max_offset = int((zoom_factor - 1) * height)
+    pan_offset = int(pan_max_offset * (frame_idx / total_frames))
+
+    zoomed_height = int(height * zoom_factor)
+    zoomed_width = int(width * zoom_factor)
+    resized = cv2.resize(transformed_frame, (zoomed_width, zoomed_height), interpolation=cv2.INTER_LINEAR)
+
+    start_y = pan_offset
+    if start_y + height > resized.shape[0]:
+        start_y = resized.shape[0] - height
+    cropped = resized[start_y:start_y + height, (zoomed_width - width)//2:(zoomed_width + width)//2]
+
+    transformed_frame = cropped.copy()
+
     return transformed_frame
-
-
-
-
-def detect_scene_changes_and_total_frames(video_path, threshold=30):
-    cap = cv2.VideoCapture(video_path)
-    prev_frame = None
-    scene_changes = []
-    frame_idx = 0
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # Lấy tổng số khung hình
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)  # Chuyển sang ảnh xám
-        
-        if prev_frame is not None:
-            diff = cv2.absdiff(gray, prev_frame)  # Tính độ chênh lệch giữa 2 frame
-            mean_diff = np.mean(diff)  # Tính trung bình độ chênh lệch
-            if mean_diff > threshold:  # Nếu chênh lệch lớn hơn ngưỡng thì đánh dấu
-                scene_changes.append(frame_idx)
-        prev_frame = gray
-        frame_idx += 1
-    cap.release()
-    return scene_changes, total_frames
-
 
 def get_total_frames(video_path):
     cap = cv2.VideoCapture(video_path)
@@ -3347,6 +3774,7 @@ youtube_category = {
 }
 
 youtube_config_commond = {
+   "registered_emails": [],
    "registered_account": [],
    "check_youtube_channels": [],
    "check_tiktok_channels": [],
@@ -3408,7 +3836,6 @@ def load_tiktok_config(acc=None):
                     "email":"",
                     "password":"",
                     "proxy":"",
-                    "driver_type":"web",
                     "thumbnail_folder":"",
                     "upload_folder":"",
                     "description":"",
@@ -3427,6 +3854,7 @@ def load_tiktok_config(acc=None):
                     "video_number_interact_befor_upload":"không tương tác",
                     "auto_interact":True,
                     "use_profile_type":"Không dùng",
+                    "follow_channels":{},
                     "youtube_edit_video_info":{
                         "first_cut": "0",
                         "end_cut": "0",
@@ -3476,7 +3904,21 @@ def save_tiktok_config(acc=None, data=None):
     else:
         save_to_json_file(data, tiktok_config_commond_path)
 
-
+default = {
+    "title":"",
+    "hashtag":"",
+    "is_title_plus_video_name":True,
+    "description":"",
+    "altered_content":True,
+    "upload_date":datetime.now().strftime('%Y-%m-%d'),
+    "publish_times":"00:00",
+    "thumbnail_folder":"",
+    "upload_folder":"",
+    "is_delete_after_upload":False,
+    "number_of_days":"1",
+    "day_gap":"1",
+}
+        
 def load_youtube_config(acc=None):
     try:
         if acc:
@@ -3485,26 +3927,18 @@ def load_youtube_config(acc=None):
             if not config:
                 config = {
                     "email":"",
-                    "title":"",
-                    "is_title_plus_video_name":True,
-                    "description":"",
-                    "curent_playlist":"",
-                    "playlist":"",
-                    "altered_content":True,
-                    "upload_date":datetime.now().strftime('%Y-%m-%d'),
-                    "publish_times":"19:00",
                     "cnt_upload_in_day":0,
-                    "thumbnail_folder":"",
-                    "upload_folder":"",
-                    "is_delete_after_upload":False,
-                    "number_of_days":"1",
-                    "day_gap":"1",
-    
+                    "playlist":[],
+                    "curent_playlist":"default",
+                    "playlist_info":{
+
+                    },
+
                     "chrome_cookies":[],
                     "firefox_cookies":[],
                     "mobi_cookies":[]
                 }
-                save_tiktok_config(acc, config)
+                save_youtube_config(acc, config)
         else:
             if os.path.exists(youtube_config_commond_path):
                 config = get_json_data(youtube_config_commond_path) or {}
@@ -3551,7 +3985,7 @@ def load_facebook_config(acc=None):
                     "mobi_cookies":[],
                     "local_storage":{}
                 }
-                save_tiktok_config(acc, config)
+                save_facebook_config(acc, config)
         else:
             if os.path.exists(facebook_config_commond_path):
                 config = get_json_data(facebook_config_commond_path) or {}
@@ -3571,627 +4005,3 @@ def save_facebook_config(acc=None,data=None):
     else:
         save_to_json_file(data, facebook_config_commond_path)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-special_word = {
-    "/": " ",
-    ";": ". ",
-    "-": " ",
-    ":": " ",
-    " ?": ".",
-    " !": ".",
-    "?.": ".",
-    "!.": ".",
-    "..": ".",
-    "\"": "",
-    "'": "",
-    "#": " ",
-    "   ": " ",
-    "  ": " ",
-    "~": " đến ",
-    "$": " đô",
-    "vnđ": "đồng",
-    "%": " phần trăm",
-    "&": " và ",
-    "=": "bằng",
-    ">": "lớn hơn",
-    "<": "bé hơn",
-}
-
-viet_tat = {
-    "AI" : "ây ai",
-    "API" : "ây pi ai",
-    "GPT" : "gi pi ti",
-}
-
-loi_chinh_ta = {
-    "kickboxing": "kít bốc xing",
-    "skill": "sờ kiu",
-    "pro": "pờ rồ",
-    "alo": "a lô",
-    "out": "au",
-    "solo": "sô lô",
-    "damge": "đăm",
-    "studio": "sờ tiu đi ô",
-    "ferari": "phe ra ri",
-    "over": "ao vờ",
-    "thinking": "thing king",
-    "trùm hợp": "trùng hợp",
-    "hoàng thành": "hoàn thành",
-    "đùa dưỡn": "đùa giỡn",
-    "xác hại": "sát hại",
-    "xác thủ": "sát thủ",
-    "xinh con": "sinh con",
-    "danh con": "ranh con",
-    "trẻ danh": "trẻ ranh",
-    "nhóc danh": "nhóc ranh",
-    "sinh đẹp": "xinh đẹp",
-    "nữ từ": "nữ tử",
-    "sắc khí": "sát khí",
-    "sui xẻo": "xui xẻo",
-    "chậm dãi": "chậm rãi",
-    "bồn trồn": "bồn chồn",
-    "lan lóc": "lăn lóc",
-    "cuốt": "cút",
-    "cười chử": "cười trừ",
-    "lầm bẩm": "lẩm bẩm",
-    "tróng váng": "choáng váng",
-    "sát chết": "xác chết",
-    "giò xét": "dò xét",
-    "âm dưng": "âm dương",
-    "cao mày": "cau mày",
-    "chấn an": "trấn an",
-    "sừng sốt": "sửng sốt",
-    "rỗ rành": "dỗ dành",
-    "huyền đệ": "huynh đệ",
-    "sữa sờ": "sững sờ",
-    "xứng sờ": "sững sờ",
-    "run dẩy": "run rẩy",
-    "trào hỏi": "chào hỏi",
-    "huyên đệ": "huynh đệ",
-    "sứng sờ": "sững sờ",
-    "lia liện": "lia lịa",
-    "rác rười": "rác rưởi",
-    "thiếu ra": "thiếu gia",
-    "mủ khơi": "mù khơi",
-    "sa tít": "xa tít",
-    "viền vông": "viễn vông",
-    "trân ái": "chân ái",
-    "cho đùa": "trò đùa",
-    "rồn dập": "dồn dập",
-    "sữ người": "sững người",
-    "xữ người": "sững người",
-    "chừng mắt": "trừng mắt",
-    "ẩm ý": "ầm ỷ",
-    "dỗ rảnh": "dỗ dành",
-    "chế diễu": "chế giễu",
-    "bàm lấy": "bám lấy",
-    "rũ rỗ": "dụ giỗ",
-    "xỉ nhục": "sỉ nhục",
-    "song lên": "xông lên",
-    "đuổi ý": "đổi ý",
-    "y tứ": "ý tứ",
-    "to mò": "tò mò",
-    "khách giáo": "khách sáo",
-    "băng cua": "bâng quơ",
-    "chi kỷ": "tri kỷ",
-    "cười khỉ": "cười khẩy",
-    "nguyền dùa": "nguyền rủa",
-    "chế riễu": "chế giễu",
-    "miểm mai": "mỉa mai",
-    "binh vực": "bênh vực",
-    "xáo dỗng": "xáo rỗng",
-    "âm ức": "ấm ức",
-    "xót ra": "xót xa",
-    "vút ve": "vuốt ve",
-    "khắc nào": "khác nào",
-    "ly xì": "lì xì",
-    "li xì": "lì xì",
-    "sốt sáng": "sốt sắng",
-    "cầm muốn": "câm mồm",
-    "ma cả dòng": "ma cà rồng",
-    "học tỳ": "học tỷ",
-    "quyệt": "quỵt",
-    "chừng mắt": "trừng mắt",
-    "sắp mặt": "sắc mặt",
-    "lước xéo": "liếc xéo",
-    "rụi mắt": "dụi mắt",
-    "chú đáo": "chu đáo",
-    "thân thức": "thần thức",
-    "tự chọc": "tự trọng",
-    "lên lút": "lén lút",
-    "nhẹ nhóm": "nhẹ nhõm",
-    "đụng chúng": "đụng trúng",
-    "câu mày": "cau mày",
-    "thàn thở.": "than thở.",
-    "đứng phát dậy": "đứng phắt dậy",
-    "nóng gian": "nóng ran",
-    "may dám": "mày dám",
-    "ái trả": "ái chà",
-    "nghe thầy": "nghe thấy",
-    "dài nhân": "giai nhân",
-    "ngược lép": "ngực lép",
-    "trai dự": "chai rượu",
-    "nửa họ": "nợ họ",
-    "cựa đầu": "gật đầu",
-    "giờ khóc giờ cười": "giở khóc giở cười",
-    "gió sư": "giáo sư",
-    "thiện trí": "thiện chí",
-    "can tin": "căn tin",
-    "can tín": "căn tin",
-    "học để": "học đệ",
-    "nhực": "nhược",
-    "chút giận": "trút giận",
-    "thẳng nhiên": "thản nhiên",
-    "châm mắt": "trơ mắt",
-    "buồn mã": "buồn bã",
-    "senh": "xen",
-    "ngẹn": "nghẹn",
-    "lức anh": "liếc anh",
-    "nghiến rằng": "nghiến răng",
-    "dỗ rảnh": "dỗ dành",
-    "tọa nguyện": "toại nguyện",
-    "sang ngã": "sa ngã",
-    "mắng nhất": "mắng nhiếc",
-    "tiên đồn": "tin đồn",
-    "tụt rốc": "tụt dốc",
-    "ngừng mặt": "ngẩng mặt",
-    "quên biết": "quen biết",
-    "cân bản": "căn bản",
-    "nhớ mày": "nhíu mày",
-    "ấm ẩm": "ngấm ngầm",
-    "ngốc ngách": "ngốc nghếch",
-    "lé lên": "lóe lên",
-    "tót": "toát",
-    "cương chiều": "cưng chiều",
-    "ngần ra": "ngẩn ra",
-    "cao giáo": "cao ráo",
-    "ra tộc": "gia tộc",
-    "dở trò": "giở trò",
-    "yêu tú": "ưu tú",
-    "ra thế": "gia thế",
-    "thì gia thế": "thì ra thế",
-    "thành gia thế": "thành ra thế",
-    "hồn hền": "hổn hển",
-    "tái nhật": "tái nhợt",
-    "sót ra": "xót xa",
-    "giáng vẻ": "dáng vẻ",
-    "thanh chốt": "then chốt",
-    "kếp trước": "kiếp trước",
-    "thật thứ": "tha thứ",
-    "gây tẩm": "ghê tởm",
-    "chọng sinh": "trọng sinh",
-    "ái nái": "áy náy",
-    "ái náy": "áy náy",
-    "sưng mù": "sương mù",
-    "cười lệnh": "cười lạnh",
-    "đói là": "đói lã",
-    "liên gọi": "liền gọi",
-    "mô thuẫn": "mâu thuẫn",
-    "cười khỏi": "cười khẩy",
-    "ký túc giá": "ký túc xá",
-    "ký túc xa": "ký túc xá",
-    "vóng vẻ": "vắng vẻ",
-    "đáy ngộ": "đãi ngộ",
-    "hử lệnh": "hừ lạnh",
-    "ba lồ": "ba lô",
-    "dẫn dỗi": "giận dỗi",
-    "bị ốn": "bị ốm",
-    "ưu ám": "u ám",
-    "chầm tính": "trầm tính",
-    "ốt ức": "uất ức",
-    "học tì": "học tỷ",
-    "hừa lạnh": "hừ lạnh",
-    "nguy ngoai": "nguôi ngoai",
-    "phần nửa": "phân nửa",
-    "chiều trụng": "chiều chuộng",
-    "chàn da": "tràn ra",
-    "răng lên": "dâng lên",
-    "rời lại": "giờ lại",
-    "hán ta": "hắn ta",
-    "hàn ta": "hắn ta",
-    "hủng hồ": "huống hồ",
-    "rung nạp": "dung nạp",
-    "sua tay": "xua tay",
-    "chầm mặt": "trầm mặt",
-    "chân nhà": "trần nhà",
-    "mô giấc": "một giấc",
-    "hội trần": "hội chuẩn",
-    "trên ngành": "chuyên ngành",
-    "học mụy": "học muội",
-    "sen vào": "xen vào",
-    "dùng bỏ": "ruồng bỏ",
-    "giáng vẻ": "dáng vẻ",
-    "vu khổng": "vu khống",
-    "huy chưng": "huy chương",
-    "dạy rỗ": "dạy giỗ",
-    "chầm ngâm": "trầm ngâm",
-    "hứ lạnh": "hừ lạnh",
-    "cướng rắn": "cứng rắn",
-    "chàng pháo": "tràn pháo",
-    "bà lô": "ba lô",
-    "cần nhớ": "cần nhờ",
-    "tùn tìm": "tủm tỉm",
-    "bị đặt": "bịa đặt",
-    "độc điện": "độc địa",
-    "tránh ghét": "chán ghét",
-    "mắc cấp": "max cấp",
-    "cao rọng": "cao giọng",
-    "tin nghĩa": "tình nghĩa",
-    "luống cuốn": "luống cuống",
-    "mê mụi": "mê nuội",
-    "cố hiểu": "cố hữu",
-    "thầm rùa": "thầm rủa",
-    "bành bao": "bảnh bao",
-    "tủn tìm": "tủm tỉm",
-    "xài bước": "xải bước",
-    "cứ ngửi": "cứng người",
-    "được đối": "tuyệt đối",
-    "chầm chầm": "chằm chằm",
-    "đáy hổ": "đáy hồ",
-    "bộ dạo": "bộ dạng",
-    "nghe song": "nghe xong",
-    "lục ra": "lục gia",
-    "ăn phận": "an phận",
-    "trí tôn": "chí tôn",
-    "chiếc dương": "chiếc rương",
-    "cái dương": "cái rương",
-    "dọa đầu": "dạo đầu",
-    "chuyển cành": "chuyển cảnh",
-    "phần nộ": "phẫn nộ",
-    "đạp vang": "đạp văng",
-    "hắn tam": "hắn ta",
-    "gãý": "gãy",
-    "ổ ạt": "ồ ạt",
-    "xong lên": "xông lên",
-    "sợ ý": "sơ ý",
-    "sắt lạnh": "sắc lạnh",
-    "sáng lạm": "sáng lạn",
-    "chú tức": "chu tước",
-    "chư mộ": "chiêu mộ",
-    "tử thư": "tiểu thư",
-    "giới chứng": "dưới trướng",
-    "vụi vã": "vội vã",
-    "cố động": "cô đọng",
-    "song xuôi": "xong xuôi",
-    "song sau": "xong sau",
-    "song đi": "xong đi",
-    "trưởng lực": "chưởng lực",
-    "trưởng thẳng": "chưởng thẳng",
-    "trường mạnh": "chưởng mạnh",
-    "chứa thẳng": "chiếu thẳng",
-    "quá nhật": "quán nhật",
-    "trường thẳng": "chưởng thẳng",
-    "cúc máy": "cúp máy",
-    "nghiến giăng": "nghiến răng",
-    "trưng mắt": "trừng mắt",
-    "lầm bầm": "lẩm bẩm",
-    "tri tiêu": "chi tiêu",
-    "khoe miệng": "khóe miệng",
-    "bú phim": "bú phêm",
-    "chàn đầy": "tràn đầy",
-    "qua tặng": "quà tặng",
-    "ngạo nghĩa": "ngạo nghễ",
-    "thân hào": "thần hào",
-    "cao ốm": "cáo ốm",
-    "chút được": "trút được",
-    "tue tue": "toe toét",
-    "thị xát": "thị sát",
-    "đấu trưởng": "đấu trường",
-    "lạnh lung": "lạnh lùng",
-    "thiên thít": "thin thít",
-    "lác đầu": "lắc đầu",
-    "giấc lời": "dứt lời",
-    "sức khoát": "dứt khoát",
-    "nhò nhò": "nho nhỏ",
-    "xảy bước": "xải bước",
-    "nhà sửa": "nhà xưởng",
-    "lòng văn": "long vân",
-    "ra cố": "gia cố",
-    "chật nhớ": "chợt nhớ",
-    "xôi nổi": "sôi nổi",
-    "liều cỏ": "lều cỏ",
-    "tân qua": "tân quan",
-    "ráng vẻ": "dáng vẻ",
-    "giữa trừng": "giữa chừng",
-    "gián đốc": "giám đốc",
-    "trả hỏi": "chào hỏi",
-    "su nịnh": "xu nịnh",
-    "gượm": "gượng",
-    "nhớn mày": "nhướng mày",
-    "dâu tóc": "râu tóc",
-    "ngởng đầu": "ngẩng đầu",
-    "vụi vàng": "vội vàng",
-    "đáng bằng": "đóng băng",
-    "rứt lời": "dứt lời",
-    "chất lặng": "chết lặng",
-    "thâm nghĩ": "thầm nghĩ",
-    "xa thải": "sa thải",
-    "út ức": "uất ức",
-    "lan chuyển": "lan truyền",
-    "mời trào": "mời chào",
-    "lan sóng": "làn sóng",
-    "trân thành": "chân thành",
-    "ra nhập": "gia nhập",
-    "tập kỹ": "tạp kỹ",
-    "sẽ số": "dãy số",
-    "trật nghĩ": "chợt nghĩ",
-    "trần trừ": "chần chừ",
-    "dững lại": "sững lại",
-    "hàng giòng": "hàng rong",
-    "ngương ác": "ngơ ngác",
-    "đùi việc": "đuổi việc",
-    "trâm trâm": "chăm chăm",
-    "lão ra": "lão gia",
-    "lòng lực": "long lực",
-    "thủ lão": "thụ lão",
-    "truyền hóa": "chuyển hóa",
-    "nhạt nhạt": "nhàn nhạt",
-    "chuỗi lủi": "trụi lủi",
-    "bao trùng": "bao trùm",
-    "căn cỗi": "cằn cỗi",
-    "ung tùng": "um tùm",
-    "bất chật": "bất chợt",
-    "trợ tập": "triệu tập",
-    "cuộc sáng": "cột sáng",
-    "kỹ sĩ": "kỵ sĩ",
-    "mùi sạc": "mùi sặc",
-    "sặc thuốc dùng": "sặc thuốc súng",
-    "tôn tép": "tôm tép",
-    "lợi lục": "lợi lộc",
-    "chấp tay": "chắp tay",
-    "vừa rứt": "vừa dứt",
-    "lá trắng": "lá chắn",
-    "chiêu tức": "chiêu thức",
-    "trịt tiêu": "triệt tiêu",
-    "trột dạ": "chột dạ",
-    "lớn dọng": "lớn giọng",
-    "hùng hãn": "hung hãn",
-    "lòng khí": "long khí",
-    "giành dỗi": "rảnh rỗi",
-    "kỳ sĩ": "kỵ sĩ",
-    "ffff": "ffff",
-    "ffff": "ffff",
-    "ffff": "ffff",
-    "ffff": "ffff",
-    "ffff": "ffff",
-    "ffff": "ffff",
-    "ffff": "ffff",
-    "ffff": "ffff",
-    "ffff": "ffff",
-    "ffff": "ffff",
-    "lòng thương": "long thương",
-    "của người": "của ngươi",
-    "trực dương": "triệu dương",
-    "tu tú": "tú tú",
-    "tiều cửu": "tiểu cửu",
-    "thế chủy lý": "thiết chủy lý",
-    "tiều tư tư": "tiểu từ từ",
-}
-
-def cleaner_text(text):
-    for word, replacement in viet_tat.items():
-        text = text.replace(word, replacement)
-    text = text.lower()
-    for word, replacement in special_word.items():
-        text = text.replace(word, replacement)
-    for wrong, correct in loi_chinh_ta.items():
-        text = text.replace(wrong, correct)
-    return text
-
-
-
-def number_to_english_with_units(text):
-    if not text:
-        return
-    text = text.lower()
-    """ Chuyển đổi tất cả dạng số thành chữ tiếng Anh. """
-    
-    # Số cơ bản từ 0-99
-    words = {
-        0: "zero", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five",
-        6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
-        11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen",
-        15: "fifteen", 16: "sixteen", 17: "seventeen", 18: "eighteen",
-        19: "nineteen", 20: "twenty", 30: "thirty", 40: "forty",
-        50: "fifty", 60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety"
-    }
-
-    units = ["", "thousand", "million", "billion", "trillion"]
-
-    ordinal_words = {
-        1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth",
-        6: "sixth", 7: "seventh", 8: "eighth", 9: "ninth", 10: "tenth",
-        11: "eleventh", 12: "twelfth", 13: "thirteenth", 14: "fourteenth",
-        15: "fifteenth", 16: "sixteenth", 17: "seventeenth", 18: "eighteenth",
-        19: "nineteenth", 20: "twentieth", 30: "thirtieth", 40: "fortieth",
-        50: "fiftieth", 60: "sixtieth", 70: "seventieth", 80: "eightieth", 90: "ninetieth"
-    }
-
-    unit_mapping = {
-        "km": "kilometers", "m": "meters", "cm": "centimeters", "mm": "millimeters",
-        "h": "hours", "s": "seconds", "ms": "milliseconds", "%": "percent"
-    }
-
-    def read_three_digits(num, ordinal=False):
-        """ Chuyển số 3 chữ số thành chữ """
-        if num == 0:
-            return ""
-
-        hundreds = num // 100
-        tens = num % 100
-        result = []
-
-        if hundreds:
-            result.append(f"{words[hundreds]} hundred")
-
-        if tens:
-            if tens in words:
-                result.append(ordinal_words[tens] if ordinal else words[tens])
-            else:
-                tens_digit = tens // 10 * 10
-                ones_digit = tens % 10
-                if ordinal and ones_digit:
-                    result.append(f"{words[tens_digit]}-{ordinal_words[ones_digit]}")
-                else:
-                    result.append(words[tens_digit])
-                    if ones_digit:
-                        result.append(words[ones_digit])
-
-        return " ".join(result)
-
-    def number_to_english(number, ordinal=False):
-        """ Chuyển đổi số thành chữ """
-        if number == 0:
-            return "zero" if not ordinal else "zeroth"
-
-        if number < 0:
-            return "negative " + number_to_english(-number, ordinal)
-
-        parts = []
-        idx = 0
-        while number > 0:
-            num_part = number % 1000
-            if num_part:
-                part = read_three_digits(num_part, ordinal if number < 1000 else False)
-                if idx > 0:
-                    part += f" {units[idx]}"
-                parts.append(part)
-            number //= 1000
-            idx += 1
-
-        if ordinal:
-            parts[-1] = ordinal_words.get(int(parts[-1]), parts[-1] + "th")
-
-        return " ".join(reversed(parts))
-
-    def convert_fraction(match):
-        """ Xử lý phân số như 444/7000 """
-        return f"{number_to_english(int(match.group(1)))} over {number_to_english(int(match.group(2)))}"
-    
-    def convert_decimal(match):
-        """ Xử lý số thập phân như 55.65 """
-        integer_part = int(match.group(1))
-        decimal_part = match.group(2)
-        decimal_words = " ".join(number_to_english(int(digit)) for digit in decimal_part)
-        return f"{number_to_english(integer_part)} point {decimal_words}"
-    
-    def convert_units(match):
-        """ Xử lý số có đơn vị như 5649km """
-        number = int(match.group(1))
-        unit = match.group(2)
-        unit_word = unit_mapping.get(unit, unit)
-        return f"{number_to_english(number)} {unit_word}"
-    
-    def convert_ordinal(match):
-        """ Xử lý số thứ tự như 27th """
-        return number_to_english(int(match.group(1)), ordinal=True)
-    
-    def convert_commas(match):
-        """ Xử lý số có dấu phẩy như 1,000,000 """
-        return number_to_english(int(match.group(0).replace(",", "")))
-
-    def convert_integer(match):
-        """ Xử lý số nguyên đơn giản """
-        return number_to_english(int(match.group(0)))
-
-    # Chạy tất cả bộ xử lý
-    text = re.sub(r"(\d+)/(\d+)", convert_fraction, text)  # Phân số
-    text = re.sub(r"(\d+)\.(\d+)", convert_decimal, text)   # Số thập phân
-    text = re.sub(r"(\d+)(km|m|cm|mm|h|s|ms|%)\b", convert_units, text)  # Đơn vị
-    text = re.sub(r"\b(\d{1,3}(,\d{3})+)\b", convert_commas, text)  # Dấu phẩy
-    text = re.sub(r"\b(\d+)(st|nd|rd|th)\b", convert_ordinal, text)  # Số thứ tự
-    text = re.sub(r"\b-?\d+\b", convert_integer, text)  # Số nguyên
-
-    return text
-
-
-
-
-
-# import pandas as pd
-# # Đường dẫn đến thư mục chứa file Parquet
-# folder = "D:\\download\\dataset_en"
-# parquet_files = get_file_in_folder_by_type(folder, '.parquet')
-
-# # Thư mục lưu file audio
-# audio_output_folder = os.path.join(folder, "audio_files")
-# os.makedirs(audio_output_folder, exist_ok=True)
-
-# # Danh sách lưu dữ liệu từ tất cả các file parquet
-# all_data = []
-# audio_idx = 0  # Chỉ số để đặt tên file audio
-
-# for parquet_file in parquet_files:
-#     parquet_file_path = os.path.join(folder, parquet_file)
-#     # Đọc file Parquet
-#     df = pd.read_parquet(parquet_file_path, engine="pyarrow")
-
-#     # Kiểm tra dữ liệu
-#     print(f"Đọc dữ liệu từ: {parquet_file}, Số dòng: {len(df)}")
-
-#     # Chọn các cột và đổi tên
-#     df_filtered = df[["file", "spoken_text"]].copy()
-#     df_filtered.rename(columns={"file": "audio_file", "spoken_text": "text"}, inplace=True)
-
-#     # Chuyển số thành chữ trong cột "text"
-#     df_filtered["text"] = df_filtered["text"].apply(number_to_english_with_units)
-
-#     # Danh sách để lưu đường dẫn file audio sau khi đổi tên
-#     audio_paths = []
-
-#     for _, row in df.iterrows():
-#         file_name = f"{audio_idx}.wav"  # Đặt tên file theo idx.wav
-#         audio_data = row["audio"]["bytes"]  # Lấy dữ liệu nhị phân của audio
-        
-#         # Đường dẫn file audio sau khi lưu
-#         audio_path = os.path.join(audio_output_folder, file_name)
-
-#         # Lưu file .wav
-#         with open(audio_path, "wb") as f:
-#             f.write(audio_data)
-        
-#         # Thêm đường dẫn file audio mới vào danh sách
-#         audio_paths.append(file_name)
-        
-#         # Tăng index cho file tiếp theo
-#         audio_idx += 1
-
-#     # Cập nhật đường dẫn file audio mới vào DataFrame
-#     df_filtered["audio_file"] = audio_paths
-
-#     # Thêm cột speaker_name mặc định là "en_female"
-#     df_filtered["speaker_name"] = "en_female"
-
-#     # Thêm dữ liệu vào danh sách tổng
-#     all_data.append(df_filtered)
-
-# # Gộp tất cả dữ liệu vào một DataFrame duy nhất
-# final_df = pd.concat(all_data, ignore_index=True)
-
-# # Lưu toàn bộ dữ liệu vào một file CSV duy nhất với dấu phân cách "|"
-# csv_file = os.path.join(folder, "output.csv")
-# final_df.to_csv(csv_file, sep="|", index=False, encoding="utf-8")
-
-# print(f"✅ Đã lưu file CSV thành công: {csv_file}")
-# print(f"✅ Đã lưu {audio_idx} file âm thanh vào thư mục: {audio_output_folder}")
-
-
-
-
-
-
-
-# get_chrome_driver_with_profile('themysteries.001@gmail.com', True, proxy='154.203.38.33:5821:tonggiang:Zxcv123123', is_remove_proxy=True)

@@ -184,7 +184,7 @@ class FacebookManager:
                     self.download_thread = threading.Thread(target=self.download_page_videos_now)
                     self.download_thread.start()
                 else:
-                    print("Đang tải ở nơi khác !!!")
+                    print(f"{thatbai} Đang tải ở nơi khác.")
 
         def save_download():
             try:
@@ -192,7 +192,7 @@ class FacebookManager:
                 self.facebook_config['download_folder'] = self.download_folder_var.get().strip()
                 self.facebook_config['filter_by_views'] = self.filter_by_views_var.get().strip() or "0"
                 if not self.facebook_config['download_url']:
-                    print("Nhập link tải video !!!")
+                    print(f"{thatbai} Nhập link tải video.")
                     return False
                 if not check_folder(self.facebook_config['download_folder']):
                     return False
@@ -774,10 +774,10 @@ class FacebookManager:
                 element.click()
                 sleep(3)
             else:
-                print("Không tìm thấy nút đăng video --> Dừng đăng video !!!")
+                print(f"{thatbai} Không tìm thấy nút đăng video --> Dừng đăng video.")
                 self.is_stop_upload = True
         except:
-            print("Không tìm thấy nút đăng video --> Dừng đăng video !!!")
+            print(f"{thatbai} Không tìm thấy nút đăng video --> Dừng đăng video.")
             self.is_stop_upload = True
 
             
